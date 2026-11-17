@@ -46,6 +46,8 @@ pub struct Facts {
 	pub new_room: Option<f64>,
 	/// ... and how far it has got once it runs (0 to 1)
 	pub calibrating: Option<f64>,
+	/// the calibration's last word was that it failed (it could not start, or broke off)
+	pub calibration_failed: bool,
 }
 
 /// The state in a sentence; None while SteamVR is shown sally's tracking and nothing is in its way
@@ -83,6 +85,17 @@ pub fn state(f: &Facts) -> Option<(Tone, String)> {
 	}
 	if let Some(done) = f.calibrating {
 		return said(Tone::Wait, format!("Calibrating this room: {:.0} % done. {own} until it is.", done * 100.0));
+	}
+	if let Some(s) = f.new_room.filter(|_| f.calibration_failed) {
+		// the wait would otherwise start over without a word: said, with what to send if it goes on
+		return said(
+			Tone::Stop,
+			format!(
+				"sally could not calibrate this room and tries again in {}. {own} meanwhile. If this goes on, send the \
+				 newest files from sally's logs folder.",
+				clock(s)
+			),
+		);
 	}
 	if let Some(s) = f.new_room {
 		return said(
@@ -139,6 +152,8 @@ impl Panel {
 			lh1: c.lh1,
 			new_room: c.new_room,
 			calibrating: c.running.as_ref().filter(|r| r.kind == "new-room").map(|r| r.progress),
+			// log.txt's last line: time, what, recording, text
+			calibration_failed: c.last.as_deref().is_some_and(|l| l.split(' ').nth(1) == Some("failed")),
 		}
 	}
 
@@ -212,6 +227,9 @@ mod tests {
 		f.stations = 4;
 		f.new_room = Some(75.0);
 		assert_eq!(state(&f).unwrap().1.split('.').next(), Some("Learning this room: its calibration starts in 1:15"));
+		f.calibration_failed = true;
+		assert_eq!(says(&f), Some((Tone::Stop, "sally could not calibrate this room and tries again in 1".into())));
+		f.calibration_failed = false;
 		f.new_room = None;
 		f.calibrating = Some(0.42);
 		assert_eq!(state(&f).unwrap().1.split('.').next(), Some("Calibrating this room: 42 % done"));

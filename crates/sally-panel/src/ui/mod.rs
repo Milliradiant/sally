@@ -198,6 +198,8 @@ pub struct Panel {
 	steamvr_since: Option<f64>,
 	/// the sessions' files in the logs folder: when they were last added up, and their bytes (Settings)
 	logs_size: Option<(f64, u64)>,
+	/// the dashboard button's picture as it was last drawn, and the dot it was drawn with
+	button_picture: Option<(crate::icon::Dot, egui::TextureHandle)>,
 	/// the device page's device (codename), while it is open
 	page: Option<String>,
 	page_state: page::PageState,
@@ -262,6 +264,7 @@ impl Panel {
 			auto_floor: f64::NAN,
 			steamvr_since: None,
 			logs_size: None,
+			button_picture: None,
 			page: None,
 			page_state: page::PageState::default(),
 			confirm_unlock: false,
@@ -386,7 +389,7 @@ impl Panel {
 		self.st.names.get(&d.serial).map(String::as_str)
 	}
 
-	/// The name without a given one: the role ("Left foot"), else the type ("Right controller", "Tracker 3545")
+	/// The name without a given one: the role ("Left foot"), else the type ("Right controller", "Tracker 000A")
 	fn default_name(&self, d: &Device) -> String {
 		let r = self.role_of(d);
 		if r != "none" && r != "held" {
@@ -681,34 +684,21 @@ impl Panel {
 		self.page_state.hover = [None, None];
 	}
 
-	/// The dashboard button's picture: "sally" over a ring in the state's colour (fine, flagged devices amber, no
-	/// runtime red), on a card's ground
+	/// The dashboard button's picture: sally's icon, its dot saying what sally is doing as on the taskbar (icon.rs)
 	pub fn thumbnail(&mut self, ui: &mut egui::Ui, now: f64) {
 		self.now = now;
-		let t = theme::Tk::default();
-		let r = ui.max_rect();
-		let p = ui.painter();
-		let cr = r.width() * 0.2;
-		p.rect_filled(r, cr, t.card);
-		p.rect_stroke(r.shrink(1.0), cr, egui::Stroke::new(2.0, alpha(t.on, 60)), egui::StrokeKind::Inside);
-		let c = if !self.rt.connected(now) {
-			t.bad
-		} else if self.flagged_count() > 0 {
-			t.warn
-		} else {
-			t.good
-		};
-		let o = Pos2::new(r.center().x, r.min.y + r.height() * 0.36);
-		let rad = r.height() * 0.17;
-		p.circle_stroke(o, rad, egui::Stroke::new(r.height() * 0.045, c));
-		p.circle_filled(o, rad * 0.34, c);
-		p.text(
-			Pos2::new(r.center().x, r.min.y + r.height() * 0.74),
-			egui::Align2::CENTER_CENTER,
-			"sally",
-			semibold(r.height() * 0.23),
-			t.text,
-		);
+		let dot = self.dot(now);
+		if self.button_picture.as_ref().is_none_or(|(drawn, _)| *drawn != dot) {
+			let side = ui.max_rect().width().round() as usize;
+			let Some(p) = crate::icon::picture(side, dot) else { return };
+			let image = egui::ColorImage::from_rgba_unmultiplied([p.side, p.side], &p.rgba);
+			let texture = ui.ctx().load_texture("sally-icon", image, egui::TextureOptions::LINEAR);
+			self.button_picture = Some((dot, texture));
+		}
+		if let Some((_, texture)) = &self.button_picture {
+			let whole = Rect::from_min_max(Pos2::ZERO, Pos2::new(1.0, 1.0));
+			ui.painter().image(texture.id(), ui.max_rect(), whole, Color32::WHITE);
+		}
 	}
 
 	/// The questions asked before something that stops the tracking for a moment

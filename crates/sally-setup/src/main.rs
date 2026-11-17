@@ -374,6 +374,11 @@ mod sys {
 		fn RegDeleteTreeW(key: isize, sub: *const u16) -> i32;
 	}
 
+	#[link(name = "shell32")]
+	extern "system" {
+		fn SHChangeNotify(event: i32, flags: u32, item1: *const c_void, item2: *const c_void);
+	}
+
 	#[link(name = "ole32")]
 	extern "system" {
 		fn CoInitializeEx(reserved: *const c_void, model: u32) -> i32;
@@ -458,7 +463,24 @@ mod sys {
 			RegCloseKey(key);
 		}
 		let menu = start_menu().ok_or("no %APPDATA%")?;
-		shortcut(&menu.join("sally.lnk"), &root.join("sally-panel.exe"), &root.join("sally.ico"), root)
+		let (link, icon) = (menu.join("sally.lnk"), root.join("sally.ico"));
+		let made = shortcut(&link, &root.join("sally-panel.exe"), &icon, root);
+		new_pictures(&[&icon, &root.join("sally-panel.exe"), &link]);
+		made
+	}
+
+	/// Windows is told these files' pictures may have changed. It keeps a file's icon by the file's path, so an icon
+	/// installed over another one would go on being shown as the one before
+	fn new_pictures(files: &[&Path]) {
+		// SHCNE_UPDATEITEM with SHCNF_PATHW | SHCNF_FLUSH for each, then SHCNE_ASSOCCHANGED (SHCNF_IDLIST, no item):
+		// the icons kept are read again
+		for f in files {
+			let path = wide(&f.to_string_lossy());
+			// SAFETY: a NUL-terminated UTF-16 path that outlives the call, which is flushed before it returns
+			unsafe { SHChangeNotify(0x0000_2000, 0x0005 | 0x1000, path.as_ptr().cast(), std::ptr::null()) };
+		}
+		// SAFETY: no items
+		unsafe { SHChangeNotify(0x0800_0000, 0, std::ptr::null(), std::ptr::null()) };
 	}
 
 	pub fn unregister() {

@@ -518,7 +518,10 @@ impl Auto {
 				std::fs::remove_dir_all(&work)?;
 			}
 			std::fs::create_dir_all(&work)?;
-			std::fs::copy(&self.config, work.join("driver_config.json"))?;
+			// (a room that has never been calibrated has no config yet: the calibration makes its first)
+			if self.config.is_file() {
+				std::fs::copy(&self.config, work.join("driver_config.json"))?;
+			}
 			if self.fcal.is_file() {
 				std::fs::copy(&self.fcal, work.join("station_fcal.txt"))?;
 			}
@@ -1132,6 +1135,35 @@ mod tests {
 		assert!(b.stop);
 		assert_eq!(read(&root.join("survive/driver_config.json")), placed);
 		let _ = std::fs::remove_dir_all(&root);
+	}
+
+	/// A new install has no config for its room: its first calibration starts all the same, on no copy of one
+	#[test]
+	fn a_room_that_has_no_config_yet_is_calibrated_too() {
+		let (root, argv) = room("no_config");
+		std::fs::remove_file(root.join("survive/driver_config.json")).unwrap();
+		std::fs::remove_file(root.join("survive/station_fcal.txt")).unwrap();
+		let mut a = Auto::new(&argv).unwrap();
+		let rec = root.join("logs/sallytap_20261109_010000.hidtap");
+		assert!(a.start(&rec, Some(2), Kind::NewRoom), "{}", read(&a.dir.join("log.txt")));
+		let work = a.work();
+		assert!(work.join("job.txt").is_file());
+		assert!(!work.join("driver_config.json").exists() && !work.join("station_fcal.txt").exists());
+		assert!(read(&a.dir.join("log.txt")).contains(" started sallytap_20261109_010000.hidtap new-room"));
+		// (the process started is this test program, which makes nothing of the calibration's arguments and ends)
+		if let Some(mut child) = a.child.take() {
+			let _ = child.wait();
+		}
+		// what the calibration leaves when it has placed the stations is ready at once, the runtime is to stop for it,
+		// and the next start takes it up as the room's first config and corrections
+		finished(&a, Kind::NewRoom, R2, "state done\nwritten 1\nready 1\ntext 4 stations\n", "N");
+		assert!(a.finish_if_done() && a.stop);
+		let mut next = Auto::new(&argv).unwrap();
+		next.adopt();
+		assert_eq!(read(&root.join("survive/driver_config.json")), "N");
+		assert_eq!(read(&root.join("survive/station_fcal.txt")), "FN");
+		assert!(!next.ready().exists() && read(&next.dir.join("log.txt")).contains(" adopted "));
+		std::fs::remove_dir_all(&root).unwrap();
 	}
 
 	#[test]

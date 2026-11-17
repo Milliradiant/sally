@@ -1,7 +1,7 @@
-//! The panel's icon on the taskbar and in the title bar: sally's icon (crates/sally-setup/sally.ico, the file the
-//! installer hands Windows too) with its dot painted again in the colour of what sally is doing: tracking, waiting,
-//! stopped by something, or idle. The dot's place and size are the drawing's (sally.svg, and sally-small.svg for 16
-//! and 24 pixels).
+//! The panel's icon on the taskbar, in the title bar and on SteamVR's dashboard button: sally's icon
+//! (crates/sally-setup/sally.ico, the file the installer hands Windows too) with its dot painted again in the colour
+//! of what sally is doing: tracking, waiting, stopped by something, or idle. The dot's place and size are the
+//! drawing's (sally.svg, and sally-small.svg for 16 and 24 pixels).
 
 /// The icon file, as the installer ships it
 const ICO: &[u8] = include_bytes!("../../sally-setup/sally.ico");
@@ -48,8 +48,8 @@ pub struct Picture {
 	pub rgba: Vec<u8>,
 }
 
-/// The icon file's bitmaps (its 256-pixel picture is a PNG, and left out): each a 40-byte header, then 32-bit BGRA
-/// rows from the bottom up
+/// The icon file's pictures. A bitmap is a 40-byte header, then 32-bit BGRA rows from the bottom up; the 256-pixel
+/// picture is a PNG
 fn pictures(ico: &[u8]) -> Vec<Picture> {
 	let word = |i: usize| ico.get(i..i + 4).map(|b| u32::from_le_bytes([b[0], b[1], b[2], b[3]]) as usize);
 	let count = ico.get(4..6).map_or(0, |b| u16::from_le_bytes([b[0], b[1]]) as usize);
@@ -59,6 +59,13 @@ fn pictures(ico: &[u8]) -> Vec<Picture> {
 		let (Some(&width), Some(size), Some(at)) = (ico.get(entry), word(entry + 8), word(entry + 12)) else { break };
 		let side = if width == 0 { 256 } else { width as usize };
 		let Some(data) = at.checked_add(size).and_then(|end| ico.get(at..end)) else { continue };
+		if data.starts_with(b"\x89PNG") {
+			let png = image::load_from_memory_with_format(data, image::ImageFormat::Png).ok().map(|i| i.into_rgba8());
+			if let Some(png) = png.filter(|p| p.width() as usize == side && p.height() as usize == side) {
+				out.push(Picture { side, rgba: png.into_raw() });
+			}
+			continue;
+		}
 		if data.len() < 40 + side * side * 4 || data[..4] != [40, 0, 0, 0] || data[14..16] != [32, 0] {
 			continue;
 		}
@@ -111,7 +118,7 @@ fn paint(p: &mut Picture, colour: [u8; 3]) {
 }
 
 /// The icon for a place `want` pixels wide, its dot saying `dot`: the smallest picture at least that large (the
-/// largest where none is). None where the icon file holds no bitmap, which it always does
+/// largest where none is). None where the icon file holds no picture, which it always does
 pub fn picture(want: usize, dot: Dot) -> Option<Picture> {
 	let mut all = pictures(ICO);
 	all.sort_by_key(|p| p.side);
@@ -137,8 +144,8 @@ mod tests {
 	#[test]
 	fn the_icon_files_pictures_by_size() {
 		let sides: Vec<usize> = pictures(ICO).iter().map(|p| p.side).collect();
-		assert_eq!(sides, [16, 24, 32, 48, 64]);
-		for (want, side) in [(1, 16), (16, 16), (17, 24), (32, 32), (40, 48), (64, 64), (200, 64)] {
+		assert_eq!(sides, [16, 24, 32, 48, 64, 256]);
+		for (want, side) in [(1, 16), (16, 16), (17, 24), (32, 32), (40, 48), (64, 64), (200, 256), (999, 256)] {
 			let p = picture(want, Dot::Tracking).unwrap();
 			assert_eq!((p.side, p.rgba.len()), (side, side * side * 4), "{want}");
 		}

@@ -840,7 +840,7 @@ enum Step {
 /// For the tests only (`SALLY_PANEL_FAKE_VR=1`): valve's fake SteamVR in openvr_api's place, playing Valve's driver
 /// on what the runtime sees, and a dashboard session played on it from the start. For 2 s the dashboard is up on
 /// another tab (the button's picture drawn at the overlay's creation and each second); then the sally tab is open:
-/// the laser clicks Tracker 3545's row (the move, the press and the release in one go, as SteamVR often sends them),
+/// the laser clicks Tracker 000A's row (the move, the press and the release in one go, as SteamVR often sends them),
 /// holds and drags across the room view for 3 s with the thumb on the stick (moves and scroll ticks interleaved, 300
 /// events a second), clicks the Settings tab and leaves; at 7.5 s the dashboard closes. At the end the panel prints
 /// what the fake was handed and writes the overlay's and the button's last pictures in the current folder.

@@ -730,7 +730,7 @@ fn textures_go_to_steamvr_as_gl_textures_in_gamma() {
 fn the_keyboards_text_is_taken_once_whichever_queue_its_done_comes_on() {
 	let (mut vc, steamvr, mut rt) = with_overlay(true);
 	steamvr.lock().keyboard_on_system_queue = true;
-	assert!(vc.overlay_keyboard("LHR-T1", "Name for KN0", "Tracker 3545"));
+	assert!(vc.overlay_keyboard("LHR-T1", "Name for KN0", "Tracker 000A"));
 	assert!(vc.kb_open && !vc.kb_done);
 	assert_eq!((vc.kb_tag.as_str(), vc.kb_error.as_str()), ("LHR-T1", ""));
 	let asked = KeyboardRequest {
@@ -739,7 +739,7 @@ fn the_keyboards_text_is_taken_once_whichever_queue_its_done_comes_on() {
 		flags: KeyboardFlag_Modal,
 		description: b"Name for KN0".to_vec(),
 		char_max: 32,
-		existing_text: b"Tracker 3545".to_vec(),
+		existing_text: b"Tracker 000A".to_vec(),
 		user_value: 1,
 	};
 	assert_eq!(steamvr.lock().keyboard_requests, [(MAIN, asked)]);
