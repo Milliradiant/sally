@@ -1,0 +1,11 @@
+[package]
+name = "sally-track"
+description = "sally's tracker: one IMU-driven error-state EKF per device, every light hit a measurement at its own time (docs/tracking.md)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sally-math = { path = "../sally-math" }
+sally-lighthouse = { path = "../sally-lighthouse" }

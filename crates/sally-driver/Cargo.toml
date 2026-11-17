@@ -1,0 +1,23 @@
+[package]
+name = "sally-driver"
+description = "The SteamVR driver (driver_sally.dll): sally's poses on Valve's own device entries through a hook on vrserver's pose updates, Valve's as the fallback, the runtime kept running"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+# the library SteamVR loads (driver_<name> for the name in package/driver.vrdrivermanifest, "sally"), and an rlib for
+# the tests
+name = "driver_sally"
+crate-type = ["cdylib", "rlib"]
+
+[dependencies]
+sally-math = { path = "../sally-math" }
+sally-os = { path = "../sally-os" }
+
+[[test]]
+# the driver in a stand-in vrserver (tests/vrserver/): a main of its own, since the test binary is also the scripted
+# runtime the driver starts
+name = "vrserver"
+harness = false

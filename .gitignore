@@ -1,0 +1,18 @@
+# Rust build output
+/target/
+
+# session data never belongs in the repo: recordings, captures, logs, exports
+*.rec
+*.rec.gz
+*.hidtap
+*.pcap
+*.pcap.gz
+*.log
+*.csv
+
+# editors
+.idea
+.vs/
+.cache/
+*.user
+*~

@@ -1,0 +1,16 @@
+[package]
+name = "sally-runtime"
+description = "The runtime: tracked objects and stations, the path from a device's reports to the recording, the log, the settings"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sally-json = { path = "../sally-json" }
+sally-hid = { path = "../sally-hid" }
+sally-lighthouse = { path = "../sally-lighthouse" }
+sally-map = { path = "../sally-map" }
+sally-math = { path = "../sally-math" }
+sally-os = { path = "../sally-os" }
+sally-track = { path = "../sally-track" }

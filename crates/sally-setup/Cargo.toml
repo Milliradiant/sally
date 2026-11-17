@@ -1,0 +1,10 @@
+[package]
+name = "sally-setup"
+description = "sally's installer and uninstaller: one program that carries sally's files, puts them in the user's own folder, has `sally setup` put them on SteamVR's list, and takes it all away again"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+miniz_oxide = "0.9"

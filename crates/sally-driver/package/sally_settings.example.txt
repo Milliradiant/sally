@@ -1,0 +1,43 @@
+# sally_settings.txt: settings for the sally SteamVR driver, read when SteamVR starts. `sally setup` writes it; the
+# full list is in docs/sally_driver.md. "driver.<name>=<value>" lines are the driver's; every other line that is not a
+# comment is one argument for the runtime the driver starts ({time} = session start).
+
+# (the pose's age SteamVR predicts over is the output layer's prediction_ms, per class and device: sally_output.txt
+# beside this file, set from the panel's OUTPUT)
+# no runtime pose for this long = sally lost the device (Valve takes over)
+driver.lost_timeout_ms=150
+# where the runtime listens (sally run --runtime-port)
+driver.runtime_port=9100
+# panels: Valve's poses and status go to these ports, the "Use sally" switch comes in on cmd_port
+driver.valve_udp=9102,9103
+driver.cmd_port=9104
+# whose tracking SteamVR shows at start: sally or valve
+driver.seen=sally
+# Valve's pose when sally has none for a device, every switch slid over blend_ms
+driver.fallback=1
+driver.blend_ms=150
+driver.valve_settle_s=2
+# Valve's pose counts as a usable fallback only while it is within this many metres of ours (and has been for valve_settle_s)
+driver.valve_agree_m=0.3
+# the rest of the pose's age carried with the measured acceleration
+driver.carry=1
+# per-frame csv of what was sent and what SteamVR predicts from it ({time} = session start); leave out to skip
+#driver.pose_log=<sally>\logs\sally_poses_{time}.csv
+# the newest this many of each session file are kept (the recording, the two logs), the older ones deleted as
+# SteamVR starts; 0 keeps them all. The panel's choice (Settings, Sessions kept) stands over this one
+driver.keep_sessions=10
+# the panel, started with SteamVR; leave out and the driver starts none
+driver.panel_exe=<sally>\tools\sally_panel\sally-panel.exe
+
+# the runtime: started when SteamVR starts (unless one already answers), restarted if it exits, stopped at the end
+driver.runtime_exe=<sally>\survive\hidtap\sally.exe
+driver.runtime_cwd=<sally>\survive\hidtap\devcfg
+driver.runtime_log=<sally>\logs\sallytap_{time}_solver.txt
+# its arguments, one per line, `run` first (sally setup writes the full set)
+run
+--hidtap
+1
+--hidtap-record
+<sally>\logs\sallytap_{time}.hidtap
+--configfile
+<sally>\survive\driver_config.json

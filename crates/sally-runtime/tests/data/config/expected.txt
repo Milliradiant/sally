@@ -1,0 +1,1834 @@
+case real
+init ctx
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry global 1 "poser" type=3 elements=0 data="MPFIT" bound=0
+entry global 2 "disambiguator" type=3 elements=0 data="StateBased" bound=0
+entry global 3 "ootx-ignore-sync-error" type=2 i=0 elements=0 data=NULL bound=0
+entry global 4 "configed-lighthouse-gen" type=2 i=2 elements=0 data=NULL bound=0
+entry global 5 "floor-offset" type=1 f=bfe9630ee0000000 elements=0 data=NULL bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=0
+entry temporary 1 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=0 elements=0 data=NULL bound=0
+entry lh0 1 "id" type=2 i=609880014 elements=0 data=NULL bound=0
+entry lh0 2 "mode" type=2 i=7 elements=0 data=NULL bound=0
+entry lh0 3 "pose" type=4 elements=7 data=000000000000000000000080edbb024000000020adedf83f000000a094bfaf3f00000080a721b23f00000020b25ddfbf000000e0f4baebbf bound=0
+entry lh0 4 "variance" type=4 elements=6 data=00000020803bd13e0000008055d9c13e00000020e0e7183f000000a0ae4a5d3f00000020419c833f0000006086d77f3f bound=0
+entry lh0 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh0 6 "accel" type=4 elements=3 data=00000000000018c00000000000c05f400000000000005240 bound=0
+entry lh0 7 "fcalphase" type=4 elements=2 data=00000000000000000000000000c06bbf bound=0
+entry lh0 8 "fcaltilt" type=4 elements=2 data=000000000054a8bf0000000000d4a83f bound=0
+entry lh0 9 "fcalcurve" type=4 elements=2 data=0000000000b4aabf000000000088d13f bound=0
+entry lh0 10 "fcalgibpha" type=4 elements=2 data=0000000000dca73f000000000094ee3f bound=0
+entry lh0 11 "fcalgibmag" type=4 elements=2 data=0000000000907b3f0000000000c0783f bound=0
+entry lh0 12 "fcalogeephase" type=4 elements=2 data=000000000088e53f00000000002cf53f bound=0
+entry lh0 13 "fcalogeemag" type=4 elements=2 data=0000000000ecdbbf00000000006ce2bf bound=0
+entry lh0 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh0 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=1 elements=0 data=NULL bound=0
+entry lh1 1 "id" type=2 i=2851632229 elements=0 data=NULL bound=0
+entry lh1 2 "mode" type=2 i=9 elements=0 data=NULL bound=0
+entry lh1 3 "pose" type=4 elements=7 data=0000000010e3f13f0000002088e200c0000000a0741ef83f000000e083e4ecbf000000e0a4e4dabf000000a0342cb1bf000000e0e42dafbf bound=0
+entry lh1 4 "variance" type=4 elements=6 data=000000e02ed2d83e0000000036efbe3e000000803358183f000000a047a9173f00000040b659743f000000e04d54703f bound=0
+entry lh1 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh1 6 "accel" type=4 elements=3 data=00000000000000c00000000000c05f400000000000c05840 bound=0
+entry lh1 7 "fcalphase" type=4 elements=2 data=000000000000000000000000001c81bf bound=0
+entry lh1 8 "fcaltilt" type=4 elements=2 data=000000000014a9bf000000000024a63f bound=0
+entry lh1 9 "fcalcurve" type=4 elements=2 data=0000000000a0d33f000000000048d23f bound=0
+entry lh1 10 "fcalgibpha" type=4 elements=2 data=0000000000b8f93f000000000030f83f bound=0
+entry lh1 11 "fcalgibmag" type=4 elements=2 data=00000000001c5fbf00000000007868bf bound=0
+entry lh1 12 "fcalogeephase" type=4 elements=2 data=000000000024f33f000000000070ee3f bound=0
+entry lh1 13 "fcalogeemag" type=4 elements=2 data=00000000002cc3bf000000000034bbbf bound=0
+entry lh1 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh1 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=2 elements=0 data=NULL bound=0
+entry lh2 1 "id" type=2 i=2132379851 elements=0 data=NULL bound=0
+entry lh2 2 "mode" type=2 i=13 elements=0 data=NULL bound=0
+entry lh2 3 "pose" type=4 elements=7 data=000000e06a050940000000606583f93f000000e0dab4f83f00000080a92fd9bf00000000eb74d0bf000000006b4be0bf000000e0bf11e7bf bound=0
+entry lh2 4 "variance" type=4 elements=6 data=000000a005e2cd3e00000000bbc2c73e000000603534273f000000e00ac37b3f000000c0885c5e3f000000a0ad7a3c3f bound=0
+entry lh2 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh2 6 "accel" type=4 elements=3 data=00000000000000000000000000c05f400000000000004840 bound=0
+entry lh2 7 "fcalphase" type=4 elements=2 data=00000000000000000000000000a072bf bound=0
+entry lh2 8 "fcaltilt" type=4 elements=2 data=0000000000f4a8bf0000000000cca63f bound=0
+entry lh2 9 "fcalcurve" type=4 elements=2 data=0000000000f8d13f0000000000c0cf3f bound=0
+entry lh2 10 "fcalgibpha" type=4 elements=2 data=00000000009c004000000000000c0240 bound=0
+entry lh2 11 "fcalgibmag" type=4 elements=2 data=0000000000507bbf00000000002877bf bound=0
+entry lh2 12 "fcalogeephase" type=4 elements=2 data=00000000004805400000000000f80740 bound=0
+entry lh2 13 "fcalogeemag" type=4 elements=2 data=0000000000e0cb3f000000000058c73f bound=0
+entry lh2 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh2 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=3 elements=0 data=NULL bound=0
+entry lh3 1 "id" type=2 i=840201542 elements=0 data=NULL bound=0
+entry lh3 2 "mode" type=2 i=3 elements=0 data=NULL bound=0
+entry lh3 3 "pose" type=4 elements=7 data=000000c0a1d7fabf000000a0369ce3bf0000006078ebf83f000000e06cb4e33f000000c06260d93f0000006037a6d2bf000000a030b1e3bf bound=0
+entry lh3 4 "variance" type=4 elements=6 data=000000c07e08b93e000000e0abefd23e000000202818113f000000a024ff543f000000c03f64343f000000003fd22c3f bound=0
+entry lh3 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 6 "accel" type=4 elements=3 data=00000000000031c00000000000c05f400000000000405240 bound=0
+entry lh3 7 "fcalphase" type=4 elements=2 data=000000000000000000000000004c7bbf bound=0
+entry lh3 8 "fcaltilt" type=4 elements=2 data=0000000000b4a8bf0000000000f8a43f bound=0
+entry lh3 9 "fcalcurve" type=4 elements=2 data=0000000000b4b23f0000000000a0953f bound=0
+entry lh3 10 "fcalgibpha" type=4 elements=2 data=000000000074084000000000008cf03f bound=0
+entry lh3 11 "fcalgibmag" type=4 elements=2 data=00000000001477bf00000000000c703f bound=0
+entry lh3 12 "fcalogeephase" type=4 elements=2 data=000000000098e33f000000000098f43f bound=0
+entry lh3 13 "fcalogeemag" type=4 elements=2 data=000000000074dabf0000000000c8ddbf bound=0
+entry lh3 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh3 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+bsd
+bsd 0 PositionSet=1 OOTXSet=1 id=609880014 mode=7 unlock=0 pose=0000000000000000,4002bbed80000000,3ff8edad20000000,3fafbf94a0000000,3fb221a780000000,bfdf5db220000000,bfebbaf4e0000000, variance=3ed13b8020000000,3ec1d95580000000,3f18e7e020000000,3f5d4aaea0000000,3f839c4120000000,3f7fd78660000000, accel=c018000000000000,405fc00000000000,4052000000000000, fcal=0000000000000000,bfa8540000000000,bfaab40000000000,3fa7dc0000000000,3f7b900000000000,3fe5880000000000,bfdbec0000000000;bf6bc00000000000,3fa8d40000000000,3fd1880000000000,3fee940000000000,3f78c00000000000,3ff52c0000000000,bfe26c0000000000;
+bsd 1 PositionSet=1 OOTXSet=1 id=2851632229 mode=9 unlock=0 pose=3ff1e31000000000,c000e28820000000,3ff81e74a0000000,bfece483e0000000,bfdae4a4e0000000,bfb12c34a0000000,bfaf2de4e0000000, variance=3ed8d22ee0000000,3ebeef3600000000,3f18583380000000,3f17a947a0000000,3f7459b640000000,3f70544de0000000, accel=c000000000000000,405fc00000000000,4058c00000000000, fcal=0000000000000000,bfa9140000000000,3fd3a00000000000,3ff9b80000000000,bf5f1c0000000000,3ff3240000000000,bfc32c0000000000;bf811c0000000000,3fa6240000000000,3fd2480000000000,3ff8300000000000,bf68780000000000,3fee700000000000,bfbb340000000000;
+bsd 2 PositionSet=1 OOTXSet=1 id=2132379851 mode=13 unlock=0 pose=4009056ae0000000,3ff9836560000000,3ff8b4dae0000000,bfd92fa980000000,bfd074eb00000000,bfe04b6b00000000,bfe711bfe0000000, variance=3ecde205a0000000,3ec7c2bb00000000,3f27343560000000,3f7bc30ae0000000,3f5e5c88c0000000,3f3c7aada0000000, accel=0000000000000000,405fc00000000000,4048000000000000, fcal=0000000000000000,bfa8f40000000000,3fd1f80000000000,40009c0000000000,bf7b500000000000,4005480000000000,3fcbe00000000000;bf72a00000000000,3fa6cc0000000000,3fcfc00000000000,40020c0000000000,bf77280000000000,4007f80000000000,3fc7580000000000;
+bsd 3 PositionSet=1 OOTXSet=1 id=840201542 mode=3 unlock=0 pose=bffad7a1c0000000,bfe39c36a0000000,3ff8eb7860000000,3fe3b46ce0000000,3fd96062c0000000,bfd2a63760000000,bfe3b130a0000000, variance=3eb9087ec0000000,3ed2efabe0000000,3f11182820000000,3f54ff24a0000000,3f34643fc0000000,3f2cd23f00000000, accel=c031000000000000,405fc00000000000,4052400000000000, fcal=0000000000000000,bfa8b40000000000,3fb2b40000000000,4008740000000000,bf77140000000000,3fe3980000000000,bfda740000000000;bf7b4c0000000000,3fa4f80000000000,3f95a00000000000,3ff08c0000000000,3f700c0000000000,3ff4980000000000,bfddc80000000000;
+end
+options
+"OPTION v i 0\x0a"
+"OPTION blacklist-devs s \x0a"
+"OPTION configfile s @DIR@/cfg.json\x0a"
+"OPTION init-configfile s (null)\x0a"
+"OPTION disable-calibrate b 0\x0a"
+"OPTION force-calibrate b 0\x0a"
+"OPTION force-ootx b 0\x0a"
+"OPTION lighthousecount i 0\x0a"
+"OPTION lighthouse-gen i 0\x0a"
+"OPTION output-callback-stats f 0.000000\x0a"
+"OPTION lighthouse-0-disable b 0\x0a"
+"OPTION lighthouse-1-disable b 0\x0a"
+"OPTION lighthouse-2-disable b 0\x0a"
+"OPTION lighthouse-3-disable b 0\x0a"
+"OPTION lighthouse-max-update f 0.010000\x0a"
+"OPTION lighthouse-max-nudge-distance f 0.100000\x0a"
+"OPTION lighthouse-update-velocity f 0.100000\x0a"
+"OPTION config-readonly b 0\x0a"
+"OPTION imu-acc-bias-units i 0\x0a"
+"OPTION ignore-config-imu-bias b 0\x0a"
+"OPTION track-hit-sd f 2.000000e-04\x0a"
+"OPTION track-hit-common-sd f 1.500000e-04\x0a"
+"OPTION track-hit-join-sd f 0.001100\x0a"
+"OPTION track-hit-knee f 70.000000\x0a"
+"OPTION track-gate f 8.000000\x0a"
+"OPTION track-gate-floor f 0.003000\x0a"
+"OPTION track-zupt-sd f 0.010000\x0a"
+"OPTION track-zupt-gyro f 0.020000\x0a"
+"OPTION track-zupt-vib f 0.050000\x0a"
+"OPTION track-zupt-time f 0.200000\x0a"
+"OPTION track-hit-shift f 0.004500\x0a"
+"OPTION track-acc-sd f 0.050000\x0a"
+"OPTION track-acc-knoise f 0.100000\x0a"
+"OPTION track-gyr-sd f 0.003000\x0a"
+"OPTION track-acc-bias-sd f 0.010000\x0a"
+"OPTION track-gyr-bias-sd f 5.000000e-04\x0a"
+"OPTION track-layout-sd f 1.000000e-04\x0a"
+"OPTION track-layout-max f 0.015000\x0a"
+"OPTION track-adapt f 6.000000\x0a"
+"OPTION track-acc-tnoise f 0.010000\x0a"
+"OPTION track-adapt-trackers i 0\x0a"
+"OPTION track-vib0 f 0.100000\x0a"
+"OPTION track-facing-deg f 90.000000\x0a"
+"OPTION track-blink f 0.000000\x0a"
+"OPTION track-probe-ch i -1\x0a"
+"OPTION track-only i 0\x0a"
+"OPTION track-reseed-frac f 0.800000\x0a"
+"OPTION track-gap-coast f 0.600000\x0a"
+"OPTION track-gap-tau f 0.500000\x0a"
+"OPTION track-gap-reseed f 0.500000\x0a"
+"OPTION track-seed-fit f 0.003000\x0a"
+"OPTION track-seed-window f 0.060000\x0a"
+"OPTION track-clip-sd f 30.000000\x0a"
+"OPTION track-reseed-min-hits i 200\x0a"
+"OPTION track-p0-pos f 1.000000e-04\x0a"
+"OPTION track-p0-vel f 0.100000\x0a"
+"OPTION track-p0-rot f 1.000000e-03\x0a"
+"OPTION track-p0-gyr-bias f 1.000000e-04\x0a"
+"OPTION track-p0-acc-bias f 0.010000\x0a"
+"OPTION track-p0-layout f 1.000000e-04\x0a"
+"OPTION track-gravity-tilt f 0.000000\x0a"
+"OPTION track-gravity-tilt-az f 0.000000\x0a"
+"OPTION track-gravity-tilt-sd f 0.000000\x0a"
+"OPTION track-verbose i 1\x0a"
+"OPTION record-rawlight b 1\x0a"
+"OPTION record-imu b 1\x0a"
+"OPTION record-cal-imu b 0\x0a"
+"OPTION record-angle b 1\x0a"
+"OPTION record s \x0a"
+"OPTION record-stdout b 0\x0a"
+"OPTION report-in-imu b 0\x0a"
+"OPTION serialize-device-config b 0\x0a"
+"OPTION serialize-ootx b 0\x0a"
+"OPTION gen2-plane-predict f -1.000000\x0a"
+"OPTION light-facing-deg f -1.000000\x0a"
+"OPTION light-facing-max-age f 0.500000\x0a"
+"OPTION record-facing i 0\x0a"
+"OPTION gen2-plane-predict-tol f 0.500000\x0a"
+"OPTION sim-gap-period f 0.000000\x0a"
+"OPTION sim-gap-len f 2.000000\x0a"
+"OPTION sim-gap-start f 20.000000\x0a"
+"OPTION lock-lighthouses b 0\x0a"
+"OPTION move-threshold-gyro f 0.075000\x0a"
+"OPTION move-threshold-acc f 0.030000\x0a"
+"OPTION move-threshold-ang f 0.020000\x0a"
+"OPTION filter-threshold-ang-per-sec f 50.000000\x0a"
+"OPTION filter-light-outlier-criteria f 0.500000\x0a"
+"OPTION filter-variance-minimum f 0.050000\x0a"
+"OPTION filter-outlier-minimum-count i 11\x0a"
+"OPTION diagnosis i 1\x0a"
+"OPTION diagnosis-period f 0.500000\x0a"
+"OPTION diagnosis-back-deg f 115.000000\x0a"
+"OPTION diagnosis-discard-vmax f 0.500000\x0a"
+"OPTION vive-test-drop s \x0a"
+"OPTION usbmon-record s (null)\x0a"
+"OPTION usbmon-playback s (null)\x0a"
+"OPTION usbmon-devs s (null)\x0a"
+"OPTION usbmon-record-all b 0\x0a"
+"OPTION usbmon-output-all b 0\x0a"
+"OPTION usbmon-output b 0\x0a"
+"OPTION usbmon-only-record b 0\x0a"
+"OPTION usbmon-allow-fs-config b 0\x0a"
+"OPTION playback-replay-pose b 0\x0a"
+"OPTION playback-replay-external-pose b 0\x0a"
+"OPTION playback s (null)\x0a"
+"OPTION playback-factor f 1.000000\x0a"
+"OPTION playback-start-time f -1.000000\x0a"
+"OPTION playback-time f -1.000000\x0a"
+"OPTION run-time f -1.000000\x0a"
+"OPTION light-min-length i 100\x0a"
+"OPTION disambiguator-verbosity i 1000\x0a"
+"OPTION map-solve i 0\x0a"
+"OPTION map-solve-file s \x0a"
+"OPTION map-solve-test-move s \x0a"
+"OPTION map-solve-test-load s \x0a"
+"OPTION station-fcal-file s \x0a"
+"OPTION device-calibration-file s \x0a"
+"OPTION map-solve-batch i 400\x0a"
+"OPTION map-solve-step f 0.250000\x0a"
+"OPTION map-solve-window f 0.022000\x0a"
+"OPTION map-solve-vmax f 0.050000\x0a"
+"OPTION map-solve-wmax f 0.150000\x0a"
+"OPTION map-solve-min-hits i 6\x0a"
+"OPTION map-solve-min-snaps i 40\x0a"
+"OPTION map-solve-min-station-hits i 150\x0a"
+"OPTION map-solve-first f 10.000000\x0a"
+"OPTION map-solve-period f 5.000000\x0a"
+"OPTION map-solve-tau f 600.000000\x0a"
+"OPTION map-solve-iters i 8\x0a"
+"OPTION map-solve-prior-pos f 0.050000\x0a"
+"OPTION map-solve-prior-rot f 0.010000\x0a"
+"OPTION map-solve-rate-pos f 0.002000\x0a"
+"OPTION map-solve-rate-rot f 5.000000e-04\x0a"
+"OPTION map-solve-huber f 1.000000e-03\x0a"
+"OPTION map-solve-reject f 0.008000\x0a"
+"OPTION map-solve-max-move f 0.050000\x0a"
+"OPTION map-solve-max-rot f 0.020000\x0a"
+"OPTION map-solve-load-weight f 0.250000\x0a"
+"OPTION map-solve-save-period f 60.000000\x0a"
+"OPTION map-solve-relocate i 1\x0a"
+"OPTION map-solve-move-resid f 0.003000\x0a"
+"OPTION map-solve-move-fit f 4.000000e-04\x0a"
+"OPTION map-solve-move-ratio f 3.000000\x0a"
+"OPTION map-solve-move-rest-ratio f 2.000000\x0a"
+"OPTION map-solve-move-min-snaps i 12\x0a"
+"OPTION map-solve-move-agree-pos f 0.010000\x0a"
+"OPTION map-solve-move-agree-rot f 0.003000\x0a"
+"OPTION map-solve-move-min f 0.005000\x0a"
+"OPTION map-solve-move-min-rot f 0.002000\x0a"
+"OPTION map-solve-move-pending-max f 60.000000\x0a"
+"OPTION map-solve-threaded i 1\x0a"
+"OPTION diagrec i 0\x0a"
+"OPTION simulator b 0\x0a"
+"OPTION simulator-attractors i 3\x0a"
+"OPTION simulator-obj-sensors i 20\x0a"
+"OPTION simulator-fcal-noise f 1.000000e-03\x0a"
+"OPTION simulator-init-time f 2.000000\x0a"
+"OPTION simulator-gyro-noise f 1.000000e-03\x0a"
+"OPTION simulator-acc-noise f 1.000000e-04\x0a"
+"OPTION simulator-gyro-bias f 0.100000\x0a"
+"OPTION simulator-sensor-time-jitter f 0.010000\x0a"
+"OPTION simulator-show-gt i 1\x0a"
+"OPTION simulator-sensor-noise f 1.000000e-04\x0a"
+"OPTION simulator-obj-radius f 0.050000\x0a"
+"OPTION simulator-time f 0.000000\x0a"
+"OPTION simulator-sensor-droprate f 0.200000\x0a"
+"OPTION simulator-noise-scale f 1.000000\x0a"
+"OPTION simulator-lh-gen i 1\x0a"
+"OPTION simulator-lh-duty-cycle f 1.000000\x0a"
+"OPTION pose-udp i 0\x0a"
+"OPTION pose-udp-host s 127.0.0.1\x0a"
+"OPTION runtime-port i 0\x0a"
+"OPTION runtime-bind s 127.0.0.1\x0a"
+"OPTION runtime-state-hz f 100.000000\x0a"
+"OPTION runtime-diag-period f 1.000000\x0a"
+"OPTION runtime-sub-timeout f 5.000000\x0a"
+"OPTION hidtap b 0\x0a"
+"OPTION hidtap-lightcap-mode i -2\x0a"
+"OPTION hidtap-config-fetch b 1\x0a"
+"OPTION hidtap-config-delay f 5.000000\x0a"
+"OPTION hidtap-playback s (null)\x0a"
+"OPTION hidtap-record s (null)\x0a"
+"OPTION hidtap-allow-fs-config b 0\x0a"
+"OPTION hidtap-vid i 10462\x0a"
+end
+f v 0 0 -> 0000000000000000
+i v 0 0 -> 0
+b v 0 0 -> 0
+type v -> 105
+isset v -> 1
+str v EMPTY 128 -> "0"
+str v EMPTY 4 -> "0"
+s v 0 NULL -> NULL
+f lighthouse-max-update 0 0 -> 3f847ae147ae147b
+i lighthouse-max-update 0 0 -> 0
+b lighthouse-max-update 0 0 -> 0
+type lighthouse-max-update -> 102
+isset lighthouse-max-update -> 1
+str lighthouse-max-update EMPTY 128 -> "0.010000"
+str lighthouse-max-update EMPTY 4 -> "0.0"
+s lighthouse-max-update 0 NULL -> NULL
+f run-time 0 0 -> bff0000000000000
+i run-time 0 0 -> 0
+b run-time 0 0 -> 0
+type run-time -> 102
+isset run-time -> 0
+str run-time EMPTY 128 -> "-1.000000"
+str run-time EMPTY 4 -> "-1."
+f output-callback-stats 0 0 -> 0000000000000000
+i output-callback-stats 0 0 -> 0
+b output-callback-stats 0 0 -> 0
+type output-callback-stats -> 102
+isset output-callback-stats -> 0
+str output-callback-stats EMPTY 128 -> "0.000000"
+str output-callback-stats EMPTY 4 -> "0.0"
+f lighthouse-gen 0 0 -> 0000000000000000
+i lighthouse-gen 0 0 -> 0
+b lighthouse-gen 0 0 -> 0
+type lighthouse-gen -> 105
+isset lighthouse-gen -> 0
+str lighthouse-gen EMPTY 128 -> "0"
+str lighthouse-gen EMPTY 4 -> "0"
+s lighthouse-gen 0 NULL -> NULL
+f lighthousecount 0 0 -> 0000000000000000
+i lighthousecount 0 0 -> 0
+b lighthousecount 0 0 -> 0
+type lighthousecount -> 105
+isset lighthousecount -> 0
+str lighthousecount EMPTY 128 -> "0"
+str lighthousecount EMPTY 4 -> "0"
+s lighthousecount 0 NULL -> NULL
+f force-calibrate 0 0 -> 0000000000000000
+i force-calibrate 0 0 -> 0
+b force-calibrate 0 0 -> 0
+type force-calibrate -> 98
+isset force-calibrate -> 0
+str force-calibrate EMPTY 128 -> "0"
+str force-calibrate EMPTY 4 -> "0"
+s force-calibrate 0 NULL -> NULL
+f config-readonly 0 0 -> 0000000000000000
+i config-readonly 0 0 -> 0
+b config-readonly 0 0 -> 0
+type config-readonly -> 98
+isset config-readonly -> 0
+str config-readonly EMPTY 128 -> "0"
+str config-readonly EMPTY 4 -> "0"
+s config-readonly 0 NULL -> NULL
+b blacklist-devs 0 0 -> 1
+type blacklist-devs -> 115
+isset blacklist-devs -> 0
+str blacklist-devs EMPTY 128 -> ""
+str blacklist-devs EMPTY 4 -> ""
+s blacklist-devs 0 NULL -> ""
+b pose-udp-host 0 0 -> 1
+type pose-udp-host -> 115
+isset pose-udp-host -> 0
+str pose-udp-host EMPTY 128 -> "127.0.0.1"
+str pose-udp-host EMPTY 4 -> "127"
+s pose-udp-host 0 NULL -> "127.0.0.1"
+b record 0 0 -> 1
+type record -> 115
+isset record -> 0
+str record EMPTY 128 -> ""
+str record EMPTY 4 -> ""
+s record 0 NULL -> ""
+f playback 0 0 -> 0000000000000000
+i playback 0 0 -> 0
+b playback 0 0 -> 0
+type playback -> 115
+isset playback -> 0
+str playback EMPTY 128 -> "(null)"
+str playback EMPTY 4 -> "(nu"
+s playback 0 NULL -> NULL
+f configfile 0 0 -> 0000000000000000
+i configfile 0 0 -> 0
+b configfile 0 0 -> 0
+type configfile -> 115
+isset configfile -> 1
+str configfile EMPTY 128 -> "@DIR@/cfg.json"
+s configfile 0 NULL -> "@DIR@/cfg.json"
+f init-configfile 0 0 -> 0000000000000000
+i init-configfile 0 0 -> 0
+b init-configfile 0 0 -> 0
+type init-configfile -> 115
+isset init-configfile -> 0
+str init-configfile EMPTY 128 -> "(null)"
+str init-configfile EMPTY 4 -> "(nu"
+s init-configfile 0 NULL -> NULL
+f floor-offset 0 0 -> bfe9630ee0000000
+i floor-offset 0 0 -> 4294967295
+b floor-offset 0 0 -> 1
+s floor-offset 0 NULL -> NULL
+type floor-offset -> 102
+isset floor-offset -> 1
+str floor-offset EMPTY 128 -> "-0.793342"
+str floor-offset x:61626364 2 -> "-"
+f poser 0 0 -> 0000000000000000
+i poser 0 0 -> 0
+b poser 0 0 -> 0
+s poser 0 NULL -> "MPFIT"
+type poser -> 115
+isset poser -> 1
+str poser EMPTY 128 -> "MPFIT"
+str poser x:61626364 2 -> "M"
+f disambiguator 0 0 -> 0000000000000000
+i disambiguator 0 0 -> 0
+b disambiguator 0 0 -> 0
+s disambiguator 0 NULL -> "StateBased"
+type disambiguator -> 115
+isset disambiguator -> 1
+str disambiguator EMPTY 128 -> "StateBased"
+str disambiguator x:61626364 2 -> "S"
+f configed-lighthouse-gen 0 0 -> 4000000000000000
+i configed-lighthouse-gen 0 0 -> 2
+b configed-lighthouse-gen 0 0 -> 1
+s configed-lighthouse-gen 0 NULL -> NULL
+type configed-lighthouse-gen -> 105
+isset configed-lighthouse-gen -> 1
+str configed-lighthouse-gen EMPTY 128 -> "2"
+str configed-lighthouse-gen x:61626364 2 -> "2"
+f ootx-ignore-sync-error 0 0 -> 0000000000000000
+i ootx-ignore-sync-error 0 0 -> 0
+b ootx-ignore-sync-error 0 0 -> 0
+s ootx-ignore-sync-error 0 NULL -> NULL
+type ootx-ignore-sync-error -> 105
+isset ootx-ignore-sync-error -> 1
+str ootx-ignore-sync-error EMPTY 128 -> "0"
+str ootx-ignore-sync-error x:61626364 2 -> "0"
+path -> "@DIR@/cfg.json"
+save -> "\x22v\x22:\x220\x22,\x0a\x22poser\x22:\x22MPFIT\x22,\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0a\x22lighthouse0\x22:{\x0a\x22index\x22:\x220\x22,\x0a\x22id\x22:\x22609880014\x22,\x0a\x22mode\x22:\x227\x22,\x0a\x22pose\x22:[\x220.000000000000\x22,\x222.341761589050\x22,\x221.558026432991\x22,\x220.062008518726\x22,\x220.070826023817\x22,\x22-0.490093737841\x22,\x22-0.866571843624\x22],\x0a\x22variance\x22:[\x220.000004108530\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-6.000000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.003387451172\x22],\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse1\x22:{\x0a\x22index\x22:\x221\x22,\x0a\x22id\x22:\x222851632229\x22,\x0a\x22mode\x22:\x229\x22,\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894914150\x22,\x22-0.420205324888\x22,\x22-0.067080773413\x22,\x22-0.060897018760\x22],\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x222132379851\x22,\x0a\x22mode\x22:\x2213\x22,\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534064293\x22,\x22-0.257136106491\x22,\x22-0.509206295013\x22,\x22-0.720916688442\x22],\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse3\x22:{\x0a\x22index\x22:\x223\x22,\x0a\x22id\x22:\x22840201542\x22,\x0a\x22mode\x22:\x223\x22,\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774571896\x22,\x220.396507918835\x22,\x22-0.291395038366\x22,\x22-0.615379631519\x22],\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a"
+help 1 -> " --configfile                              @DIR@/cfg.json     :string          Default configuration file\x0a --v                                                     0     :int             Verbosity level\x0a --lighthouse-max-update                          0.010000     :float           Maximum instant move for a lighthouse\x0a --lighthouse-max-nudge-distance                  0.100000     :float           If a proscribed LH move is more than this; do it instantly -- it's too far off to slerp over\x0a --lighthouse-update-velocity                     0.100000     :float           Allowable velocity to update a lighthouse\x0a --poser                                             MPFIT     :string          \x0a --disambiguator                                StateBased     :string          \x0a --ootx-ignore-sync-error                                0     :int             \x0a --configed-lighthouse-gen                               2     :int             \x0a --floor-offset                                  -0.793342     :float           \x0a --blacklist-devs                                              :string          List any devs (or substrings of devs) to blacklist.\x0a --init-configfile                                  (null)     :string          Initial configuration file\x0a --disable-calibrate                                     0     :bool            Enables or disables calibration\x0a --force-calibrate                                       0     :bool            Forces calibration even if one exists.\x0a --force-ootx                                            0     :bool            Forces ootx capture even if its in the config file.\x0a --lighthousecount                                       0     :int             How many lighthouses to look for.\x0a --lighthouse-gen                                        0     :int             Which lighthouse gen to use -- 1 for LH1, 2 for LH2, 0 (default) for auto-detect\x0a --output-callback-stats                          0.000000     :float           Print cb stats every given number of seconds. 0 disables this output.\x0a --lighthouse-0-disable                                  0     :bool            Disable lh at idx 0\x0a --lighthouse-1-disable                                  0     :bool            Disable lh at idx 1\x0a --lighthouse-2-disable                                  0     :bool            Disable lh at idx 2\x0a --lighthouse-3-disable                                  0     :bool            Disable lh at idx 3\x0a --config-readonly                                       0     :bool            sally: never write the config file back (also implied by lock-lighthouses: a wiped or re-solved map must not replace the calibrated one on disk)\x0a --imu-acc-bias-units                                    0     :int             sally: units of acc_bias in the device JSON: 0 = upstream guess (divide by 1000, i.e. ignored), 1 = m/s^2 (divide by 9.80665 to get g)\x0a --ignore-config-imu-bias                                0     :bool            Ignore the bias set for imu devices in the config\x0a --track-hit-sd                               2.000000e-04     :float           sally tracker: sd of one hit's angle (rad) at normal incidence, on top of track-hit-common-sd\x0a --track-hit-common-sd                        1.500000e-04     :float           sally tracker: sd of the white angle error common to all hits of one sweep (rad; measured 0.13 mrad sweep to sweep against the all-station track). The common error is 0.5 mrad rms in all, but most of it is slow (0.3-0.55 mrad, varying over seconds with where the device is in the station's field: the station model), which a white term must not stand in for\x0a --track-hit-join-sd                              0.001100     :float           sally tracker: sd of the angle error common to a sweep's hits when the station has only just come into view (rad), fading with exp(-t / JOIN_TAU) and exp(-turned / JOIN_DEG) after its light returned (no sweep from it for JOIN_GAP s before), and only while another station holds the pose (accepted hits within JOIN_HOLD s). A station coming into view lights the sensors at the edge of the device's visible side first, partly shadowed (by the body, by the housing): its first sweeps are off by a common 1-3 mrad (0.4-0.5 after 0.25 s, 0.3-0.5 steady); taken at the steady weight they yank the estimate by a cm on every handover. 0 = off\x0a --track-hit-knee                                70.000000     :float           sally tracker: the hit sd grows as 1 + (incidence angle / this)^6 (deg): 0.2 mrad below 70 deg, 0.45 at 75, 1.2-1.9 beyond 80\x0a --track-gate                                     8.000000     :float           sally tracker: a hit is dropped when its residual exceeds this many predicted innovation sds\x0a --track-gate-floor                               0.003000     :float           sally tracker: ... or this many rad, whichever is larger (a floor so a confident filter still takes hits after a short blackout)\x0a --track-zupt-sd                                  0.010000     :float           sally tracker: while the IMU says the device is at rest (|gyro| < track-zupt-gyro rad/s and the accelerometer's fast part < track-zupt-vib m/s^2 for track-zupt-time s) a zero-velocity measurement with this sd (m/s) is applied every sample: the one thing that holds the depth with one station when the device does not move (a foot on the floor). <= 0 = off\x0a --track-zupt-gyro                                0.020000     :float           sally tracker: see track-zupt-sd (rad/s)\x0a --track-zupt-vib                                 0.050000     :float           sally tracker: see track-zupt-sd (m/s^2)\x0a --track-zupt-time                                0.200000     :float           sally tracker: see track-zupt-sd (s)\x0a --track-hit-shift                                0.004500     :float           sally tracker: seconds added to every hit's time to put it on the IMU clock (the light leads the IMU by ~4.5 ms on the trackers)\x0a --track-acc-sd                                   0.050000     :float           sally tracker: accelerometer process noise (m/s^2 per step at 250 Hz): base velocity random walk\x0a --track-acc-knoise                               0.100000     :float           sally tracker: accelerometer process noise proportional to the specific force it reads beyond gravity: sd = sqrt(acc-sd^2 + (this * max(0, |f| - g))^2 (+ the vibration term)). The sensor is off by a fraction of what it measures (scale and cross-axis errors, the point it sits at under the body rate, its timing against the light), and the fraction is of the motion, not of gravity, whose constant error the bias state holds. Flat from 0.08 to 0.12 on rigid-body truths; applied to |f| itself it adds snaps at rest. 0 = off\x0a --track-gyr-sd                                   0.003000     :float           sally tracker: orientation process noise (rad/s per step at 250 Hz): the gyro's own noise. What the gyro does not deliver is modelled where it arises: its scale error turns the estimate about the axis it turns about (GYRO_SCALE), and the light's orientation carries an offset from the sensor calibration of the face it sees (OB_SD). Raised to stand in for both (0.1), the orientation follows the light's offset and the tilt leaks gravity along the one line a single station cannot see; at 0.01 one-station tracking is worse at rest and a fast spin loses the orientation\x0a --track-acc-bias-sd                              0.010000     :float           sally tracker: accelerometer bias random walk (m/s^2 per step)\x0a --track-gyr-bias-sd                          5.000000e-04     :float           sally tracker: gyro bias random walk (rad/s per step)\x0a --track-layout-sd                            1.000000e-04     :float           sally tracker: sensor-layout scale random walk (per step); the scale fixes the one-station depth bias of a device whose layout is a little off (+0.5 % on some devices). <= 0 = no scale state\x0a --track-layout-max                               0.015000     :float           sally tracker: the layout scale is clamped to +- this (the real values are 0.1-0.6 %)\x0a --track-adapt                                    6.000000     :float           sally tracker (controllers only unless track-adapt-trackers): accelerometer noise adaptive to the measured vibration: sd = sqrt(acc-sd^2 + (this * max(0, vib - track-vib0))^2), vib = rms of the fast part of the accelerometer over the last 40 ms. On a vibrating mount (0.8-1.7 m/s^2 rms) a fixed noise lets the velocity follow the vibration. 0 = fixed\x0a --track-acc-tnoise                               0.010000     :float           sally tracker: the accelerometer's timing against the gyro's, sd (s): accelerometer process noise |f| |w| this per step (the acceleration vector turns at the body rate, so a reading a little off its time is off by that much). 6 and 10 ms hold a tracker whirled at 25-34 rad/s, 3 does not. 0 = off\x0a --track-adapt-trackers                                  0     :int             sally tracker: track-adapt on the trackers too (1), or on the controllers only (0)\x0a --track-vib0                                     0.100000     :float           sally tracker: vibration below this (m/s^2 rms) is not counted\x0a --track-facing-deg                              90.000000     :float           sally tracker: a hit on a sensor whose normal is more than this many degrees from the direction to the station is dropped (a sensor cannot see light from behind; what arrives there is a reflection, and the hits at 90-110 deg measured 1-2 mrad off)\x0a --track-blink                                    0.000000     :float           sally tracker, bench measurement only: a one-station handover test. Every track-blink + 2.5 s the device keeps for track-blink s only the station that gave it the most accepted hits in the 0.1 s before (the others' sweeps are dropped, as with track-only), then all stations again. Replayed beside the same run without it, the error along the kept station's line of sight at the window's end and the correction when the others return are the handover snap, against a truth, on every device and recording (TRACK_BLINK line per window). Negative: a blackout of -track-blink s instead, every station dropped (dead reckoning, where some station was lit). 0 = off\x0a --track-probe-ch                                       -1     :int             sally tracker, bench measurement only: the base station CHANNEL whose sweeps are evaluated against the state (TRACK_HIT / TRACK_DEPTH at track-verbose 3) but never used, neither in the update nor in a seed solve: its residuals then carry nothing the state absorbed from them. -1 = off\x0a --track-only                                            0     :int             sally tracker: bit mask of base station CHANNELS the tracker may use (bit n = channel n), 0 = all. For the one-station bench\x0a --track-reseed-frac                              0.800000     :float           sally tracker: the state is lost (and re-solved from the hits) when more than this fraction of the hits of the last 0.5 s were rejected\x0a --track-gap-coast                                0.600000     :float           sally tracker: seconds without an accepted hit after which the device coasts: the accelerometer no longer drives the velocity, which decays with track-gap-tau (dead reckoning on the accelerometer alone runs off by metres in a few seconds of blackout). 0.6 s: a body keeps moving through a blackout and the accelerometer follows it; longer costs a hidden tracker's frozen point (36 mm from its last light at 0.3 s, 137 at 0.6, 353 at 1.0). <= 0 = off\x0a --track-gap-tau                                  0.500000     :float           sally tracker: velocity decay time constant (s) while coasting\x0a --track-gap-reseed                               0.500000     :float           sally tracker: after this many seconds without an accepted hit, a returning sweep that the coasted state does not fit (median |residual| over track-seed-fit) means the state is lost: it is re-solved from the hits at once rather than after the half-second divergence test. <= 0 = off\x0a --track-seed-fit                                 0.003000     :float           sally tracker: a seed solve (the start, or the restart after a loss) is taken only when its pose fits its own hits to this median |residual| (rad); a wrong solution (a mirror pose, a reflected station) sits at tens of mrad, a right one at the hit noise. Also the fit of a returning sweep to the coasted state (track-gap-reseed)\x0a --track-seed-window                              0.060000     :float           sally tracker: the seed solve fits position, orientation and velocity to the sweeps of the last this many seconds (constant velocity over the window, the gyro carrying the orientation between the sweeps): long enough for both planes of a station and some motion, short enough for the acceleration not to matter (at 1 g 0.06 s is 18 mm at the edge of the window)\x0a --track-clip-sd                                 30.000000     :float           sally tracker: accelerometer process noise (m/s^2 per step) while an axis is at full scale (CLIP_G). A clipped sample is a lower bound, not nothing: the true value is on average a few tens of m/s^2 above the range (a tracker at 14-18 rad/s on a 0.35 m radius: 70-115 m/s^2 against the 78 it reads), and a sample taken as unknown (100) lets a few poor sweeps carry the velocity. 20 to 50 do alike; 10 loses a tracker in a fast spin\x0a --track-reseed-min-hits                               200     :int             sally tracker: ... and there were at least this many hits\x0a --track-p0-pos                               1.000000e-04     :float           sally tracker: position variance at a seed (m^2) is at least this (the seed solve's own covariance, if larger)\x0a --track-p0-vel                                   0.100000     :float           sally tracker: velocity variance (m^2/s^2) at a seed is at least this (the seed solve's own covariance if larger: with one station the velocity along the line of sight is not observed and keeps the solve's 3 m/s prior)\x0a --track-p0-rot                               1.000000e-03     :float           sally tracker: orientation variance (rad^2) at a seed is at least this\x0a --track-p0-gyr-bias                          1.000000e-04     :float           sally tracker: initial gyro bias variance (rad^2/s^2)\x0a --track-p0-acc-bias                              0.010000     :float           sally tracker: initial accelerometer bias variance (m^2/s^4)\x0a --track-p0-layout                            1.000000e-04     :float           sally tracker: initial layout scale variance\x0a --track-gravity-tilt                             0.000000     :float           sally tracker: where gravity points in the map's frame: its tilt from the map's z (rad), toward the azimuth track-gravity-tilt-az (deg from +x toward +y; both positive, a value starting with '-' is taken for an option). The map's frame is the calibrated stations' and owes nothing to gravity: a map can be 10 mrad off, and with gravity taken along z every device's orientation sits that far from the light's, the light's residuals carry it times the sensors' lever, and a tracker's position wanders by millimetres in its own frame over a turn\x0a --track-gravity-tilt-az                          0.000000     :float           sally tracker: see track-gravity-tilt (deg)\x0a --track-gravity-tilt-sd                          0.000000     :float           sally tracker: the tilt above as two filter states with this initial sd (rad), learned from the light's orientation against the accelerometer as the device turns (a body-fixed bias cannot follow a world-fixed direction; at rest the two cannot be told apart, so the states only move while the device turns). No process noise: the map's gravity does not change. The estimate is printed with the summary. 0 = fixed at the values given\x0a --track-verbose                                         1     :int             sally tracker: 1 = log seeds / reseeds, 2 = TRACK_SWEEP and TRACK_UPDATE lines per sweep and TRACK_BIAS per second in the recording, 3 = also TRACK_HIT per hit and TRACK_IMU per IMU sample\x0a --record-rawlight                                       1     :bool            Whether or not to output raw light data\x0a --record-imu                                            1     :bool            Whether or not to output imu data\x0a --record-cal-imu                                        0     :bool            Whether or not to output calibrated imu data\x0a --record-angle                                          1     :bool            Whether or not to output angle data\x0a --record                                                      :string          File to record to if you wish to make a recording.\x0a --record-stdout                                         0     :bool            Whether or not to dump recording data to stdout\x0a --report-in-imu                                         0     :bool            Debug option to output poses in IMU space.\x0a --serialize-device-config                               0     :bool            Serialize device config files\x0a --serialize-ootx                                        0     :bool            Serialize out ootx\x0a --gen2-plane-predict                            -1.000000     :float           sally: decide which of a gen2 station's two laser planes a pulse belongs to from where the device is (the filter's pose, reprojected) whenever the device sits within this margin (rad) of the place where the plain rule fails. The plain rule splits the rotor angle at pi, which holds only while the plane-0 angle stays under +60 deg and the plane-1 angle over -60 deg. Further off-axis (the station's field of view reaches about 80 deg) BOTH pulses of a rotation land on the same side and get the same plane: near the sides of the play space every hit of a device is then labeled with one plane, and with one axis no pose is solved while the light is there. A pulse further than gen2-plane-predict-tol from both predictions is dropped. <= 0 = off\x0a --light-facing-deg                              -1.000000     :float           sally: reflections. A gen2 hit on a sensor that faces away from the station that swept it cannot be direct light: drop it when the angle between the sensor's normal and the direction to that station (both from the filter's pose) is above this (deg). The pose is used only while the device had an accepted solve within light-facing-max-age. Real hits reach 114 deg on two Index controller sensors (their windows see past 90); reflected hits go up to 180. <= 0 = off\x0a --light-facing-max-age                           0.500000     :float           sally: see light-facing-deg (s since the device's last accepted solve)\x0a --record-facing                                         0     :int             sally: diagnostic: write a FAC line per gen2 hit (lh sensor plane angle, residual against the filter pose, incidence cosine)\x0a --gen2-plane-predict-tol                         0.500000     :float           sally: see gen2-plane-predict (rad)\x0a --sim-gap-period                                 0.000000     :float           sally bench: simulated full occlusion every this many seconds per device; 0 = off\x0a --sim-gap-len                                    2.000000     :float           sally bench: length (s) of each simulated occlusion\x0a --sim-gap-start                                 20.000000     :float           sally bench: no simulated occlusion before this run time (s)\x0a --lock-lighthouses                                      0     :bool            Never move/forget a known lighthouse position because of a new OOTX packet from the same station\x0a --move-threshold-gyro                            0.075000     :float           Threshold to count gyro norms as moving\x0a --move-threshold-acc                             0.030000     :float           Threshold to count acc diff norms as moving\x0a --move-threshold-ang                             0.020000     :float           Threshold to count light angle diffs as moving\x0a --filter-threshold-ang-per-sec                  50.000000     :float           Threshold to filter light which changes too fast\x0a --filter-light-outlier-criteria                  0.500000     :float           Threshold to filter outlier light strikes\x0a --filter-variance-minimum                        0.050000     :float           Minimum variance to use in outlier detection\x0a --filter-outlier-minimum-count                         11     :int             Assumed minimum population for outlier test\x0a --diagnosis                                             1     :int             sally: diagnosis (what is wrong with each device, design 9.2): DIAG lines and the diagnosis hook. 0 = off\x0a --diagnosis-period                               0.500000     :float           sally: diagnosis: window length (s of run time)\x0a --diagnosis-back-deg                           115.000000     :float           sally: diagnosis: when light-facing-deg is off, a hit on a sensor whose normal is further than this from the direction to its station counts as a reflection (deg; real hits reach 114 on Index controllers)\x0a --diagnosis-discard-vmax                         0.500000     :float           sally: diagnosis: a station the solver dropped counts toward reflections only while the device is slower than this (m/s)\x0a --vive-test-drop                                              :string          sally: TEST ONLY, drop reports on a replay as a bad radio link would: \x22T0,T1,CODENAME,FRACTION\x22 drops that share of the device's reports (evenly spread; 1 = all) between run times T0 and T1. Empty = off\x0a --usbmon-record                                    (null)     :string          File to save .pcap to.\x0a --usbmon-playback                                  (null)     :string          File to replay .pcap from ('stdin' = standard input, e.g. piped from USBPcapCMD -o - for live use).\x0a --usbmon-devs                                      (null)     :string          sally: device listing file (vid pid bus dev codename per line); default <playback>.usbdevs\x0a --usbmon-record-all                                     0     :bool            Whether or not to record all usb traffic\x0a --usbmon-output-all                                     0     :bool            Whether or not to log all usb traffic\x0a --usbmon-output                                         0     :bool            Whether or not to log any generic usb traffic\x0a --usbmon-only-record                                    0     :bool            Record only; don't forward to libsurvive\x0a --usbmon-allow-fs-config                                0     :bool            If we dont see a config section; try to read it from filesystem -- could be very wrong\x0a --playback-replay-pose                                  0     :bool            Whether or not to output pose\x0a --playback-replay-external-pose                         0     :bool            Whether or not to output external pose\x0a --playback                                         (null)     :string          File to be used for playback if playing a recording.\x0a --playback-factor                                1.000000     :float           Time factor of playback -- 1 is run at the same timing as original, 0 is run as fast as possible.\x0a --playback-start-time                           -1.000000     :float           Start time of playback\x0a --playback-time                                 -1.000000     :float           End time of playback\x0a --run-time                                      -1.000000     :float           How long to run for\x0a --light-min-length                                    100     :int             Minimum length of V1 light to accept.\x0a --disambiguator-verbosity                            1000     :int             Verbosity of disambiguator\x0a --map-solve                                             0     :int             sally: live joint map solve: all devices solve the station poses together from their raw sweep angles; the map moves (slowly, frame held) instead of staying locked. 0 = off\x0a --map-solve-file                                              :string          sally: file the live-solved map is written to at exit and read from at start (by station id). Empty = every session starts from the calibrated map\x0a --map-solve-test-move                                         :string          sally: map-solve: TEST ONLY, simulates a bumped station on a replay: \x22T,LH,dx,dy,dz,rx,ry,rz\x22 moves station index LH in the map (not its light) by (dx dy dz) m and the rotation vector (rx ry rz) rad (world frame, about the station) at run time T s. Empty = off\x0a --map-solve-test-load                                         :string          sally: map-solve: TEST ONLY, start from this map file instead of map-solve-file (which is still where the map is written). Empty = off\x0a --station-fcal-file                                           :string          sally: corrections to the base stations' factory calibration (the OOTX fcal terms phase, tilt, curve, gibpha, gibmag), solved from recordings (sally calibrate). Lines 'FCAL <station id> <the 10 factory values it was solved against> <the 10 deltas>', each pair as axis 0, axis 1. A correction is applied only to a station whose factory values match, and again whenever an OOTX packet rewrites them. Needs map-solve 1. Empty = off\x0a --device-calibration-file                                     :string          sally: corrections to the devices' factory sensor layout, solved offline from recordings: 'SENSOR <serial> <sensor index> <dx> <dy> <dz>' moves one sensor (m, config frame), 'SCALE <serial> <scale>' scales the whole layout. One base station measures distance from where the few sensors it sees are, so a few tenths of a mm per sensor put a device seen by one station 1-2 cm too near or too far, and it snaps when a second station comes. Empty = off\x0a --map-solve-batch                                     400     :int             sally: map-solve: most snapshots one solve takes (the oldest are dropped beyond this)\x0a --map-solve-step                                 0.250000     :float           sally: map-solve: at most one snapshot per device every this many s\x0a --map-solve-window                               0.022000     :float           sally: map-solve: a snapshot's hits come from this many s before the pose (about one LH2 rotor turn)\x0a --map-solve-vmax                                 0.050000     :float           sally: map-solve: snapshots only while the filter speed is below this (m/s)\x0a --map-solve-wmax                                 0.150000     :float           sally: map-solve: ... and the turn rate below this (rad/s)\x0a --map-solve-min-hits                                    6     :int             sally: map-solve: hits a station must give a snapshot to count; a snapshot needs two such stations\x0a --map-solve-min-snaps                                  40     :int             sally: map-solve: snapshots a batch needs before it is solved\x0a --map-solve-min-station-hits                          150     :int             sally: map-solve: a station takes part in a solve with at least this many hits in the batch\x0a --map-solve-first                               10.000000     :float           sally: map-solve: no solve before this many s of run time\x0a --map-solve-period                               5.000000     :float           sally: map-solve: s between joint solves\x0a --map-solve-tau                                600.000000     :float           sally: map-solve: what earlier solves learned fades with this time constant (s)\x0a --map-solve-iters                                       8     :int             sally: map-solve: Gauss-Newton iterations per solve\x0a --map-solve-prior-pos                            0.050000     :float           sally: map-solve: sd (m) of the weak prior keeping each station near the calibrated map\x0a --map-solve-prior-rot                            0.010000     :float           sally: map-solve: sd (rad) of the same prior on station orientation\x0a --map-solve-rate-pos                             0.002000     :float           sally: map-solve: stations in use move toward the solution at most this fast (m/s)\x0a --map-solve-rate-rot                         5.000000e-04     :float           sally: map-solve: ... and turn at most this fast (rad/s)\x0a --map-solve-huber                            1.000000e-03     :float           sally: map-solve: robust (Huber) scale of a hit's angle residual (rad)\x0a --map-solve-reject                               0.008000     :float           sally: map-solve: hits further off than this (rad) are left out of a solve\x0a --map-solve-max-move                             0.050000     :float           sally: map-solve: a solve that moves a station further than this (m) from the map in use is not applied\x0a --map-solve-max-rot                              0.020000     :float           sally: map-solve: ... or turns it further than this (rad)\x0a --map-solve-load-weight                          0.250000     :float           sally: map-solve: share of the saved map's information kept at the next start (the map may have shifted since)\x0a --map-solve-save-period                         60.000000     :float           sally: map-solve: also write the map file every this many seconds after an applied solve (not only at exit): a runtime that is killed never runs its exit save, and its next session would start from the calibrated map again. <= 0 = only at exit\x0a --map-solve-relocate                                    1     :int             sally: map-solve: handle a moved (bumped) station: a station whose light disagrees with the map while the others agree is left out of the solve, solved on its own from the others' snapshot poses, and once two batches agree on where it is now, it is put there at once (no slew), its old information is forgotten and the calibrated anchor follows it. 0 = off (it stays where the map had it)\x0a --map-solve-move-resid                           0.003000     :float           sally: map-solve: a station counts as moved when the median angle residual of its hits, from snapshot poses fitted to the other stations only, is above this (rad; normal sessions reach 1-2, a bump of a few cm or 10+ mrad gives 5-20; below this the normal solve handles it better than a relocation from one or two batches, which leaves millimeters along a pivot) ...\x0a --map-solve-move-fit                         4.000000e-04     :float           sally: map-solve: a relocation counts only when it explains its station's light (median residual from the other stations' snapshot poses) to this (rad); it is confirmed when it explains the next batch to this and twice as well as the map, and dropped when the map explains it to twice this again\x0a --map-solve-move-ratio                           3.000000     :float           sally: map-solve: ... and this many times the residual of the other stations in that fit ...\x0a --map-solve-move-rest-ratio                      2.000000     :float           sally: map-solve: ... and leaving any other station out instead leaves the rest at least this many times worse (it is this station that disagrees; needs three stations with enough light)\x0a --map-solve-move-min-snaps                             12     :int             sally: map-solve: snapshots seen by a station and two others that the moved-station test and a relocation need\x0a --map-solve-move-agree-pos                       0.010000     :float           sally: map-solve: two relocations from consecutive batches must agree to within this (m) to be applied ...\x0a --map-solve-move-agree-rot                       0.003000     :float           sally: map-solve: ... and this (rad)\x0a --map-solve-move-min                             0.005000     :float           sally: map-solve: a relocation smaller than this (m) ...\x0a --map-solve-move-min-rot                         0.002000     :float           sally: map-solve: ... and this (rad) is left to the normal solve\x0a --map-solve-move-pending-max                    60.000000     :float           sally: map-solve: a relocation waiting for its confirmation is dropped after this many s\x0a --map-solve-threaded                                    1     :int             sally: map-solve: solve in a background thread (live); 0 = inline, deterministic (replays)\x0a --diagrec                                               0     :int             sally: analysis diagnostics (RPT / DST lines) into the recording\x0a --simulator                                             0     :bool            Load a Simulator driver for testing.\x0a --simulator-attractors                                  3     :int             Number on gravity attractors in simulation\x0a --simulator-obj-sensors                                20     :int             Number on sensors on the simulated object\x0a --simulator-fcal-noise                       1.000000e-03     :float           Noise to apply to BSD fcal parameters\x0a --simulator-init-time                            2.000000     :float           Init time -- object wont move for this long\x0a --simulator-gyro-noise                       1.000000e-03     :float           Variance of noise to apply to gyro\x0a --simulator-acc-noise                        1.000000e-04     :float           Variance of noise to apply to accelerometer\x0a --simulator-gyro-bias                            0.100000     :float           Scale of bias to apply to gyro\x0a --simulator-sensor-time-jitter                   0.010000     :float           Variance of time jitter to apply to light sensors\x0a --simulator-show-gt                                     1     :int             0: No GT device, 1: Show GT device, 2: Only GT device\x0a --simulator-sensor-noise                     1.000000e-04     :float           Variance of noise to apply to light sensors\x0a --simulator-obj-radius                           0.050000     :float           Radius of the simulated object\x0a --simulator-time                                 0.000000     :float           Seconds to run simulator for.\x0a --simulator-sensor-droprate                      0.200000     :float           Chance to drop a sensor reading\x0a --simulator-noise-scale                          1.000000     :float           \x0a --simulator-lh-gen                                      1     :int             Lighthouse generation\x0a --simulator-lh-duty-cycle                        1.000000     :float           Duty cycle of lighthouses\x0a --pose-udp                                              0     :int             sally: UDP port to push the pose stream (P/V/L lines) to (0 = off)\x0a --pose-udp-host                                 127.0.0.1     :string          sally: host to push the pose stream to\x0a --runtime-port                                          0     :int             sally: UDP port the runtime binds for subscriptions and control commands (0 = off)\x0a --runtime-bind                                  127.0.0.1     :string          sally: address the runtime port binds to. Anyone who can reach it can change parameters and write recordings, so keep it on loopback unless the network is yours\x0a --runtime-state-hz                             100.000000     :float           sally: maximum rate of S (tracker state) lines per device; 0 = every pose\x0a --runtime-diag-period                            1.000000     :float           sally: seconds of run time between H (hit counts), T (tracker stats) and M (map) summaries\x0a --runtime-sub-timeout                            5.000000     :float           sally: a subscriber that has not re-sent sub or ping for this many seconds is dropped\x0a --hidtap                                                0     :bool            sally: read the lighthouse HID devices directly, next to Valve's driver (Windows)\x0a --hidtap-lightcap-mode                                 -2     :int             sally: raw lightcap mode of the devices: -2 = detect from the packets (devices power on in raw0, Valve switches them to raw1 when SteamVR starts), 0/1/2 = fixed, -1 = don't touch\x0a --hidtap-config-fetch                                   1     :bool            sally: live mode: fetch a device's config over feature reports when no <serial>_config.json is cached\x0a --hidtap-config-delay                            5.000000     :float           sally: live mode: seconds a device must have been streaming before its config is fetched\x0a --hidtap-playback                                  (null)     :string          sally: HID tap recording to replay\x0a --hidtap-record                                    (null)     :string          sally: file to write the HID tap stream to\x0a --hidtap-allow-fs-config                                0     :bool            sally: if no config stream is seen, try <serial>_config.json from the working directory\x0a --hidtap-vid                                        10462     :int             sally: USB vendor id assumed for tap devices\x0a"
+help 0 -> "--configfile --v --lighthouse-max-update --lighthouse-max-nudge-distance --lighthouse-update-velocity --poser --disambiguator --ootx-ignore-sync-error --configed-lighthouse-gen --floor-offset --blacklist-devs --init-configfile --disable-calibrate --force-calibrate --force-ootx --lighthousecount --lighthouse-gen --output-callback-stats --lighthouse-0-disable --lighthouse-1-disable --lighthouse-2-disable --lighthouse-3-disable --config-readonly --imu-acc-bias-units --ignore-config-imu-bias --track-hit-sd --track-hit-common-sd --track-hit-join-sd --track-hit-knee --track-gate --track-gate-floor --track-zupt-sd --track-zupt-gyro --track-zupt-vib --track-zupt-time --track-hit-shift --track-acc-sd --track-acc-knoise --track-gyr-sd --track-acc-bias-sd --track-gyr-bias-sd --track-layout-sd --track-layout-max --track-adapt --track-acc-tnoise --track-adapt-trackers --track-vib0 --track-facing-deg --track-blink --track-probe-ch --track-only --track-reseed-frac --track-gap-coast --track-gap-tau --track-gap-reseed --track-seed-fit --track-seed-window --track-clip-sd --track-reseed-min-hits --track-p0-pos --track-p0-vel --track-p0-rot --track-p0-gyr-bias --track-p0-acc-bias --track-p0-layout --track-gravity-tilt --track-gravity-tilt-az --track-gravity-tilt-sd --track-verbose --no-track-verbose --record-rawlight --no-record-rawlight --record-imu --no-record-imu --record-cal-imu --record-angle --no-record-angle --record --record-stdout --report-in-imu --serialize-device-config --serialize-ootx --gen2-plane-predict --light-facing-deg --light-facing-max-age --record-facing --gen2-plane-predict-tol --sim-gap-period --sim-gap-len --sim-gap-start --lock-lighthouses --move-threshold-gyro --move-threshold-acc --move-threshold-ang --filter-threshold-ang-per-sec --filter-light-outlier-criteria --filter-variance-minimum --filter-outlier-minimum-count --diagnosis --no-diagnosis --diagnosis-period --diagnosis-back-deg --diagnosis-discard-vmax --vive-test-drop --usbmon-record --usbmon-playback --usbmon-devs --usbmon-record-all --usbmon-output-all --usbmon-output --usbmon-only-record --usbmon-allow-fs-config --playback-replay-pose --playback-replay-external-pose --playback --playback-factor --playback-start-time --playback-time --run-time --light-min-length --disambiguator-verbosity --map-solve --map-solve-file --map-solve-test-move --map-solve-test-load --station-fcal-file --device-calibration-file --map-solve-batch --map-solve-step --map-solve-window --map-solve-vmax --map-solve-wmax --map-solve-min-hits --map-solve-min-snaps --map-solve-min-station-hits --map-solve-first --map-solve-period --map-solve-tau --map-solve-iters --map-solve-prior-pos --map-solve-prior-rot --map-solve-rate-pos --map-solve-rate-rot --map-solve-huber --map-solve-reject --map-solve-max-move --map-solve-max-rot --map-solve-load-weight --map-solve-save-period --map-solve-relocate --no-map-solve-relocate --map-solve-move-resid --map-solve-move-fit --map-solve-move-ratio --map-solve-move-rest-ratio --map-solve-move-min-snaps --map-solve-move-agree-pos --map-solve-move-agree-rot --map-solve-move-min --map-solve-move-min-rot --map-solve-move-pending-max --map-solve-threaded --no-map-solve-threaded --diagrec --simulator --simulator-attractors --simulator-obj-sensors --simulator-fcal-noise --simulator-init-time --simulator-gyro-noise --simulator-acc-noise --simulator-gyro-bias --simulator-sensor-time-jitter --simulator-show-gt --no-simulator-show-gt --simulator-sensor-noise --simulator-obj-radius --simulator-time --simulator-sensor-droprate --simulator-noise-scale --simulator-lh-gen --no-simulator-lh-gen --simulator-lh-duty-cycle --pose-udp --pose-udp-host --runtime-port --runtime-bind --runtime-state-hz --runtime-diag-period --runtime-sub-timeout --hidtap --hidtap-lightcap-mode --hidtap-config-fetch --no-hidtap-config-fetch --hidtap-config-delay --hidtap-playback --hidtap-record --hidtap-allow-fs-config --hidtap-vid "
+helpparam pose-udp-host -> 1 "\x1b7\x1b[1A\x1b[1000D\x1b[K    pose-udp-host: sally: host to push the pose stream to \x09\x09default: 127.0.0.1\x09\x09(s)\x1b8"
+helpparam run-time -> 1 "\x1b7\x1b[1A\x1b[1000D\x1b[K    run-time: How long to run for \x09\x09default: -1.000000\x09\x09(f)\x1b8"
+helpparam nope -> 0 ""
+helpparam lighthouse-max-update -> 1 "\x1b7\x1b[1A\x1b[1000D\x1b[K    lighthouse-max-update: Maximum instant move for a lighthouse \x09\x09default: 0.010000\x09\x09(f)\x1b8"
+case typed
+init ctx
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry global 1 "t_int" type=2 i=5 elements=0 data=NULL bound=0
+entry global 2 "t_neg" type=2 i=4294967291 elements=0 data=NULL bound=0
+entry global 3 "t_big" type=2 i=0 elements=0 data=NULL bound=0
+entry global 4 "t_huge" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry global 5 "t_hex" type=1 f=4030000000000000 elements=0 data=NULL bound=0
+entry global 6 "t_oct" type=2 i=10 elements=0 data=NULL bound=0
+entry global 7 "t_float" type=1 f=3ff8000000000000 elements=0 data=NULL bound=0
+entry global 8 "t_exp" type=1 f=408f400000000000 elements=0 data=NULL bound=0
+entry global 9 "t_negzero" type=1 f=8000000000000000 elements=0 data=NULL bound=0
+entry global 10 "t_nan" type=1 f=7ff8000000000000 elements=0 data=NULL bound=0
+entry global 11 "t_mnan" type=1 f=fff8000000000000 elements=0 data=NULL bound=0
+entry global 12 "t_inf" type=1 f=7ff0000000000000 elements=0 data=NULL bound=0
+entry global 13 "t_lead" type=2 i=12 elements=0 data=NULL bound=0
+entry global 14 "t_trail" type=3 elements=0 data="12 " bound=0
+entry global 15 "t_empty" type=2 i=0 elements=0 data=NULL bound=0
+entry global 16 "t_true" type=3 elements=0 data="true" bound=0
+entry global 17 "t_text" type=3 elements=0 data="abc" bound=0
+entry global 18 "t_half" type=1 f=4004000000000000 elements=0 data=NULL bound=0
+entry global 19 "t_mhalf" type=1 f=c004000000000000 elements=0 data=NULL bound=0
+entry global 20 "t_small" type=1 f=3f1a36e2e0000000 elements=0 data=NULL bound=0
+entry global 21 "t_tiny" type=1 f=37a16c2000000000 elements=0 data=NULL bound=0
+entry global 22 "t_prec" type=1 f=3fb99999a0000000 elements=0 data=NULL bound=0
+entry global 23 "t_plus" type=2 i=7 elements=0 data=NULL bound=0
+entry global 24 "t_space" type=3 elements=0 data="   " bound=0
+entry global 25 "t_quote" type=3 elements=0 data="a\x5c\x22b" bound=0
+entry global 26 "t_utf8" type=3 elements=0 data="\xc3\xa9" bound=0
+entry global 27 "t_intarr" type=2 i=1 elements=0 data=NULL bound=0
+entry global 28 "t_floatarr" type=4 elements=3 data=000000000000f83f0000000000000040000000000000d0bf bound=0
+entry global 29 "t_one" type=1 f=4004000000000000 elements=0 data=NULL bound=0
+entry global 30 "t_oneint" type=2 i=7 elements=0 data=NULL bound=0
+entry global 31 "t_prim" type=1 f=3ff4000000000000 elements=0 data=NULL bound=0
+entry global 32 "t_primtrue" type=3 elements=0 data="true" bound=0
+entry global 33 "t_primnull" type=3 elements=0 data="null" bound=0
+entry global 34 "t_barekey" type=3 elements=0 data="bk" bound=0
+entry global 35 "t_dup" type=3 elements=0 data="abc" bound=0
+entry global 36 "inner" type=2 i=9 elements=0 data=NULL bound=0
+entry global 37 "x" type=2 i=1 elements=0 data=NULL bound=0
+entry global 38 "t_after" type=3 elements=0 data="after" bound=0
+entry global 39 "upper" type=2 i=1 elements=0 data=NULL bound=0
+entry global 40 "t_last" type=3 elements=0 data="last" bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=0
+entry temporary 1 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=2 elements=0 data=NULL bound=0
+entry lh2 1 "id" type=2 i=77 elements=0 data=NULL bound=0
+entry lh2 2 "mode" type=2 i=258 elements=0 data=NULL bound=0
+entry lh2 3 "pose" type=2 i=1 elements=0 data=NULL bound=0
+entry lh2 4 "accel" type=1 f=3ff8000000000000 elements=0 data=NULL bound=0
+entry lh2 5 "OOTXSet" type=2 i=3 elements=0 data=NULL bound=0
+entry lh2 6 "PositionSet" type=2 i=2 elements=0 data=NULL bound=0
+entry lh2 7 "variance" type=4 elements=6 data=000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh2 8 "fcalphase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 9 "fcaltilt" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 10 "fcalcurve" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 11 "fcalgibpha" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 12 "fcalgibmag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 13 "fcalogeephase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 14 "fcalogeemag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 0 "index" type=2 i=3 elements=0 data=NULL bound=0
+entry lh3 1 "variance" type=4 elements=2 data=000000000000e03f000000000000d03f bound=0
+entry lh3 2 "fcalphase" type=4 elements=2 data=000000000000c03f000000000000d03f bound=0
+entry lh3 3 "fcaltilt" type=2 i=1 elements=0 data=NULL bound=0
+entry lh3 4 "id" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 5 "mode" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 6 "pose" type=4 elements=7 data=0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh3 7 "accel" type=4 elements=3 data=000000000000000000000000000000000000000000000000 bound=0
+entry lh3 8 "fcalcurve" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 9 "fcalgibpha" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 10 "fcalgibmag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 11 "fcalogeephase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 12 "fcalogeemag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 13 "OOTXSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 14 "PositionSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=6 elements=0 data=NULL bound=0
+entry lh7 1 "id" type=2 i=5 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+bsd
+bsd 2 PositionSet=0 OOTXSet=1 id=77 mode=2 unlock=0 pose=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, variance=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, accel=0000000000000000,0000000000000000,0000000000000000, fcal=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;
+bsd 3 PositionSet=0 OOTXSet=0 id=0 mode=0 unlock=0 pose=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, variance=3fe0000000000000,3fd0000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, accel=0000000000000000,0000000000000000,0000000000000000, fcal=3fc0000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;3fd0000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;
+end
+f t_int 0 0 -> 4014000000000000
+i t_int 0 0 -> 5
+b t_int 0 0 -> 1
+s t_int 0 NULL -> NULL
+type t_int -> 105
+isset t_int -> 1
+str t_int EMPTY 128 -> "5"
+str t_int EMPTY 3 -> "5"
+str t_int EMPTY 1 -> ""
+str t_int x:61626364 2 -> "5"
+f t_neg 0 0 -> 41efffffff600000
+i t_neg 0 0 -> 4294967291
+b t_neg 0 0 -> 1
+s t_neg 0 NULL -> NULL
+type t_neg -> 105
+isset t_neg -> 1
+str t_neg EMPTY 128 -> "-5"
+str t_neg EMPTY 3 -> "-5"
+str t_neg EMPTY 1 -> ""
+str t_neg x:61626364 2 -> "-"
+f t_big 0 0 -> 0000000000000000
+i t_big 0 0 -> 0
+b t_big 0 0 -> 0
+s t_big 0 NULL -> NULL
+type t_big -> 105
+isset t_big -> 1
+str t_big EMPTY 128 -> "0"
+str t_big EMPTY 3 -> "0"
+str t_big EMPTY 1 -> ""
+str t_big x:61626364 2 -> "0"
+f t_huge 0 0 -> 41efffffffe00000
+i t_huge 0 0 -> 4294967295
+b t_huge 0 0 -> 1
+s t_huge 0 NULL -> NULL
+type t_huge -> 105
+isset t_huge -> 1
+str t_huge EMPTY 128 -> "-1"
+str t_huge EMPTY 3 -> "-1"
+str t_huge EMPTY 1 -> ""
+str t_huge x:61626364 2 -> "-"
+f t_hex 0 0 -> 4030000000000000
+i t_hex 0 0 -> 16
+b t_hex 0 0 -> 1
+s t_hex 0 NULL -> NULL
+type t_hex -> 102
+isset t_hex -> 1
+str t_hex EMPTY 128 -> "16.000000"
+str t_hex EMPTY 3 -> "16"
+str t_hex EMPTY 1 -> ""
+str t_hex x:61626364 2 -> "1"
+f t_oct 0 0 -> 4024000000000000
+i t_oct 0 0 -> 10
+b t_oct 0 0 -> 1
+s t_oct 0 NULL -> NULL
+type t_oct -> 105
+isset t_oct -> 1
+str t_oct EMPTY 128 -> "10"
+str t_oct EMPTY 3 -> "10"
+str t_oct EMPTY 1 -> ""
+str t_oct x:61626364 2 -> "1"
+f t_float 0 0 -> 3ff8000000000000
+i t_float 0 0 -> 2
+b t_float 0 0 -> 1
+s t_float 0 NULL -> NULL
+type t_float -> 102
+isset t_float -> 1
+str t_float EMPTY 128 -> "1.500000"
+str t_float EMPTY 3 -> "1."
+str t_float EMPTY 1 -> ""
+str t_float x:61626364 2 -> "1"
+f t_exp 0 0 -> 408f400000000000
+i t_exp 0 0 -> 1000
+b t_exp 0 0 -> 1
+s t_exp 0 NULL -> NULL
+type t_exp -> 102
+isset t_exp -> 1
+str t_exp EMPTY 128 -> "1000.000000"
+str t_exp EMPTY 3 -> "10"
+str t_exp EMPTY 1 -> ""
+str t_exp x:61626364 2 -> "1"
+f t_negzero 0 0 -> 8000000000000000
+i t_negzero 0 0 -> 0
+b t_negzero 0 0 -> 0
+s t_negzero 0 NULL -> NULL
+type t_negzero -> 102
+isset t_negzero -> 1
+str t_negzero EMPTY 128 -> "-0.000000"
+str t_negzero EMPTY 3 -> "-0"
+str t_negzero EMPTY 1 -> ""
+str t_negzero x:61626364 2 -> "-"
+f t_nan 0 0 -> 7ff8000000000000
+i t_nan 0 0 -> 0
+b t_nan 0 0 -> 0
+s t_nan 0 NULL -> NULL
+type t_nan -> 102
+isset t_nan -> 1
+str t_nan EMPTY 128 -> "nan"
+str t_nan EMPTY 3 -> "na"
+str t_nan EMPTY 1 -> ""
+str t_nan x:61626364 2 -> "n"
+f t_mnan 0 0 -> fff8000000000000
+i t_mnan 0 0 -> 0
+b t_mnan 0 0 -> 0
+s t_mnan 0 NULL -> NULL
+type t_mnan -> 102
+isset t_mnan -> 1
+str t_mnan EMPTY 128 -> "-nan"
+str t_mnan EMPTY 3 -> "-n"
+str t_mnan EMPTY 1 -> ""
+str t_mnan x:61626364 2 -> "-"
+f t_inf 0 0 -> 7ff0000000000000
+i t_inf 0 0 -> 0
+b t_inf 0 0 -> 0
+s t_inf 0 NULL -> NULL
+type t_inf -> 102
+isset t_inf -> 1
+str t_inf EMPTY 128 -> "inf"
+str t_inf EMPTY 3 -> "in"
+str t_inf EMPTY 1 -> ""
+str t_inf x:61626364 2 -> "i"
+f t_lead 0 0 -> 4028000000000000
+i t_lead 0 0 -> 12
+b t_lead 0 0 -> 1
+s t_lead 0 NULL -> NULL
+type t_lead -> 105
+isset t_lead -> 1
+str t_lead EMPTY 128 -> "12"
+str t_lead EMPTY 3 -> "12"
+str t_lead EMPTY 1 -> ""
+str t_lead x:61626364 2 -> "1"
+f t_trail 0 0 -> 4028000000000000
+i t_trail 0 0 -> 12
+b t_trail 0 0 -> 1
+s t_trail 0 NULL -> "12 "
+type t_trail -> 115
+isset t_trail -> 1
+str t_trail EMPTY 128 -> "12 "
+str t_trail EMPTY 3 -> "12"
+str t_trail EMPTY 1 -> ""
+str t_trail x:61626364 2 -> "1"
+f t_empty 0 0 -> 0000000000000000
+i t_empty 0 0 -> 0
+b t_empty 0 0 -> 0
+s t_empty 0 NULL -> NULL
+type t_empty -> 105
+isset t_empty -> 1
+str t_empty EMPTY 128 -> "0"
+str t_empty EMPTY 3 -> "0"
+str t_empty EMPTY 1 -> ""
+str t_empty x:61626364 2 -> "0"
+f t_true 0 0 -> 0000000000000000
+i t_true 0 0 -> 0
+b t_true 0 0 -> 0
+s t_true 0 NULL -> "true"
+type t_true -> 115
+isset t_true -> 1
+str t_true EMPTY 128 -> "true"
+str t_true EMPTY 3 -> "tr"
+str t_true EMPTY 1 -> ""
+str t_true x:61626364 2 -> "t"
+f t_text 0 0 -> 0000000000000000
+i t_text 0 0 -> 0
+b t_text 0 0 -> 0
+s t_text 0 NULL -> "abc"
+type t_text -> 115
+isset t_text -> 1
+str t_text EMPTY 128 -> "abc"
+str t_text EMPTY 3 -> "ab"
+str t_text EMPTY 1 -> ""
+str t_text x:61626364 2 -> "a"
+f t_half 0 0 -> 4004000000000000
+i t_half 0 0 -> 3
+b t_half 0 0 -> 1
+s t_half 0 NULL -> NULL
+type t_half -> 102
+isset t_half -> 1
+str t_half EMPTY 128 -> "2.500000"
+str t_half EMPTY 3 -> "2."
+str t_half EMPTY 1 -> ""
+str t_half x:61626364 2 -> "2"
+f t_mhalf 0 0 -> c004000000000000
+i t_mhalf 0 0 -> 4294967293
+b t_mhalf 0 0 -> 1
+s t_mhalf 0 NULL -> NULL
+type t_mhalf -> 102
+isset t_mhalf -> 1
+str t_mhalf EMPTY 128 -> "-2.500000"
+str t_mhalf EMPTY 3 -> "-2"
+str t_mhalf EMPTY 1 -> ""
+str t_mhalf x:61626364 2 -> "-"
+f t_small 0 0 -> 3f1a36e2e0000000
+i t_small 0 0 -> 0
+b t_small 0 0 -> 0
+s t_small 0 NULL -> NULL
+type t_small -> 102
+isset t_small -> 1
+str t_small EMPTY 128 -> "0.000100"
+str t_small EMPTY 3 -> "0."
+str t_small EMPTY 1 -> ""
+str t_small x:61626364 2 -> "0"
+f t_tiny 0 0 -> 37a16c2000000000
+i t_tiny 0 0 -> 0
+b t_tiny 0 0 -> 0
+s t_tiny 0 NULL -> NULL
+type t_tiny -> 102
+isset t_tiny -> 1
+str t_tiny EMPTY 128 -> "0.000000"
+str t_tiny EMPTY 3 -> "0."
+str t_tiny EMPTY 1 -> ""
+str t_tiny x:61626364 2 -> "0"
+f t_prec 0 0 -> 3fb99999a0000000
+i t_prec 0 0 -> 0
+b t_prec 0 0 -> 0
+s t_prec 0 NULL -> NULL
+type t_prec -> 102
+isset t_prec -> 1
+str t_prec EMPTY 128 -> "0.100000"
+str t_prec EMPTY 3 -> "0."
+str t_prec EMPTY 1 -> ""
+str t_prec x:61626364 2 -> "0"
+f t_plus 0 0 -> 401c000000000000
+i t_plus 0 0 -> 7
+b t_plus 0 0 -> 1
+s t_plus 0 NULL -> NULL
+type t_plus -> 105
+isset t_plus -> 1
+str t_plus EMPTY 128 -> "7"
+str t_plus EMPTY 3 -> "7"
+str t_plus EMPTY 1 -> ""
+str t_plus x:61626364 2 -> "7"
+f t_space 0 0 -> 0000000000000000
+i t_space 0 0 -> 0
+b t_space 0 0 -> 0
+s t_space 0 NULL -> "   "
+type t_space -> 115
+isset t_space -> 1
+str t_space EMPTY 128 -> "   "
+str t_space EMPTY 3 -> "  "
+str t_space EMPTY 1 -> ""
+str t_space x:61626364 2 -> " "
+f t_quote 0 0 -> 0000000000000000
+i t_quote 0 0 -> 0
+b t_quote 0 0 -> 0
+s t_quote 0 NULL -> "a\x5c\x22b"
+type t_quote -> 115
+isset t_quote -> 1
+str t_quote EMPTY 128 -> "a\x5c\x22b"
+str t_quote EMPTY 3 -> "a\x5c"
+str t_quote EMPTY 1 -> ""
+str t_quote x:61626364 2 -> "a"
+f t_utf8 0 0 -> 0000000000000000
+i t_utf8 0 0 -> 0
+b t_utf8 0 0 -> 0
+s t_utf8 0 NULL -> "\xc3\xa9"
+type t_utf8 -> 115
+isset t_utf8 -> 1
+str t_utf8 EMPTY 128 -> "\xc3\xa9"
+str t_utf8 EMPTY 3 -> "\xc3\xa9"
+str t_utf8 EMPTY 1 -> ""
+str t_utf8 x:61626364 2 -> "\xc3"
+f t_emptyarr 0 0 -> 0000000000000000
+i t_emptyarr 0 0 -> 0
+b t_emptyarr 0 0 -> 0
+s t_emptyarr 0 NULL -> NULL
+type t_emptyarr -> 0
+isset t_emptyarr -> 0
+str t_emptyarr EMPTY 128 -> ""
+str t_emptyarr EMPTY 3 -> ""
+str t_emptyarr EMPTY 1 -> ""
+str t_emptyarr x:61626364 2 -> "ab"
+f t_intarr 0 0 -> 3ff0000000000000
+i t_intarr 0 0 -> 1
+b t_intarr 0 0 -> 1
+s t_intarr 0 NULL -> NULL
+type t_intarr -> 105
+isset t_intarr -> 1
+str t_intarr EMPTY 128 -> "1"
+str t_intarr EMPTY 3 -> "1"
+str t_intarr EMPTY 1 -> ""
+str t_intarr x:61626364 2 -> "1"
+f t_floatarr 0 0 -> 0000000000000000
+i t_floatarr 0 0 -> 0
+b t_floatarr 0 0 -> 0
+s t_floatarr 0 NULL -> ""
+type t_floatarr -> 0
+isset t_floatarr -> 1
+str t_floatarr EMPTY 128 -> ""
+str t_floatarr EMPTY 3 -> ""
+str t_floatarr EMPTY 1 -> ""
+str t_floatarr x:61626364 2 -> ""
+f t_one 0 0 -> 4004000000000000
+i t_one 0 0 -> 3
+b t_one 0 0 -> 1
+s t_one 0 NULL -> NULL
+type t_one -> 102
+isset t_one -> 1
+str t_one EMPTY 128 -> "2.500000"
+str t_one EMPTY 3 -> "2."
+str t_one EMPTY 1 -> ""
+str t_one x:61626364 2 -> "2"
+f t_oneint 0 0 -> 401c000000000000
+i t_oneint 0 0 -> 7
+b t_oneint 0 0 -> 1
+s t_oneint 0 NULL -> NULL
+type t_oneint -> 105
+isset t_oneint -> 1
+str t_oneint EMPTY 128 -> "7"
+str t_oneint EMPTY 3 -> "7"
+str t_oneint EMPTY 1 -> ""
+str t_oneint x:61626364 2 -> "7"
+f t_mixed 0 0 -> 0000000000000000
+i t_mixed 0 0 -> 0
+b t_mixed 0 0 -> 0
+s t_mixed 0 NULL -> NULL
+type t_mixed -> 0
+isset t_mixed -> 0
+str t_mixed EMPTY 128 -> ""
+str t_mixed EMPTY 3 -> ""
+str t_mixed EMPTY 1 -> ""
+str t_mixed x:61626364 2 -> "ab"
+f t_prim 0 0 -> 3ff4000000000000
+i t_prim 0 0 -> 1
+b t_prim 0 0 -> 1
+s t_prim 0 NULL -> NULL
+type t_prim -> 102
+isset t_prim -> 1
+str t_prim EMPTY 128 -> "1.250000"
+str t_prim EMPTY 3 -> "1."
+str t_prim EMPTY 1 -> ""
+str t_prim x:61626364 2 -> "1"
+f t_primtrue 0 0 -> 0000000000000000
+i t_primtrue 0 0 -> 0
+b t_primtrue 0 0 -> 0
+s t_primtrue 0 NULL -> "true"
+type t_primtrue -> 115
+isset t_primtrue -> 1
+str t_primtrue EMPTY 128 -> "true"
+str t_primtrue EMPTY 3 -> "tr"
+str t_primtrue EMPTY 1 -> ""
+str t_primtrue x:61626364 2 -> "t"
+f t_primnull 0 0 -> 0000000000000000
+i t_primnull 0 0 -> 0
+b t_primnull 0 0 -> 0
+s t_primnull 0 NULL -> "null"
+type t_primnull -> 115
+isset t_primnull -> 1
+str t_primnull EMPTY 128 -> "null"
+str t_primnull EMPTY 3 -> "nu"
+str t_primnull EMPTY 1 -> ""
+str t_primnull x:61626364 2 -> "n"
+f t_barekey 0 0 -> 0000000000000000
+i t_barekey 0 0 -> 0
+b t_barekey 0 0 -> 0
+s t_barekey 0 NULL -> "bk"
+type t_barekey -> 115
+isset t_barekey -> 1
+str t_barekey EMPTY 128 -> "bk"
+str t_barekey EMPTY 3 -> "bk"
+str t_barekey EMPTY 1 -> ""
+str t_barekey x:61626364 2 -> "b"
+f t_dup 0 0 -> 0000000000000000
+i t_dup 0 0 -> 0
+b t_dup 0 0 -> 0
+s t_dup 0 NULL -> "abc"
+type t_dup -> 115
+isset t_dup -> 1
+str t_dup EMPTY 128 -> "abc"
+str t_dup EMPTY 3 -> "ab"
+str t_dup EMPTY 1 -> ""
+str t_dup x:61626364 2 -> "a"
+f inner 0 0 -> 4022000000000000
+i inner 0 0 -> 9
+b inner 0 0 -> 1
+s inner 0 NULL -> NULL
+type inner -> 105
+isset inner -> 1
+str inner EMPTY 128 -> "9"
+str inner EMPTY 3 -> "9"
+str inner EMPTY 1 -> ""
+str inner x:61626364 2 -> "9"
+f x 0 0 -> 3ff0000000000000
+i x 0 0 -> 1
+b x 0 0 -> 1
+s x 0 NULL -> NULL
+type x -> 105
+isset x -> 1
+str x EMPTY 128 -> "1"
+str x EMPTY 3 -> "1"
+str x EMPTY 1 -> ""
+str x x:61626364 2 -> "1"
+f t_after 0 0 -> 0000000000000000
+i t_after 0 0 -> 0
+b t_after 0 0 -> 0
+s t_after 0 NULL -> "after"
+type t_after -> 115
+isset t_after -> 1
+str t_after EMPTY 128 -> "after"
+str t_after EMPTY 3 -> "af"
+str t_after EMPTY 1 -> ""
+str t_after x:61626364 2 -> "a"
+f upper 0 0 -> 3ff0000000000000
+i upper 0 0 -> 1
+b upper 0 0 -> 1
+s upper 0 NULL -> NULL
+type upper -> 105
+isset upper -> 1
+str upper EMPTY 128 -> "1"
+str upper EMPTY 3 -> "1"
+str upper EMPTY 1 -> ""
+str upper x:61626364 2 -> "1"
+f t_last 0 0 -> 0000000000000000
+i t_last 0 0 -> 0
+b t_last 0 0 -> 0
+s t_last 0 NULL -> "last"
+type t_last -> 115
+isset t_last -> 1
+str t_last EMPTY 128 -> "last"
+str t_last EMPTY 3 -> "la"
+str t_last EMPTY 1 -> ""
+str t_last x:61626364 2 -> "l"
+f nope 0 0 -> 0000000000000000
+i nope 0 0 -> 0
+b nope 0 0 -> 0
+s nope 0 NULL -> NULL
+type nope -> 0
+isset nope -> 0
+str nope EMPTY 128 -> ""
+str nope EMPTY 3 -> ""
+str nope EMPTY 1 -> ""
+str nope x:61626364 2 -> "ab"
+f EMPTY 0 0 -> 0000000000000000
+i EMPTY 0 0 -> 0
+b EMPTY 0 0 -> 0
+s EMPTY 0 NULL -> NULL
+type EMPTY -> 0
+isset EMPTY -> 0
+str EMPTY EMPTY 128 -> ""
+str EMPTY EMPTY 3 -> ""
+str EMPTY EMPTY 1 -> ""
+str EMPTY x:61626364 2 -> "ab"
+f new_f1 1 5 -> 4014000000000000
+f new_f2 2 7 -> 401c000000000000
+f new_f3 3 7 -> 401c000000000000
+f new_f4 4 8 -> 4020000000000000
+f new_f5 6 9 -> 4022000000000000
+f new_f6 0 1.25 -> 3ff4000000000000
+f run-time 1 5 -> bff0000000000000
+f output-callback-stats 4 3 -> 0000000000000000
+f lighthouse-gen 2 0.5 -> 3fe0000000000000
+i new_i1 1 5 -> 5
+i new_i2 2 7 -> 7
+i new_i3 3 4294967295 -> 4294967295
+i new_i4 4 8 -> 8
+i lighthousecount 5 2 -> 0
+i run-time 0 0 -> 4294967295
+i lighthouse-max-update 0 0 -> 0
+b new_b1 1 1 -> 1
+b new_b2 6 1 -> 1
+b force-ootx 3 1 -> 1
+b lighthouse-max-update 0 0 -> 0
+f force-calibrate 0 0 -> 0000000000000000
+s new_s1 1 abc -> "abc"
+s new_s2 2 abc -> "abc"
+s new_s3 3 abc -> "abc"
+s new_s4 4 NULL -> NULL
+s new_s5 0 dflt -> "dflt"
+s blacklist-devs 1 NULL -> ""
+s pose-udp-host 2 abc -> "127.0.0.1"
+s pose-udp-host 0 NULL -> "127.0.0.1"
+s pose-udp-host 3 abc -> "abc"
+s lighthousecount 0 NULL -> NULL
+s lighthouse-gen 3 12 -> "12"
+s force-ootx 3 7 -> "7"
+s run-time 3 2.5e1 -> "2.5e1"
+s disable-calibrate 3 EMPTY -> ""
+s init-configfile 1 NULL -> NULL
+f new_i1 0 0 -> 4014000000000000
+s new_i1 0 NULL -> NULL
+s new_f1 0 NULL -> NULL
+f new_s1 0 0 -> 0000000000000000
+i new_s3 0 0 -> 0
+str new_f1 EMPTY 128 -> "5.000000"
+str new_i3 EMPTY 128 -> "-1"
+str new_s3 EMPTY 128 -> "abc"
+str new_s2 x:7a7a 128 -> "zz"
+type new_b2 -> 105
+type new_s5 -> 0
+isset new_f2 -> 0
+isset new_s2 -> 0
+isset new_s5 -> 0
+live t_float 2.5 -> 0
+live t_int 0x20 -> 0
+live t_int 12abc -> -2
+live t_int EMPTY -> -2
+live t_int -1 -> 0
+live t_text hello -> 0
+live nope 1 -> -1
+live t_floatarr 1 -> -1
+live force-calibrate on -> 0
+i force-calibrate 0 0 -> 1
+live force-calibrate off -> 0
+live force-calibrate 2 -> 0
+i force-calibrate 0 0 -> 2
+live force-calibrate true1 -> -2
+live lighthouse-max-update 0.5 -> 1
+live lighthouse-max-update 1e999 -> 1
+live run-time nan -> 0
+live run-time -0x1p-3 -> 0
+live v -1 -> 0
+live v 077 -> 0
+live pose-udp-host x:2068 -> 0
+str pose-udp-host EMPTY 128 -> " h"
+live t_one inf -> 0
+f t_one 0 0 -> 7ff0000000000000
+attach v i 0
+var i 0 -> 63
+live v 9 -> 1
+var i 0 -> 9
+i v 3 11 -> 11
+var i 0 -> 11
+attach v i 0
+bound v -> 1
+attach zz f 1
+var f 1 -> 0000000000000000
+live zz 2.75 -> 1
+var f 1 -> 4006000000000000
+i zz 3 5 -> 5
+var f 1 -> 4014000000000000
+attach zz i 2
+var i 2 -> 5
+f zz 3 -2.7 -> c00599999999999a
+var i 2 -> -2
+var f 1 -> c00599999999999a
+f zz 3 3e9 -> 41e65a0bc0000000
+var i 2 -> -2147483648
+f zz 3 nan -> 7ff8000000000000
+var i 2 -> -2147483648
+bound zz -> 2
+attach force-calibrate b 3
+var b 3 -> 1
+live force-calibrate 0 -> 1
+var b 3 -> 0
+live force-calibrate 5 -> 1
+var b 3 -> 1
+f force-calibrate 3 0.25 -> 3fd0000000000000
+var b 3 -> 1
+attach blacklist-devs s 4
+var s 4 -> ""
+live blacklist-devs xyz -> 1
+var s 4 -> ""
+bound blacklist-devs -> 1
+attach configfile s 6
+var s 6 -> "@DIR@/cfg.json"
+detach zz f 1
+bound zz -> 1
+detach zz f 1
+detach nope f 1
+bound zz -> 1
+attach t_half f 5
+var f 5 -> 4004000000000000
+live t_half 1.25 -> 1
+var f 5 -> 3ff4000000000000
+f t_half 3 2.5 -> 4004000000000000
+var f 5 -> 3ff4000000000000
+bound t_half -> 0
+detach t_half f 5
+var f 5 -> 3ff4000000000000
+live t_half 7 -> 0
+var f 5 -> 3ff4000000000000
+attach lighthousecount f 7
+var f 7 -> 0000000000000000
+type lighthousecount -> 105
+attach t_text i 8
+var i 8 -> 0
+attach t_text b 9
+var b 9 -> 0
+attach lighthouse-max-update f 10
+bound lighthouse-max-update -> 2
+var f 10 -> 7ff0000000000000
+live lighthouse-max-update 2 -> 2
+var f 10 -> 4000000000000000
+bound lighthouse-max-update -> 2
+save -> "\x22v\x22:\x220\x22,\x0a\x22t_int\x22:\x224294967295\x22,\x0a\x22t_neg\x22:\x224294967291\x22,\x0a\x22t_big\x22:\x220\x22,\x0a\x22t_huge\x22:\x224294967295\x22,\x0a\x22t_hex\x22:\x2216.000000000000\x22,\x0a\x22t_oct\x22:\x2210\x22,\x0a\x22t_float\x22:\x222.500000000000\x22,\x0a\x22t_exp\x22:\x221000.000000000000\x22,\x0a\x22t_negzero\x22:\x22-0.000000000000\x22,\x0a\x22t_nan\x22:\x22nan\x22,\x0a\x22t_mnan\x22:\x22-nan\x22,\x0a\x22t_inf\x22:\x22inf\x22,\x0a\x22t_lead\x22:\x2212\x22,\x0a\x22t_trail\x22:\x2212 \x22,\x0a\x22t_empty\x22:\x220\x22,\x0a\x22t_true\x22:\x22true\x22,\x0a\x22t_text\x22:\x22hello\x22,\x0a\x22t_half\x22:\x221.250000000000\x22,\x0a\x22t_mhalf\x22:\x22-2.500000000000\x22,\x0a\x22t_small\x22:\x220.000099999997\x22,\x0a\x22t_tiny\x22:\x220.000000000000\x22,\x0a\x22t_prec\x22:\x220.100000001490\x22,\x0a\x22t_plus\x22:\x227\x22,\x0a\x22t_space\x22:\x22   \x22,\x0a\x22t_quote\x22:\x22a\x5c\x22b\x22,\x0a\x22t_utf8\x22:\x22\xc3\xa9\x22,\x0a\x22t_intarr\x22:\x221\x22,\x0a\x22t_floatarr\x22:[\x221.500000000000\x22,\x222.000000000000\x22,\x22-0.250000000000\x22],\x0a\x22t_one\x22:\x22inf\x22,\x0a\x22t_oneint\x22:\x227\x22,\x0a\x22t_prim\x22:\x221.250000000000\x22,\x0a\x22t_primtrue\x22:\x22true\x22,\x0a\x22t_primnull\x22:\x22null\x22,\x0a\x22t_barekey\x22:\x22bk\x22,\x0a\x22t_dup\x22:\x22abc\x22,\x0a\x22inner\x22:\x229\x22,\x0a\x22x\x22:\x221\x22,\x0a\x22t_after\x22:\x22after\x22,\x0a\x22upper\x22:\x221\x22,\x0a\x22t_last\x22:\x22last\x22,\x0a\x22new_f4\x22:\x228.000000000000\x22,\x0a\x22new_f5\x22:\x229.000000000000\x22,\x0a\x22output-callback-stats\x22:\x220.000000000000\x22,\x0a\x22new_i4\x22:\x228\x22,\x0a\x22lighthousecount\x22:\x220\x22,\x0a\x22new_b2\x22:\x221\x22,\x0a\x22new_s4\x22:\x22\x22\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x2277\x22,\x0a\x22mode\x22:\x22258\x22,\x0a\x22pose\x22:\x221\x22,\x0a\x22accel\x22:\x221.500000000000\x22,\x0a\x22OOTXSet\x22:\x223\x22,\x0a\x22PositionSet\x22:\x222\x22,\x0a\x22variance\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcaltilt\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalcurve\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibpha\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibmag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeephase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeemag\x22:[\x220.000000000000\x22,\x220.000000000000\x22]\x0a}\x0a"
+ootx 2 1
+ootx 3 1
+ootx 7 1
+save -> "\x22v\x22:\x220\x22,\x0a\x22t_int\x22:\x224294967295\x22,\x0a\x22t_neg\x22:\x224294967291\x22,\x0a\x22t_big\x22:\x220\x22,\x0a\x22t_huge\x22:\x224294967295\x22,\x0a\x22t_hex\x22:\x2216.000000000000\x22,\x0a\x22t_oct\x22:\x2210\x22,\x0a\x22t_float\x22:\x222.500000000000\x22,\x0a\x22t_exp\x22:\x221000.000000000000\x22,\x0a\x22t_negzero\x22:\x22-0.000000000000\x22,\x0a\x22t_nan\x22:\x22nan\x22,\x0a\x22t_mnan\x22:\x22-nan\x22,\x0a\x22t_inf\x22:\x22inf\x22,\x0a\x22t_lead\x22:\x2212\x22,\x0a\x22t_trail\x22:\x2212 \x22,\x0a\x22t_empty\x22:\x220\x22,\x0a\x22t_true\x22:\x22true\x22,\x0a\x22t_text\x22:\x22hello\x22,\x0a\x22t_half\x22:\x221.250000000000\x22,\x0a\x22t_mhalf\x22:\x22-2.500000000000\x22,\x0a\x22t_small\x22:\x220.000099999997\x22,\x0a\x22t_tiny\x22:\x220.000000000000\x22,\x0a\x22t_prec\x22:\x220.100000001490\x22,\x0a\x22t_plus\x22:\x227\x22,\x0a\x22t_space\x22:\x22   \x22,\x0a\x22t_quote\x22:\x22a\x5c\x22b\x22,\x0a\x22t_utf8\x22:\x22\xc3\xa9\x22,\x0a\x22t_intarr\x22:\x221\x22,\x0a\x22t_floatarr\x22:[\x221.500000000000\x22,\x222.000000000000\x22,\x22-0.250000000000\x22],\x0a\x22t_one\x22:\x22inf\x22,\x0a\x22t_oneint\x22:\x227\x22,\x0a\x22t_prim\x22:\x221.250000000000\x22,\x0a\x22t_primtrue\x22:\x22true\x22,\x0a\x22t_primnull\x22:\x22null\x22,\x0a\x22t_barekey\x22:\x22bk\x22,\x0a\x22t_dup\x22:\x22abc\x22,\x0a\x22inner\x22:\x229\x22,\x0a\x22x\x22:\x221\x22,\x0a\x22t_after\x22:\x22after\x22,\x0a\x22upper\x22:\x221\x22,\x0a\x22t_last\x22:\x22last\x22,\x0a\x22new_f4\x22:\x228.000000000000\x22,\x0a\x22new_f5\x22:\x229.000000000000\x22,\x0a\x22output-callback-stats\x22:\x220.000000000000\x22,\x0a\x22new_i4\x22:\x228\x22,\x0a\x22lighthousecount\x22:\x220\x22,\x0a\x22new_b2\x22:\x221\x22,\x0a\x22new_s4\x22:\x22\x22\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x2277\x22,\x0a\x22mode\x22:\x22258\x22,\x0a\x22pose\x22:\x221\x22,\x0a\x22accel\x22:\x221.500000000000\x22,\x0a\x22OOTXSet\x22:\x223\x22,\x0a\x22PositionSet\x22:\x222\x22,\x0a\x22variance\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcaltilt\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalcurve\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibpha\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibmag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeephase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeemag\x22:[\x220.000000000000\x22,\x220.000000000000\x22]\x0a}\x0a\x22lighthouse3\x22:{\x0a\x22index\x22:\x223\x22,\x0a\x22variance\x22:[\x220.500000000000\x22,\x220.250000000000\x22],\x0a\x22fcalphase\x22:[\x220.125000000000\x22,\x220.250000000000\x22],\x0a\x22fcaltilt\x22:\x221\x22,\x0a\x22id\x22:\x220\x22,\x0a\x22mode\x22:\x220\x22,\x0a\x22pose\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22accel\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalcurve\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibpha\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibmag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeephase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeemag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22OOTXSet\x22:\x220\x22,\x0a\x22PositionSet\x22:\x220\x22\x0a}\x0a\x22lighthouse7\x22:{\x0a\x22index\x22:\x226\x22,\x0a\x22id\x22:\x225\x22\x0a}\x0a"
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry global 1 "t_int" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry global 2 "t_neg" type=2 i=4294967291 elements=0 data=NULL bound=0
+entry global 3 "t_big" type=2 i=0 elements=0 data=NULL bound=0
+entry global 4 "t_huge" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry global 5 "t_hex" type=1 f=4030000000000000 elements=0 data=NULL bound=0
+entry global 6 "t_oct" type=2 i=10 elements=0 data=NULL bound=0
+entry global 7 "t_float" type=1 f=4004000000000000 elements=0 data=NULL bound=0
+entry global 8 "t_exp" type=1 f=408f400000000000 elements=0 data=NULL bound=0
+entry global 9 "t_negzero" type=1 f=8000000000000000 elements=0 data=NULL bound=0
+entry global 10 "t_nan" type=1 f=7ff8000000000000 elements=0 data=NULL bound=0
+entry global 11 "t_mnan" type=1 f=fff8000000000000 elements=0 data=NULL bound=0
+entry global 12 "t_inf" type=1 f=7ff0000000000000 elements=0 data=NULL bound=0
+entry global 13 "t_lead" type=2 i=12 elements=0 data=NULL bound=0
+entry global 14 "t_trail" type=3 elements=0 data="12 " bound=0
+entry global 15 "t_empty" type=2 i=0 elements=0 data=NULL bound=0
+entry global 16 "t_true" type=3 elements=0 data="true" bound=0
+entry global 17 "t_text" type=3 elements=0 data="hello" bound=2
+entry global 18 "t_half" type=1 f=3ff4000000000000 elements=0 data=NULL bound=1
+entry global 19 "t_mhalf" type=1 f=c004000000000000 elements=0 data=NULL bound=0
+entry global 20 "t_small" type=1 f=3f1a36e2e0000000 elements=0 data=NULL bound=0
+entry global 21 "t_tiny" type=1 f=37a16c2000000000 elements=0 data=NULL bound=0
+entry global 22 "t_prec" type=1 f=3fb99999a0000000 elements=0 data=NULL bound=0
+entry global 23 "t_plus" type=2 i=7 elements=0 data=NULL bound=0
+entry global 24 "t_space" type=3 elements=0 data="   " bound=0
+entry global 25 "t_quote" type=3 elements=0 data="a\x5c\x22b" bound=0
+entry global 26 "t_utf8" type=3 elements=0 data="\xc3\xa9" bound=0
+entry global 27 "t_intarr" type=2 i=1 elements=0 data=NULL bound=0
+entry global 28 "t_floatarr" type=4 elements=3 data=000000000000f83f0000000000000040000000000000d0bf bound=0
+entry global 29 "t_one" type=1 f=7ff0000000000000 elements=0 data=NULL bound=0
+entry global 30 "t_oneint" type=2 i=7 elements=0 data=NULL bound=0
+entry global 31 "t_prim" type=1 f=3ff4000000000000 elements=0 data=NULL bound=0
+entry global 32 "t_primtrue" type=3 elements=0 data="true" bound=0
+entry global 33 "t_primnull" type=3 elements=0 data="null" bound=0
+entry global 34 "t_barekey" type=3 elements=0 data="bk" bound=0
+entry global 35 "t_dup" type=3 elements=0 data="abc" bound=0
+entry global 36 "inner" type=2 i=9 elements=0 data=NULL bound=0
+entry global 37 "x" type=2 i=1 elements=0 data=NULL bound=0
+entry global 38 "t_after" type=3 elements=0 data="after" bound=0
+entry global 39 "upper" type=2 i=1 elements=0 data=NULL bound=0
+entry global 40 "t_last" type=3 elements=0 data="last" bound=0
+entry global 41 "new_f4" type=1 f=4020000000000000 elements=0 data=NULL bound=0
+entry global 42 "new_f5" type=1 f=4022000000000000 elements=0 data=NULL bound=0
+entry global 43 "output-callback-stats" type=1 f=0000000000000000 elements=0 data=NULL bound=0
+entry global 44 "new_i4" type=2 i=8 elements=0 data=NULL bound=0
+entry global 45 "lighthousecount" type=2 i=0 elements=0 data=NULL bound=0
+entry global 46 "new_b2" type=2 i=1 elements=0 data=NULL bound=0
+entry global 47 "new_s4" type=3 elements=0 data="" bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=1
+entry temporary 1 "v" type=2 i=11 elements=0 data=NULL bound=1
+entry temporary 2 "lighthouse-max-update" type=1 f=4000000000000000 elements=0 data=NULL bound=2
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 5 "new_f1" type=1 f=4014000000000000 elements=0 data=NULL bound=0
+entry temporary 6 "new_f3" type=1 f=401c000000000000 elements=0 data=NULL bound=0
+entry temporary 7 "new_f4" type=1 f=4020000000000000 elements=0 data=NULL bound=0
+entry temporary 8 "new_f5" type=1 f=4022000000000000 elements=0 data=NULL bound=0
+entry temporary 9 "run-time" type=1 f=bfc0000000000000 elements=0 data=NULL bound=0
+entry temporary 10 "output-callback-stats" type=1 f=0000000000000000 elements=0 data=NULL bound=0
+entry temporary 11 "new_i1" type=2 i=5 elements=0 data=NULL bound=0
+entry temporary 12 "new_i3" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry temporary 13 "new_i4" type=2 i=8 elements=0 data=NULL bound=0
+entry temporary 14 "lighthousecount" type=2 i=0 elements=0 data=NULL bound=1
+entry temporary 15 "new_b1" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 16 "new_b2" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 17 "force-ootx" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 18 "new_s1" type=3 elements=0 data="abc" bound=0
+entry temporary 19 "new_s3" type=3 elements=0 data="abc" bound=0
+entry temporary 20 "new_s4" type=3 elements=0 data="" bound=0
+entry temporary 21 "blacklist-devs" type=3 elements=0 data="xyz" bound=1
+entry temporary 22 "pose-udp-host" type=3 elements=0 data=" h" bound=0
+entry temporary 23 "lighthouse-gen" type=2 i=12 elements=0 data=NULL bound=0
+entry temporary 24 "disable-calibrate" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 25 "init-configfile" type=3 elements=0 data="" bound=0
+entry temporary 26 "force-calibrate" type=1 f=3fd0000000000000 elements=0 data=NULL bound=1
+entry temporary 27 "zz" type=1 f=7ff8000000000000 elements=0 data=NULL bound=1
+entry temporary 28 "t_half" type=1 f=401c000000000000 elements=0 data=NULL bound=0
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=2 elements=0 data=NULL bound=0
+entry lh2 1 "id" type=2 i=77 elements=0 data=NULL bound=0
+entry lh2 2 "mode" type=2 i=258 elements=0 data=NULL bound=0
+entry lh2 3 "pose" type=2 i=1 elements=0 data=NULL bound=0
+entry lh2 4 "accel" type=1 f=3ff8000000000000 elements=0 data=NULL bound=0
+entry lh2 5 "OOTXSet" type=2 i=3 elements=0 data=NULL bound=0
+entry lh2 6 "PositionSet" type=2 i=2 elements=0 data=NULL bound=0
+entry lh2 7 "variance" type=4 elements=6 data=000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh2 8 "fcalphase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 9 "fcaltilt" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 10 "fcalcurve" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 11 "fcalgibpha" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 12 "fcalgibmag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 13 "fcalogeephase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh2 14 "fcalogeemag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 0 "index" type=2 i=3 elements=0 data=NULL bound=0
+entry lh3 1 "variance" type=4 elements=2 data=000000000000e03f000000000000d03f bound=0
+entry lh3 2 "fcalphase" type=4 elements=2 data=000000000000c03f000000000000d03f bound=0
+entry lh3 3 "fcaltilt" type=2 i=1 elements=0 data=NULL bound=0
+entry lh3 4 "id" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 5 "mode" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 6 "pose" type=4 elements=7 data=0000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh3 7 "accel" type=4 elements=3 data=000000000000000000000000000000000000000000000000 bound=0
+entry lh3 8 "fcalcurve" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 9 "fcalgibpha" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 10 "fcalgibmag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 11 "fcalogeephase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 12 "fcalogeemag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh3 13 "OOTXSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 14 "PositionSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=6 elements=0 data=NULL bound=0
+entry lh7 1 "id" type=2 i=5 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+case args
+init ctx
+dump
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=0
+entry temporary 1 "foo" type=3 elements=0 data="bar" bound=0
+entry temporary 2 "flag1" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 3 "flag2" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 4 "v" type=2 i=5 elements=0 data=NULL bound=0
+entry temporary 5 "poser" type=3 elements=0 data="MPFIT2" bound=0
+entry temporary 6 "lighthousecount" type=2 i=3 elements=0 data=NULL bound=0
+entry temporary 7 "neg" type=3 elements=0 data="-5" bound=0
+entry temporary 8 "negf" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 9 "run-time" type=1 f=3fd0000000000000 elements=0 data=NULL bound=0
+entry temporary 10 "force-calibrate" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 11 "lighthouse-gen" type=2 i=2 elements=0 data=NULL bound=0
+entry temporary 12 "blacklist-devs" type=3 elements=0 data="a,b" bound=0
+entry temporary 13 "" type=2 i=0 elements=0 data=stale bound=0
+entry temporary 14 "output-callback-stats" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 15 "disable-calibrate" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 16 "big" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 17 "str-neg" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 18 "force-ootx" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 19 "\xc3\xa9" type=3 elements=0 data="\xffA" bound=0
+entry temporary 20 "last-flag" type=2 i=1 elements=0 data=NULL bound=0
+entry temporary 21 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 22 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 23 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+f foo 0 0 -> 0000000000000000
+i foo 0 0 -> 0
+b foo 0 0 -> 0
+s foo 0 NULL -> "bar"
+type foo -> 115
+isset foo -> 1
+str foo EMPTY 128 -> "bar"
+str foo x:61626364 2 -> "b"
+f flag1 0 0 -> 3ff0000000000000
+i flag1 0 0 -> 1
+b flag1 0 0 -> 1
+s flag1 0 NULL -> NULL
+type flag1 -> 105
+isset flag1 -> 1
+str flag1 EMPTY 128 -> "1"
+str flag1 x:61626364 2 -> "1"
+f flag2 0 0 -> 0000000000000000
+i flag2 0 0 -> 0
+b flag2 0 0 -> 0
+s flag2 0 NULL -> NULL
+type flag2 -> 105
+isset flag2 -> 1
+str flag2 EMPTY 128 -> "0"
+str flag2 x:61626364 2 -> "0"
+f v 0 0 -> 4014000000000000
+i v 0 0 -> 5
+b v 0 0 -> 1
+s v 0 NULL -> NULL
+type v -> 105
+isset v -> 1
+str v EMPTY 128 -> "5"
+str v x:61626364 2 -> "5"
+f poser 0 0 -> 0000000000000000
+i poser 0 0 -> 0
+b poser 0 0 -> 0
+s poser 0 NULL -> "MPFIT2"
+type poser -> 115
+isset poser -> 1
+str poser EMPTY 128 -> "MPFIT2"
+str poser x:61626364 2 -> "M"
+f lighthousecount 0 0 -> 4008000000000000
+i lighthousecount 0 0 -> 3
+b lighthousecount 0 0 -> 1
+s lighthousecount 0 NULL -> NULL
+type lighthousecount -> 105
+isset lighthousecount -> 1
+str lighthousecount EMPTY 128 -> "3"
+str lighthousecount x:61626364 2 -> "3"
+f neg 0 0 -> c014000000000000
+i neg 0 0 -> 4294967291
+b neg 0 0 -> 1
+s neg 0 NULL -> "-5"
+type neg -> 115
+isset neg -> 1
+str neg EMPTY 128 -> "-5"
+str neg x:61626364 2 -> "-"
+f negf 0 0 -> 3ff0000000000000
+i negf 0 0 -> 1
+b negf 0 0 -> 1
+s negf 0 NULL -> NULL
+type negf -> 105
+isset negf -> 1
+str negf EMPTY 128 -> "1"
+str negf x:61626364 2 -> "1"
+f run-time 0 0 -> 3fd0000000000000
+i run-time 0 0 -> 0
+b run-time 0 0 -> 0
+s run-time 0 NULL -> NULL
+type run-time -> 102
+isset run-time -> 1
+str run-time EMPTY 128 -> "0.250000"
+str run-time x:61626364 2 -> "0"
+f force-calibrate 0 0 -> 0000000000000000
+i force-calibrate 0 0 -> 0
+b force-calibrate 0 0 -> 0
+s force-calibrate 0 NULL -> NULL
+type force-calibrate -> 98
+isset force-calibrate -> 1
+str force-calibrate EMPTY 128 -> "0"
+str force-calibrate x:61626364 2 -> "0"
+f lighthouse-gen 0 0 -> 4000000000000000
+i lighthouse-gen 0 0 -> 2
+b lighthouse-gen 0 0 -> 1
+s lighthouse-gen 0 NULL -> NULL
+type lighthouse-gen -> 105
+isset lighthouse-gen -> 1
+str lighthouse-gen EMPTY 128 -> "2"
+str lighthouse-gen x:61626364 2 -> "2"
+f blacklist-devs 0 0 -> 0000000000000000
+i blacklist-devs 0 0 -> 0
+b blacklist-devs 0 0 -> 0
+s blacklist-devs 0 NULL -> "a,b"
+type blacklist-devs -> 115
+isset blacklist-devs -> 1
+str blacklist-devs EMPTY 128 -> "a,b"
+str blacklist-devs x:61626364 2 -> "a"
+f EMPTY 0 0 -> 0000000000000000
+i EMPTY 0 0 -> 0
+b EMPTY 0 0 -> 0
+s EMPTY 0 NULL -> "value-of-empty"
+type EMPTY -> 105
+isset EMPTY -> 1
+str EMPTY EMPTY 128 -> "0"
+str EMPTY x:61626364 2 -> "0"
+f output-callback-stats 0 0 -> 3ff0000000000000
+i output-callback-stats 0 0 -> 1
+b output-callback-stats 0 0 -> 1
+s output-callback-stats 0 NULL -> NULL
+type output-callback-stats -> 102
+isset output-callback-stats -> 1
+str output-callback-stats EMPTY 128 -> "1.000000"
+str output-callback-stats x:61626364 2 -> "1"
+f disable-calibrate 0 0 -> 3ff0000000000000
+i disable-calibrate 0 0 -> 1
+b disable-calibrate 0 0 -> 1
+s disable-calibrate 0 NULL -> NULL
+type disable-calibrate -> 98
+isset disable-calibrate -> 1
+str disable-calibrate EMPTY 128 -> "1"
+str disable-calibrate x:61626364 2 -> "1"
+f big 0 0 -> 3ff0000000000000
+i big 0 0 -> 1
+b big 0 0 -> 1
+s big 0 NULL -> NULL
+type big -> 105
+isset big -> 1
+str big EMPTY 128 -> "1"
+str big x:61626364 2 -> "1"
+f str-neg 0 0 -> 3ff0000000000000
+i str-neg 0 0 -> 1
+b str-neg 0 0 -> 1
+s str-neg 0 NULL -> NULL
+type str-neg -> 105
+isset str-neg -> 1
+str str-neg EMPTY 128 -> "1"
+str str-neg x:61626364 2 -> "1"
+f force-ootx 0 0 -> 3ff0000000000000
+i force-ootx 0 0 -> 1
+b force-ootx 0 0 -> 1
+s force-ootx 0 NULL -> NULL
+type force-ootx -> 98
+isset force-ootx -> 1
+str force-ootx EMPTY 128 -> "1"
+str force-ootx x:61626364 2 -> "1"
+f last-flag 0 0 -> 3ff0000000000000
+i last-flag 0 0 -> 1
+b last-flag 0 0 -> 1
+s last-flag 0 NULL -> NULL
+type last-flag -> 105
+isset last-flag -> 1
+str last-flag EMPTY 128 -> "1"
+str last-flag x:61626364 2 -> "1"
+f x:c3a9 0 0 -> 0000000000000000
+i x:c3a9 0 0 -> 0
+b x:c3a9 0 0 -> 0
+s x:c3a9 0 NULL -> "\xffA"
+type x:c3a9 -> 115
+isset x:c3a9 -> 1
+str x:c3a9 EMPTY 128 -> "\xffA"
+str x:c3a9 x:61626364 2 -> "\xff"
+save -> ""
+case env
+init ctx
+dump
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=0
+entry temporary 1 "v" type=2 i=3 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-gen" type=2 i=2 elements=0 data=NULL bound=0
+entry temporary 3 "floor_offset" type=3 elements=0 data="2.5" bound=0
+entry temporary 4 "run-time" type=1 f=0000000000000000 elements=0 data=NULL bound=0
+entry temporary 5 "mixedcase" type=3 elements=0 data="Val" bound=0
+entry temporary 6 "blacklist-devs" type=3 elements=0 data="a=b" bound=0
+entry temporary 7 "force-ootx" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 8 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 9 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 10 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+f v 0 0 -> 4008000000000000
+i v 0 0 -> 3
+b v 0 0 -> 1
+s v 0 NULL -> NULL
+type v -> 105
+isset v -> 1
+str v EMPTY 128 -> "3"
+str v x:61626364 2 -> "3"
+f floor_offset 0 0 -> 4004000000000000
+i floor_offset 0 0 -> 2
+b floor_offset 0 0 -> 1
+s floor_offset 0 NULL -> "2.5"
+type floor_offset -> 115
+isset floor_offset -> 1
+str floor_offset EMPTY 128 -> "2.5"
+str floor_offset x:61626364 2 -> "2"
+f lighthouse-gen 0 0 -> 4000000000000000
+i lighthouse-gen 0 0 -> 2
+b lighthouse-gen 0 0 -> 1
+s lighthouse-gen 0 NULL -> NULL
+type lighthouse-gen -> 105
+isset lighthouse-gen -> 1
+str lighthouse-gen EMPTY 128 -> "2"
+str lighthouse-gen x:61626364 2 -> "2"
+f run-time 0 0 -> 0000000000000000
+i run-time 0 0 -> 0
+b run-time 0 0 -> 0
+s run-time 0 NULL -> NULL
+type run-time -> 102
+isset run-time -> 1
+str run-time EMPTY 128 -> "0.000000"
+str run-time x:61626364 2 -> "0"
+f mixedcase 0 0 -> 0000000000000000
+i mixedcase 0 0 -> 0
+b mixedcase 0 0 -> 0
+s mixedcase 0 NULL -> "Val"
+type mixedcase -> 115
+isset mixedcase -> 1
+str mixedcase EMPTY 128 -> "Val"
+str mixedcase x:61626364 2 -> "V"
+f blacklist-devs 0 0 -> 0000000000000000
+i blacklist-devs 0 0 -> 0
+b blacklist-devs 0 0 -> 0
+s blacklist-devs 0 NULL -> "a=b"
+type blacklist-devs -> 115
+isset blacklist-devs -> 1
+str blacklist-devs EMPTY 128 -> "a=b"
+str blacklist-devs x:61626364 2 -> "a"
+f force-ootx 0 0 -> 0000000000000000
+i force-ootx 0 0 -> 0
+b force-ootx 0 0 -> 0
+s force-ootx 0 NULL -> NULL
+type force-ootx -> 98
+isset force-ootx -> 1
+str force-ootx EMPTY 128 -> "0"
+str force-ootx x:61626364 2 -> "0"
+f abcdefghijklmnopqrstuvwxyzabcdefg 0 0 -> 0000000000000000
+i abcdefghijklmnopqrstuvwxyzabcdefg 0 0 -> 0
+b abcdefghijklmnopqrstuvwxyzabcdefg 0 0 -> 0
+s abcdefghijklmnopqrstuvwxyzabcdefg 0 NULL -> NULL
+type abcdefghijklmnopqrstuvwxyzabcdefg -> 0
+isset abcdefghijklmnopqrstuvwxyzabcdefg -> 0
+str abcdefghijklmnopqrstuvwxyzabcdefg EMPTY 128 -> ""
+str abcdefghijklmnopqrstuvwxyzabcdefg x:61626364 2 -> "ab"
+case playback
+init ctx
+path -> "@DIR@/.config/libsurvive/session.rec.json"
+s configfile 0 NULL -> "session.rec.json"
+i t_int 0 0 -> 5
+bsd
+bsd 2 PositionSet=0 OOTXSet=1 id=77 mode=2 unlock=0 pose=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, variance=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, accel=0000000000000000,0000000000000000,0000000000000000, fcal=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;
+bsd 3 PositionSet=0 OOTXSet=0 id=0 mode=0 unlock=0 pose=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, variance=3fe0000000000000,3fd0000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, accel=0000000000000000,0000000000000000,0000000000000000, fcal=3fc0000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;3fd0000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;
+end
+save -> "\x22v\x22:\x220\x22,\x0a\x22t_int\x22:\x225\x22,\x0a\x22t_neg\x22:\x224294967291\x22,\x0a\x22t_big\x22:\x220\x22,\x0a\x22t_huge\x22:\x224294967295\x22,\x0a\x22t_hex\x22:\x2216.000000000000\x22,\x0a\x22t_oct\x22:\x2210\x22,\x0a\x22t_float\x22:\x221.500000000000\x22,\x0a\x22t_exp\x22:\x221000.000000000000\x22,\x0a\x22t_negzero\x22:\x22-0.000000000000\x22,\x0a\x22t_nan\x22:\x22nan\x22,\x0a\x22t_mnan\x22:\x22-nan\x22,\x0a\x22t_inf\x22:\x22inf\x22,\x0a\x22t_lead\x22:\x2212\x22,\x0a\x22t_trail\x22:\x2212 \x22,\x0a\x22t_empty\x22:\x220\x22,\x0a\x22t_true\x22:\x22true\x22,\x0a\x22t_text\x22:\x22abc\x22,\x0a\x22t_half\x22:\x222.500000000000\x22,\x0a\x22t_mhalf\x22:\x22-2.500000000000\x22,\x0a\x22t_small\x22:\x220.000099999997\x22,\x0a\x22t_tiny\x22:\x220.000000000000\x22,\x0a\x22t_prec\x22:\x220.100000001490\x22,\x0a\x22t_plus\x22:\x227\x22,\x0a\x22t_space\x22:\x22   \x22,\x0a\x22t_quote\x22:\x22a\x5c\x22b\x22,\x0a\x22t_utf8\x22:\x22\xc3\xa9\x22,\x0a\x22t_intarr\x22:\x221\x22,\x0a\x22t_floatarr\x22:[\x221.500000000000\x22,\x222.000000000000\x22,\x22-0.250000000000\x22],\x0a\x22t_one\x22:\x222.500000000000\x22,\x0a\x22t_oneint\x22:\x227\x22,\x0a\x22t_prim\x22:\x221.250000000000\x22,\x0a\x22t_primtrue\x22:\x22true\x22,\x0a\x22t_primnull\x22:\x22null\x22,\x0a\x22t_barekey\x22:\x22bk\x22,\x0a\x22t_dup\x22:\x22abc\x22,\x0a\x22inner\x22:\x229\x22,\x0a\x22x\x22:\x221\x22,\x0a\x22t_after\x22:\x22after\x22,\x0a\x22upper\x22:\x221\x22,\x0a\x22t_last\x22:\x22last\x22\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x2277\x22,\x0a\x22mode\x22:\x22258\x22,\x0a\x22pose\x22:\x221\x22,\x0a\x22accel\x22:\x221.500000000000\x22,\x0a\x22OOTXSet\x22:\x223\x22,\x0a\x22PositionSet\x22:\x222\x22,\x0a\x22variance\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcaltilt\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalcurve\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibpha\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibmag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeephase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeemag\x22:[\x220.000000000000\x22,\x220.000000000000\x22]\x0a}\x0a"
+case record
+init ctx
+path -> "@DIR@/.config/libsurvive/out.rec.gz.json"
+s configfile 0 NULL -> "out.rec.gz.json"
+cat @DIR@/.config/libsurvive/out.rec.gz.json -> "\x22v\x22:\x220\x22,\x0a\x22poser\x22:\x22MPFIT\x22,\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0a"
+bsd
+bsd 0 PositionSet=1 OOTXSet=1 id=609880014 mode=7 unlock=0 pose=0000000000000000,4002bbed80000000,3ff8edad20000000,3fafbf94a0000000,3fb221a780000000,bfdf5db220000000,bfebbaf4e0000000, variance=3ed13b8020000000,3ec1d95580000000,3f18e7e020000000,3f5d4aaea0000000,3f839c4120000000,3f7fd78660000000, accel=c018000000000000,405fc00000000000,4052000000000000, fcal=0000000000000000,bfa8540000000000,bfaab40000000000,3fa7dc0000000000,3f7b900000000000,3fe5880000000000,bfdbec0000000000;bf6bc00000000000,3fa8d40000000000,3fd1880000000000,3fee940000000000,3f78c00000000000,3ff52c0000000000,bfe26c0000000000;
+bsd 1 PositionSet=1 OOTXSet=1 id=2851632229 mode=9 unlock=0 pose=3ff1e31000000000,c000e28820000000,3ff81e74a0000000,bfece483e0000000,bfdae4a4e0000000,bfb12c34a0000000,bfaf2de4e0000000, variance=3ed8d22ee0000000,3ebeef3600000000,3f18583380000000,3f17a947a0000000,3f7459b640000000,3f70544de0000000, accel=c000000000000000,405fc00000000000,4058c00000000000, fcal=0000000000000000,bfa9140000000000,3fd3a00000000000,3ff9b80000000000,bf5f1c0000000000,3ff3240000000000,bfc32c0000000000;bf811c0000000000,3fa6240000000000,3fd2480000000000,3ff8300000000000,bf68780000000000,3fee700000000000,bfbb340000000000;
+bsd 2 PositionSet=1 OOTXSet=1 id=2132379851 mode=13 unlock=0 pose=4009056ae0000000,3ff9836560000000,3ff8b4dae0000000,bfd92fa980000000,bfd074eb00000000,bfe04b6b00000000,bfe711bfe0000000, variance=3ecde205a0000000,3ec7c2bb00000000,3f27343560000000,3f7bc30ae0000000,3f5e5c88c0000000,3f3c7aada0000000, accel=0000000000000000,405fc00000000000,4048000000000000, fcal=0000000000000000,bfa8f40000000000,3fd1f80000000000,40009c0000000000,bf7b500000000000,4005480000000000,3fcbe00000000000;bf72a00000000000,3fa6cc0000000000,3fcfc00000000000,40020c0000000000,bf77280000000000,4007f80000000000,3fc7580000000000;
+bsd 3 PositionSet=1 OOTXSet=1 id=840201542 mode=3 unlock=0 pose=bffad7a1c0000000,bfe39c36a0000000,3ff8eb7860000000,3fe3b46ce0000000,3fd96062c0000000,bfd2a63760000000,bfe3b130a0000000, variance=3eb9087ec0000000,3ed2efabe0000000,3f11182820000000,3f54ff24a0000000,3f34643fc0000000,3f2cd23f00000000, accel=c031000000000000,405fc00000000000,4052400000000000, fcal=0000000000000000,bfa8b40000000000,3fb2b40000000000,4008740000000000,bf77140000000000,3fe3980000000000,bfda740000000000;bf7b4c0000000000,3fa4f80000000000,3f95a00000000000,3ff08c0000000000,3f700c0000000000,3ff4980000000000,bfddc80000000000;
+end
+case record-playback
+init ctx
+path -> "@DIR@/.config/libsurvive/tap.hidtap.json"
+s configfile 0 NULL -> "tap.hidtap.json"
+i simulator 0 0 -> 1
+s hidtap-playback 0 NULL -> "a\x5cb\x5ctap.hidtap"
+s record 0 NULL -> "rec-dir/"
+str floor-offset EMPTY 128 -> "-0.793342"
+case xdg
+init ctx
+path -> "@DIR@/xdg/libsurvive/named.json"
+i t_int 0 0 -> 5
+case init-configfile
+init ctx
+path -> "@DIR@/sub/out.json"
+save -> "\x22v\x22:\x220\x22,\x0a\x22poser\x22:\x22MPFIT\x22,\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0a\x22lighthouse0\x22:{\x0a\x22index\x22:\x220\x22,\x0a\x22id\x22:\x22609880014\x22,\x0a\x22mode\x22:\x227\x22,\x0a\x22pose\x22:[\x220.000000000000\x22,\x222.341761589050\x22,\x221.558026432991\x22,\x220.062008518726\x22,\x220.070826023817\x22,\x22-0.490093737841\x22,\x22-0.866571843624\x22],\x0a\x22variance\x22:[\x220.000004108530\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-6.000000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.003387451172\x22],\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse1\x22:{\x0a\x22index\x22:\x221\x22,\x0a\x22id\x22:\x222851632229\x22,\x0a\x22mode\x22:\x229\x22,\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894914150\x22,\x22-0.420205324888\x22,\x22-0.067080773413\x22,\x22-0.060897018760\x22],\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x222132379851\x22,\x0a\x22mode\x22:\x2213\x22,\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534064293\x22,\x22-0.257136106491\x22,\x22-0.509206295013\x22,\x22-0.720916688442\x22],\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse3\x22:{\x0a\x22index\x22:\x223\x22,\x0a\x22id\x22:\x22840201542\x22,\x0a\x22mode\x22:\x223\x22,\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774571896\x22,\x220.396507918835\x22,\x22-0.291395038366\x22,\x22-0.615379631519\x22],\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a"
+cat @DIR@/sub/out.json -> "\x22v\x22:\x220\x22,\x0a\x22poser\x22:\x22MPFIT\x22,\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0a\x22lighthouse0\x22:{\x0a\x22index\x22:\x220\x22,\x0a\x22id\x22:\x22609880014\x22,\x0a\x22mode\x22:\x227\x22,\x0a\x22pose\x22:[\x220.000000000000\x22,\x222.341761589050\x22,\x221.558026432991\x22,\x220.062008518726\x22,\x220.070826023817\x22,\x22-0.490093737841\x22,\x22-0.866571843624\x22],\x0a\x22variance\x22:[\x220.000004108530\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-6.000000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.003387451172\x22],\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse1\x22:{\x0a\x22index\x22:\x221\x22,\x0a\x22id\x22:\x222851632229\x22,\x0a\x22mode\x22:\x229\x22,\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894914150\x22,\x22-0.420205324888\x22,\x22-0.067080773413\x22,\x22-0.060897018760\x22],\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x222132379851\x22,\x0a\x22mode\x22:\x2213\x22,\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534064293\x22,\x22-0.257136106491\x22,\x22-0.509206295013\x22,\x22-0.720916688442\x22],\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse3\x22:{\x0a\x22index\x22:\x223\x22,\x0a\x22id\x22:\x22840201542\x22,\x0a\x22mode\x22:\x223\x22,\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774571896\x22,\x220.396507918835\x22,\x22-0.291395038366\x22,\x22-0.615379631519\x22],\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a"
+case broken
+init ctx
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=0
+entry temporary 1 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+save -> "\x22v\x22:\x220\x22\x0a"
+case missing
+init ctx
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/none.json" bound=0
+entry temporary 1 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+bsd
+end
+save -> "\x22v\x22:\x220\x22\x0a"
+readlh 0 -> 0
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/none.json" bound=0
+entry temporary 1 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+case readonly
+init ctx
+save -> "\x22v\x22:\x220\x22,\x0d\x0a\x22poser\x22:\x22MPFIT\x22,\x0d\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0d\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0d\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0d\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0d\x0a\x22lighthouse0\x22:{\x0d\x0a\x22index\x22:\x220\x22,\x0d\x0a\x22id\x22:\x22609880014\x22,\x0d\x0a\x22mode\x22:\x227\x22,\x0d\x0a\x22pose\x22:[\x220.000000000000\x22,\x222.341761589050\x22,\x221.558026432991\x22,\x220.062008518289\x22,\x220.070826023319\x22,\x22-0.490093734391\x22,\x22-0.866571837525\x22],\x0d\x0a\x22variance\x22:[\x220.000004108530\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x22-6.000000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.003387451172\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0d\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0d\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0d\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0d\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0d\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a\x22lighthouse1\x22:{\x0d\x0a\x22index\x22:\x221\x22,\x0d\x0a\x22id\x22:\x222851632229\x22,\x0d\x0a\x22mode\x22:\x229\x22,\x0d\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894905971\x22,\x22-0.420205321082\x22,\x22-0.067080772805\x22,\x22-0.060897018209\x22],\x0d\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0d\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0d\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0d\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0d\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0d\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a\x22lighthouse2\x22:{\x0d\x0a\x22index\x22:\x222\x22,\x0d\x0a\x22id\x22:\x222132379851\x22,\x0d\x0a\x22mode\x22:\x2213\x22,\x0d\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534072247\x22,\x22-0.257136111688\x22,\x22-0.509206305305\x22,\x22-0.720916703013\x22],\x0d\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0d\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0d\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0d\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0d\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0d\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a\x22lighthouse3\x22:{\x0d\x0a\x22index\x22:\x223\x22,\x0d\x0a\x22id\x22:\x22840201542\x22,\x0d\x0a\x22mode\x22:\x223\x22,\x0d\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774568089\x22,\x220.396507916383\x22,\x22-0.291395036565\x22,\x22-0.615379627715\x22],\x0d\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0d\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0d\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0d\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0d\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0d\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a"
+cat @DIR@/cfg.json -> "\x22v\x22:\x220\x22,\x0d\x0a\x22poser\x22:\x22MPFIT\x22,\x0d\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0d\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0d\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0d\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0d\x0a\x22lighthouse0\x22:{\x0d\x0a\x22index\x22:\x220\x22,\x0d\x0a\x22id\x22:\x22609880014\x22,\x0d\x0a\x22mode\x22:\x227\x22,\x0d\x0a\x22pose\x22:[\x220.000000000000\x22,\x222.341761589050\x22,\x221.558026432991\x22,\x220.062008518289\x22,\x220.070826023319\x22,\x22-0.490093734391\x22,\x22-0.866571837525\x22],\x0d\x0a\x22variance\x22:[\x220.000004108530\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x22-6.000000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.003387451172\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0d\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0d\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0d\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0d\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0d\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a\x22lighthouse1\x22:{\x0d\x0a\x22index\x22:\x221\x22,\x0d\x0a\x22id\x22:\x222851632229\x22,\x0d\x0a\x22mode\x22:\x229\x22,\x0d\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894905971\x22,\x22-0.420205321082\x22,\x22-0.067080772805\x22,\x22-0.060897018209\x22],\x0d\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0d\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0d\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0d\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0d\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0d\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a\x22lighthouse2\x22:{\x0d\x0a\x22index\x22:\x222\x22,\x0d\x0a\x22id\x22:\x222132379851\x22,\x0d\x0a\x22mode\x22:\x2213\x22,\x0d\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534072247\x22,\x22-0.257136111688\x22,\x22-0.509206305305\x22,\x22-0.720916703013\x22],\x0d\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0d\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0d\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0d\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0d\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0d\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a\x22lighthouse3\x22:{\x0d\x0a\x22index\x22:\x223\x22,\x0d\x0a\x22id\x22:\x22840201542\x22,\x0d\x0a\x22mode\x22:\x223\x22,\x0d\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774568089\x22,\x220.396507916383\x22,\x22-0.291395036565\x22,\x22-0.615379627715\x22],\x0d\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0d\x0a\x22unlock_count\x22:\x220\x22,\x0d\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0d\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0d\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0d\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0d\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0d\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0d\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0d\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0d\x0a\x22OOTXSet\x22:\x221\x22,\x0d\x0a\x22PositionSet\x22:\x221\x22\x0d\x0a}\x0d\x0a"
+case lighthouse
+init ctx
+setbsd 0 pose 0.1234567890123,1.5,-2.25,0.5,0.5,0.5,0.6
+setbsd 0 variance0 1e-7
+setbsd 0 accel0 -6.5
+setbsd 0 phase1 0.000123456789
+setbsd 0 ogeemag0 -0.4362792968751
+setbsd 0 id 0xdeadbeef
+setbsd 0 mode 300
+setbsd 0 unlock 7
+setlh 0
+bsd
+bsd 0 PositionSet=1 OOTXSet=1 id=3735928559 mode=44 unlock=7 pose=3fbf9add3746e984,3ff8000000000000,c002000000000000,3fde5f8096cfcdf3,3fde5f8096cfcdf3,3fde5f8096cfcdf3,3fe2394d27497b92, variance=3e7ad7f29abcaf48,3ec1d95580000000,3f18e7e020000000,3f5d4aaea0000000,3f839c4120000000,3f7fd78660000000, accel=c01a000000000000,405fc00000000000,4052000000000000, fcal=0000000000000000,bfa8540000000000,bfaab40000000000,3fa7dc0000000000,3f7b900000000000,3fe5880000000000,bfdbec0000000709;3f202e85be111841,3fa8d40000000000,3fd1880000000000,3fee940000000000,3f78c00000000000,3ff52c0000000000,bfe26c0000000000;
+bsd 1 PositionSet=1 OOTXSet=1 id=2851632229 mode=9 unlock=0 pose=3ff1e31000000000,c000e28820000000,3ff81e74a0000000,bfece483e0000000,bfdae4a4e0000000,bfb12c34a0000000,bfaf2de4e0000000, variance=3ed8d22ee0000000,3ebeef3600000000,3f18583380000000,3f17a947a0000000,3f7459b640000000,3f70544de0000000, accel=c000000000000000,405fc00000000000,4058c00000000000, fcal=0000000000000000,bfa9140000000000,3fd3a00000000000,3ff9b80000000000,bf5f1c0000000000,3ff3240000000000,bfc32c0000000000;bf811c0000000000,3fa6240000000000,3fd2480000000000,3ff8300000000000,bf68780000000000,3fee700000000000,bfbb340000000000;
+bsd 2 PositionSet=1 OOTXSet=1 id=2132379851 mode=13 unlock=0 pose=4009056ae0000000,3ff9836560000000,3ff8b4dae0000000,bfd92fa980000000,bfd074eb00000000,bfe04b6b00000000,bfe711bfe0000000, variance=3ecde205a0000000,3ec7c2bb00000000,3f27343560000000,3f7bc30ae0000000,3f5e5c88c0000000,3f3c7aada0000000, accel=0000000000000000,405fc00000000000,4048000000000000, fcal=0000000000000000,bfa8f40000000000,3fd1f80000000000,40009c0000000000,bf7b500000000000,4005480000000000,3fcbe00000000000;bf72a00000000000,3fa6cc0000000000,3fcfc00000000000,40020c0000000000,bf77280000000000,4007f80000000000,3fc7580000000000;
+bsd 3 PositionSet=1 OOTXSet=1 id=840201542 mode=3 unlock=0 pose=bffad7a1c0000000,bfe39c36a0000000,3ff8eb7860000000,3fe3b46ce0000000,3fd96062c0000000,bfd2a63760000000,bfe3b130a0000000, variance=3eb9087ec0000000,3ed2efabe0000000,3f11182820000000,3f54ff24a0000000,3f34643fc0000000,3f2cd23f00000000, accel=c031000000000000,405fc00000000000,4052400000000000, fcal=0000000000000000,bfa8b40000000000,3fb2b40000000000,4008740000000000,bf77140000000000,3fe3980000000000,bfda740000000000;bf7b4c0000000000,3fa4f80000000000,3f95a00000000000,3ff08c0000000000,3f700c0000000000,3ff4980000000000,bfddc80000000000;
+end
+setbsd 5 pose 1,2,3,0,0,0,0
+setbsd 5 id 12345
+setbsd 5 PositionSet 1
+setlh 5
+ootx 5 1
+setbsd 6 pose bits:7ff8000000000000,bits:fff8000000000000,1e300,1e-300,-0.0,bits:7ff0000000000000,2
+setlh 6
+ootx 6 1
+dump
+entry global 0 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry global 1 "poser" type=3 elements=0 data="MPFIT" bound=0
+entry global 2 "disambiguator" type=3 elements=0 data="StateBased" bound=0
+entry global 3 "ootx-ignore-sync-error" type=2 i=0 elements=0 data=NULL bound=0
+entry global 4 "configed-lighthouse-gen" type=2 i=2 elements=0 data=NULL bound=0
+entry global 5 "floor-offset" type=1 f=bfe9630ee0000000 elements=0 data=NULL bound=0
+entry temporary 0 "configfile" type=3 elements=0 data="@DIR@/cfg.json" bound=0
+entry temporary 1 "v" type=2 i=0 elements=0 data=NULL bound=0
+entry temporary 2 "lighthouse-max-update" type=1 f=3f847ae147ae147b elements=0 data=NULL bound=1
+entry temporary 3 "lighthouse-max-nudge-distance" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry temporary 4 "lighthouse-update-velocity" type=1 f=3fb999999999999a elements=0 data=NULL bound=1
+entry lh0 0 "index" type=2 i=0 elements=0 data=NULL bound=0
+entry lh0 1 "id" type=2 i=3735928559 elements=0 data=NULL bound=0
+entry lh0 2 "mode" type=2 i=44 elements=0 data=NULL bound=0
+entry lh0 3 "pose" type=4 elements=7 data=84e94637dd9abf3f000000000000f83f00000000000002c0000000000000e03f000000000000e03f000000000000e03f333333333333e33f bound=0
+entry lh0 4 "variance" type=4 elements=6 data=48afbc9af2d77a3e0000008055d9c13e00000020e0e7183f000000a0ae4a5d3f00000020419c833f0000006086d77f3f bound=0
+entry lh0 5 "unlock_count" type=2 i=7 elements=0 data=NULL bound=0
+entry lh0 6 "accel" type=4 elements=3 data=0000000000001ac00000000000c05f400000000000005240 bound=0
+entry lh0 7 "fcalphase" type=4 elements=2 data=0000000000000000411811be852e203f bound=0
+entry lh0 8 "fcaltilt" type=4 elements=2 data=000000000054a8bf0000000000d4a83f bound=0
+entry lh0 9 "fcalcurve" type=4 elements=2 data=0000000000b4aabf000000000088d13f bound=0
+entry lh0 10 "fcalgibpha" type=4 elements=2 data=0000000000dca73f000000000094ee3f bound=0
+entry lh0 11 "fcalgibmag" type=4 elements=2 data=0000000000907b3f0000000000c0783f bound=0
+entry lh0 12 "fcalogeephase" type=4 elements=2 data=000000000088e53f00000000002cf53f bound=0
+entry lh0 13 "fcalogeemag" type=4 elements=2 data=0907000000ecdbbf00000000006ce2bf bound=0
+entry lh0 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh0 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh1 0 "index" type=2 i=1 elements=0 data=NULL bound=0
+entry lh1 1 "id" type=2 i=2851632229 elements=0 data=NULL bound=0
+entry lh1 2 "mode" type=2 i=9 elements=0 data=NULL bound=0
+entry lh1 3 "pose" type=4 elements=7 data=0000000010e3f13f0000002088e200c0000000a0741ef83f000000e083e4ecbf000000e0a4e4dabf000000a0342cb1bf000000e0e42dafbf bound=0
+entry lh1 4 "variance" type=4 elements=6 data=000000e02ed2d83e0000000036efbe3e000000803358183f000000a047a9173f00000040b659743f000000e04d54703f bound=0
+entry lh1 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh1 6 "accel" type=4 elements=3 data=00000000000000c00000000000c05f400000000000c05840 bound=0
+entry lh1 7 "fcalphase" type=4 elements=2 data=000000000000000000000000001c81bf bound=0
+entry lh1 8 "fcaltilt" type=4 elements=2 data=000000000014a9bf000000000024a63f bound=0
+entry lh1 9 "fcalcurve" type=4 elements=2 data=0000000000a0d33f000000000048d23f bound=0
+entry lh1 10 "fcalgibpha" type=4 elements=2 data=0000000000b8f93f000000000030f83f bound=0
+entry lh1 11 "fcalgibmag" type=4 elements=2 data=00000000001c5fbf00000000007868bf bound=0
+entry lh1 12 "fcalogeephase" type=4 elements=2 data=000000000024f33f000000000070ee3f bound=0
+entry lh1 13 "fcalogeemag" type=4 elements=2 data=00000000002cc3bf000000000034bbbf bound=0
+entry lh1 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh1 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh2 0 "index" type=2 i=2 elements=0 data=NULL bound=0
+entry lh2 1 "id" type=2 i=2132379851 elements=0 data=NULL bound=0
+entry lh2 2 "mode" type=2 i=13 elements=0 data=NULL bound=0
+entry lh2 3 "pose" type=4 elements=7 data=000000e06a050940000000606583f93f000000e0dab4f83f00000080a92fd9bf00000000eb74d0bf000000006b4be0bf000000e0bf11e7bf bound=0
+entry lh2 4 "variance" type=4 elements=6 data=000000a005e2cd3e00000000bbc2c73e000000603534273f000000e00ac37b3f000000c0885c5e3f000000a0ad7a3c3f bound=0
+entry lh2 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh2 6 "accel" type=4 elements=3 data=00000000000000000000000000c05f400000000000004840 bound=0
+entry lh2 7 "fcalphase" type=4 elements=2 data=00000000000000000000000000a072bf bound=0
+entry lh2 8 "fcaltilt" type=4 elements=2 data=0000000000f4a8bf0000000000cca63f bound=0
+entry lh2 9 "fcalcurve" type=4 elements=2 data=0000000000f8d13f0000000000c0cf3f bound=0
+entry lh2 10 "fcalgibpha" type=4 elements=2 data=00000000009c004000000000000c0240 bound=0
+entry lh2 11 "fcalgibmag" type=4 elements=2 data=0000000000507bbf00000000002877bf bound=0
+entry lh2 12 "fcalogeephase" type=4 elements=2 data=00000000004805400000000000f80740 bound=0
+entry lh2 13 "fcalogeemag" type=4 elements=2 data=0000000000e0cb3f000000000058c73f bound=0
+entry lh2 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh2 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh3 0 "index" type=2 i=3 elements=0 data=NULL bound=0
+entry lh3 1 "id" type=2 i=840201542 elements=0 data=NULL bound=0
+entry lh3 2 "mode" type=2 i=3 elements=0 data=NULL bound=0
+entry lh3 3 "pose" type=4 elements=7 data=000000c0a1d7fabf000000a0369ce3bf0000006078ebf83f000000e06cb4e33f000000c06260d93f0000006037a6d2bf000000a030b1e3bf bound=0
+entry lh3 4 "variance" type=4 elements=6 data=000000c07e08b93e000000e0abefd23e000000202818113f000000a024ff543f000000c03f64343f000000003fd22c3f bound=0
+entry lh3 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh3 6 "accel" type=4 elements=3 data=00000000000031c00000000000c05f400000000000405240 bound=0
+entry lh3 7 "fcalphase" type=4 elements=2 data=000000000000000000000000004c7bbf bound=0
+entry lh3 8 "fcaltilt" type=4 elements=2 data=0000000000b4a8bf0000000000f8a43f bound=0
+entry lh3 9 "fcalcurve" type=4 elements=2 data=0000000000b4b23f0000000000a0953f bound=0
+entry lh3 10 "fcalgibpha" type=4 elements=2 data=000000000074084000000000008cf03f bound=0
+entry lh3 11 "fcalgibmag" type=4 elements=2 data=00000000001477bf00000000000c703f bound=0
+entry lh3 12 "fcalogeephase" type=4 elements=2 data=000000000098e33f000000000098f43f bound=0
+entry lh3 13 "fcalogeemag" type=4 elements=2 data=000000000074dabf0000000000c8ddbf bound=0
+entry lh3 14 "OOTXSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh3 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh4 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh5 0 "index" type=2 i=5 elements=0 data=NULL bound=0
+entry lh5 1 "id" type=2 i=12345 elements=0 data=NULL bound=0
+entry lh5 2 "mode" type=2 i=255 elements=0 data=NULL bound=0
+entry lh5 3 "pose" type=4 elements=7 data=000000000000f03f000000000000004000000000000008400000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh5 4 "variance" type=4 elements=6 data=000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh5 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh5 6 "accel" type=4 elements=3 data=000000000000000000000000000000000000000000000000 bound=0
+entry lh5 7 "fcalphase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 8 "fcaltilt" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 9 "fcalcurve" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 10 "fcalgibpha" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 11 "fcalgibmag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 12 "fcalogeephase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 13 "fcalogeemag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh5 14 "OOTXSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh5 15 "PositionSet" type=2 i=1 elements=0 data=NULL bound=0
+entry lh6 0 "index" type=2 i=6 elements=0 data=NULL bound=0
+entry lh6 1 "id" type=2 i=0 elements=0 data=NULL bound=0
+entry lh6 2 "mode" type=2 i=255 elements=0 data=NULL bound=0
+entry lh6 3 "pose" type=4 elements=7 data=000000000000f87f000000000000f8ff9c7500883ce4377e59f3f8c21f6ea5010000000000000080000000000000f07f0000000000000040 bound=0
+entry lh6 4 "variance" type=4 elements=6 data=000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000000 bound=0
+entry lh6 5 "unlock_count" type=2 i=0 elements=0 data=NULL bound=0
+entry lh6 6 "accel" type=4 elements=3 data=000000000000000000000000000000000000000000000000 bound=0
+entry lh6 7 "fcalphase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 8 "fcaltilt" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 9 "fcalcurve" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 10 "fcalgibpha" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 11 "fcalgibmag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 12 "fcalogeephase" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 13 "fcalogeemag" type=4 elements=2 data=00000000000000000000000000000000 bound=0
+entry lh6 14 "OOTXSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh6 15 "PositionSet" type=2 i=0 elements=0 data=NULL bound=0
+entry lh7 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh8 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh9 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh10 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh11 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh12 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh13 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh14 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+entry lh15 0 "index" type=2 i=4294967295 elements=0 data=NULL bound=0
+end
+save -> "\x22v\x22:\x220\x22,\x0a\x22poser\x22:\x22MPFIT\x22,\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0a\x22lighthouse0\x22:{\x0a\x22index\x22:\x220\x22,\x0a\x22id\x22:\x223735928559\x22,\x0a\x22mode\x22:\x2244\x22,\x0a\x22pose\x22:[\x220.123456789012\x22,\x221.500000000000\x22,\x22-2.250000000000\x22,\x220.500000000000\x22,\x220.500000000000\x22,\x220.500000000000\x22,\x220.600000000000\x22],\x0a\x22variance\x22:[\x220.000000100000\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0a\x22unlock_count\x22:\x227\x22,\x0a\x22accel\x22:[\x22-6.500000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x220.000123456789\x22],\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse1\x22:{\x0a\x22index\x22:\x221\x22,\x0a\x22id\x22:\x222851632229\x22,\x0a\x22mode\x22:\x229\x22,\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894914150\x22,\x22-0.420205324888\x22,\x22-0.067080773413\x22,\x22-0.060897018760\x22],\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x222132379851\x22,\x0a\x22mode\x22:\x2213\x22,\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534064293\x22,\x22-0.257136106491\x22,\x22-0.509206295013\x22,\x22-0.720916688442\x22],\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse3\x22:{\x0a\x22index\x22:\x223\x22,\x0a\x22id\x22:\x22840201542\x22,\x0a\x22mode\x22:\x223\x22,\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774571896\x22,\x220.396507918835\x22,\x22-0.291395038366\x22,\x22-0.615379631519\x22],\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse5\x22:{\x0a\x22index\x22:\x225\x22,\x0a\x22id\x22:\x2212345\x22,\x0a\x22mode\x22:\x22255\x22,\x0a\x22pose\x22:[\x221.000000000000\x22,\x222.000000000000\x22,\x223.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22variance\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcaltilt\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalcurve\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibpha\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibmag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeephase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeemag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22OOTXSet\x22:\x220\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse6\x22:{\x0a\x22index\x22:\x226\x22,\x0a\x22id\x22:\x220\x22,\x0a\x22mode\x22:\x22255\x22,\x0a\x22pose\x22:[\x22nan\x22,\x22-nan\x22,\x221000000000000000052504760255204420248704468581108159154915854115511802457988908195786371375080447864043704443832883878176942523235360430575644792184786706982848387200926575803737830233794788090059368953234970799945081119038967640880074652742780142494579258788820056842838115669472196386865459400540160.000000000000\x22,\x220.000000000000\x22,\x22-0.000000000000\x22,\x22inf\x22,\x222.000000000000\x22],\x0a\x22variance\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcaltilt\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalcurve\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibpha\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalgibmag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeephase\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22fcalogeemag\x22:[\x220.000000000000\x22,\x220.000000000000\x22],\x0a\x22OOTXSet\x22:\x220\x22,\x0a\x22PositionSet\x22:\x220\x22\x0a}\x0a"
+readlh 5 -> 1
+readlh 6 -> 1
+readlh 7 -> 0
+bsd
+bsd 0 PositionSet=1 OOTXSet=1 id=3735928559 mode=44 unlock=7 pose=3fbf9add3746e984,3ff8000000000000,c002000000000000,3fde5f8096cfcdf3,3fde5f8096cfcdf3,3fde5f8096cfcdf3,3fe2394d27497b92, variance=3e7ad7f29abcaf48,3ec1d95580000000,3f18e7e020000000,3f5d4aaea0000000,3f839c4120000000,3f7fd78660000000, accel=c01a000000000000,405fc00000000000,4052000000000000, fcal=0000000000000000,bfa8540000000000,bfaab40000000000,3fa7dc0000000000,3f7b900000000000,3fe5880000000000,bfdbec0000000709;3f202e85be111841,3fa8d40000000000,3fd1880000000000,3fee940000000000,3f78c00000000000,3ff52c0000000000,bfe26c0000000000;
+bsd 1 PositionSet=1 OOTXSet=1 id=2851632229 mode=9 unlock=0 pose=3ff1e31000000000,c000e28820000000,3ff81e74a0000000,bfece483e0000000,bfdae4a4e0000000,bfb12c34a0000000,bfaf2de4e0000000, variance=3ed8d22ee0000000,3ebeef3600000000,3f18583380000000,3f17a947a0000000,3f7459b640000000,3f70544de0000000, accel=c000000000000000,405fc00000000000,4058c00000000000, fcal=0000000000000000,bfa9140000000000,3fd3a00000000000,3ff9b80000000000,bf5f1c0000000000,3ff3240000000000,bfc32c0000000000;bf811c0000000000,3fa6240000000000,3fd2480000000000,3ff8300000000000,bf68780000000000,3fee700000000000,bfbb340000000000;
+bsd 2 PositionSet=1 OOTXSet=1 id=2132379851 mode=13 unlock=0 pose=4009056ae0000000,3ff9836560000000,3ff8b4dae0000000,bfd92fa980000000,bfd074eb00000000,bfe04b6b00000000,bfe711bfe0000000, variance=3ecde205a0000000,3ec7c2bb00000000,3f27343560000000,3f7bc30ae0000000,3f5e5c88c0000000,3f3c7aada0000000, accel=0000000000000000,405fc00000000000,4048000000000000, fcal=0000000000000000,bfa8f40000000000,3fd1f80000000000,40009c0000000000,bf7b500000000000,4005480000000000,3fcbe00000000000;bf72a00000000000,3fa6cc0000000000,3fcfc00000000000,40020c0000000000,bf77280000000000,4007f80000000000,3fc7580000000000;
+bsd 3 PositionSet=1 OOTXSet=1 id=840201542 mode=3 unlock=0 pose=bffad7a1c0000000,bfe39c36a0000000,3ff8eb7860000000,3fe3b46ce0000000,3fd96062c0000000,bfd2a63760000000,bfe3b130a0000000, variance=3eb9087ec0000000,3ed2efabe0000000,3f11182820000000,3f54ff24a0000000,3f34643fc0000000,3f2cd23f00000000, accel=c031000000000000,405fc00000000000,4052400000000000, fcal=0000000000000000,bfa8b40000000000,3fb2b40000000000,4008740000000000,bf77140000000000,3fe3980000000000,bfda740000000000;bf7b4c0000000000,3fa4f80000000000,3f95a00000000000,3ff08c0000000000,3f700c0000000000,3ff4980000000000,bfddc80000000000;
+bsd 5 PositionSet=1 OOTXSet=0 id=12345 mode=255 unlock=0 pose=3ff0000000000000,4000000000000000,4008000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, variance=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, accel=0000000000000000,0000000000000000,0000000000000000, fcal=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;
+bsd 6 PositionSet=0 OOTXSet=0 id=0 mode=255 unlock=0 pose=7ff8000000000000,fff8000000000000,7e37e43c8800759c,01a56e1fc2f8f359,8000000000000000,7ff0000000000000,4000000000000000, variance=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000, accel=0000000000000000,0000000000000000,0000000000000000, fcal=0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000,0000000000000000;
+end
+case startup-hooks
+init ctx
+setlh 0
+setlh 0
+setlh 1
+setlh 1
+setlh 2
+setlh 2
+setlh 3
+setlh 3
+save -> "\x22v\x22:\x220\x22,\x0a\x22poser\x22:\x22MPFIT\x22,\x0a\x22disambiguator\x22:\x22StateBased\x22,\x0a\x22ootx-ignore-sync-error\x22:\x220\x22,\x0a\x22configed-lighthouse-gen\x22:\x222\x22,\x0a\x22floor-offset\x22:\x22-0.793342053890\x22\x0a\x22lighthouse0\x22:{\x0a\x22index\x22:\x220\x22,\x0a\x22id\x22:\x22609880014\x22,\x0a\x22mode\x22:\x227\x22,\x0a\x22pose\x22:[\x220.000000000000\x22,\x222.341761589050\x22,\x221.558026432991\x22,\x220.062008518289\x22,\x220.070826023319\x22,\x22-0.490093734391\x22,\x22-0.866571837525\x22],\x0a\x22variance\x22:[\x220.000004108530\x22,\x220.000002127762\x22,\x220.000095007948\x22,\x220.001787825138\x22,\x220.009575375356\x22,\x220.007773899939\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-6.000000000000\x22,\x22127.000000000000\x22,\x2272.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.003387451172\x22],\x0a\x22fcaltilt\x22:[\x22-0.047515869141\x22,\x220.048492431641\x22],\x0a\x22fcalcurve\x22:[\x22-0.052154541016\x22,\x220.273925781250\x22],\x0a\x22fcalgibpha\x22:[\x220.046600341797\x22,\x220.955566406250\x22],\x0a\x22fcalgibmag\x22:[\x220.006729125977\x22,\x220.006042480469\x22],\x0a\x22fcalogeephase\x22:[\x220.672851562500\x22,\x221.323242187500\x22],\x0a\x22fcalogeemag\x22:[\x22-0.436279296875\x22,\x22-0.575683593750\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse1\x22:{\x0a\x22index\x22:\x221\x22,\x0a\x22id\x22:\x222851632229\x22,\x0a\x22mode\x22:\x229\x22,\x0a\x22pose\x22:[\x221.117935180664\x22,\x22-2.110611200333\x22,\x221.507435441017\x22,\x22-0.902894905971\x22,\x22-0.420205321082\x22,\x22-0.067080772805\x22,\x22-0.060897018209\x22],\x0a\x22variance\x22:[\x220.000005917794\x22,\x220.000001843835\x22,\x220.000092867034\x22,\x220.000090260502\x22,\x220.004968368448\x22,\x220.003986648750\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-2.000000000000\x22,\x22127.000000000000\x22,\x2299.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.008354187012\x22],\x0a\x22fcaltilt\x22:[\x22-0.048980712891\x22,\x220.043243408203\x22],\x0a\x22fcalcurve\x22:[\x220.306640625000\x22,\x220.285644531250\x22],\x0a\x22fcalgibpha\x22:[\x221.607421875000\x22,\x221.511718750000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.001898765564\x22,\x22-0.002986907959\x22],\x0a\x22fcalogeephase\x22:[\x221.196289062500\x22,\x220.951171875000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.149780273438\x22,\x22-0.106262207031\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse2\x22:{\x0a\x22index\x22:\x222\x22,\x0a\x22id\x22:\x222132379851\x22,\x0a\x22mode\x22:\x2213\x22,\x0a\x22pose\x22:[\x223.127645254135\x22,\x221.594579100609\x22,\x221.544154047966\x22,\x22-0.393534072247\x22,\x22-0.257136111688\x22,\x22-0.509206305305\x22,\x22-0.720916703013\x22],\x0a\x22variance\x22:[\x220.000003562319\x22,\x220.000002832492\x22,\x220.000177032009\x22,\x220.006777803879\x22,\x220.001853116555\x22,\x220.000434558286\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x220.000000000000\x22,\x22127.000000000000\x22,\x2248.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.004547119141\x22],\x0a\x22fcaltilt\x22:[\x22-0.048736572266\x22,\x220.044525146484\x22],\x0a\x22fcalcurve\x22:[\x220.280761718750\x22,\x220.248046875000\x22],\x0a\x22fcalgibpha\x22:[\x222.076171875000\x22,\x222.255859375000\x22],\x0a\x22fcalgibmag\x22:[\x22-0.006668090820\x22,\x22-0.005653381348\x22],\x0a\x22fcalogeephase\x22:[\x222.660156250000\x22,\x222.996093750000\x22],\x0a\x22fcalogeemag\x22:[\x220.217773437500\x22,\x220.182373046875\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a\x22lighthouse3\x22:{\x0a\x22index\x22:\x223\x22,\x0a\x22id\x22:\x22840201542\x22,\x0a\x22mode\x22:\x223\x22,\x0a\x22pose\x22:[\x22-1.677644491196\x22,\x22-0.612819015980\x22,\x221.557487845421\x22,\x220.615774568089\x22,\x220.396507916383\x22,\x22-0.291395036565\x22,\x22-0.615379627715\x22],\x0a\x22variance\x22:[\x220.000001492094\x22,\x220.000004514746\x22,\x220.000065209817\x22,\x220.001281533972\x22,\x220.000311151089\x22,\x220.000219888869\x22],\x0a\x22unlock_count\x22:\x220\x22,\x0a\x22accel\x22:[\x22-17.000000000000\x22,\x22127.000000000000\x22,\x2273.000000000000\x22],\x0a\x22fcalphase\x22:[\x220.000000000000\x22,\x22-0.006664276123\x22],\x0a\x22fcaltilt\x22:[\x22-0.048248291016\x22,\x220.040954589844\x22],\x0a\x22fcalcurve\x22:[\x220.073059082031\x22,\x220.021118164062\x22],\x0a\x22fcalgibpha\x22:[\x223.056640625000\x22,\x221.034179687500\x22],\x0a\x22fcalgibmag\x22:[\x22-0.005634307861\x22,\x220.003917694092\x22],\x0a\x22fcalogeephase\x22:[\x220.612304687500\x22,\x221.287109375000\x22],\x0a\x22fcalogeemag\x22:[\x22-0.413330078125\x22,\x22-0.465332031250\x22],\x0a\x22OOTXSet\x22:\x221\x22,\x0a\x22PositionSet\x22:\x221\x22\x0a}\x0a"

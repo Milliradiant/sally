@@ -1,0 +1,1175 @@
+case real
+arg --configfile
+arg @DIR@/cfg.json
+file cfg.json real.json
+script
+dump
+bsd
+options
+f v 0 0
+i v 0 0
+b v 0 0
+type v
+isset v
+str v EMPTY 128
+str v EMPTY 4
+s v 0 NULL
+f lighthouse-max-update 0 0
+i lighthouse-max-update 0 0
+b lighthouse-max-update 0 0
+type lighthouse-max-update
+isset lighthouse-max-update
+str lighthouse-max-update EMPTY 128
+str lighthouse-max-update EMPTY 4
+s lighthouse-max-update 0 NULL
+f run-time 0 0
+i run-time 0 0
+b run-time 0 0
+type run-time
+isset run-time
+str run-time EMPTY 128
+str run-time EMPTY 4
+f output-callback-stats 0 0
+i output-callback-stats 0 0
+b output-callback-stats 0 0
+type output-callback-stats
+isset output-callback-stats
+str output-callback-stats EMPTY 128
+str output-callback-stats EMPTY 4
+f lighthouse-gen 0 0
+i lighthouse-gen 0 0
+b lighthouse-gen 0 0
+type lighthouse-gen
+isset lighthouse-gen
+str lighthouse-gen EMPTY 128
+str lighthouse-gen EMPTY 4
+s lighthouse-gen 0 NULL
+f lighthousecount 0 0
+i lighthousecount 0 0
+b lighthousecount 0 0
+type lighthousecount
+isset lighthousecount
+str lighthousecount EMPTY 128
+str lighthousecount EMPTY 4
+s lighthousecount 0 NULL
+f force-calibrate 0 0
+i force-calibrate 0 0
+b force-calibrate 0 0
+type force-calibrate
+isset force-calibrate
+str force-calibrate EMPTY 128
+str force-calibrate EMPTY 4
+s force-calibrate 0 NULL
+f config-readonly 0 0
+i config-readonly 0 0
+b config-readonly 0 0
+type config-readonly
+isset config-readonly
+str config-readonly EMPTY 128
+str config-readonly EMPTY 4
+s config-readonly 0 NULL
+b blacklist-devs 0 0
+type blacklist-devs
+isset blacklist-devs
+str blacklist-devs EMPTY 128
+str blacklist-devs EMPTY 4
+s blacklist-devs 0 NULL
+b pose-udp-host 0 0
+type pose-udp-host
+isset pose-udp-host
+str pose-udp-host EMPTY 128
+str pose-udp-host EMPTY 4
+s pose-udp-host 0 NULL
+b record 0 0
+type record
+isset record
+str record EMPTY 128
+str record EMPTY 4
+s record 0 NULL
+f playback 0 0
+i playback 0 0
+b playback 0 0
+type playback
+isset playback
+str playback EMPTY 128
+str playback EMPTY 4
+s playback 0 NULL
+f configfile 0 0
+i configfile 0 0
+b configfile 0 0
+type configfile
+isset configfile
+str configfile EMPTY 128
+s configfile 0 NULL
+f init-configfile 0 0
+i init-configfile 0 0
+b init-configfile 0 0
+type init-configfile
+isset init-configfile
+str init-configfile EMPTY 128
+str init-configfile EMPTY 4
+s init-configfile 0 NULL
+f floor-offset 0 0
+i floor-offset 0 0
+b floor-offset 0 0
+s floor-offset 0 NULL
+type floor-offset
+isset floor-offset
+str floor-offset EMPTY 128
+str floor-offset x:61626364 2
+f poser 0 0
+i poser 0 0
+b poser 0 0
+s poser 0 NULL
+type poser
+isset poser
+str poser EMPTY 128
+str poser x:61626364 2
+f disambiguator 0 0
+i disambiguator 0 0
+b disambiguator 0 0
+s disambiguator 0 NULL
+type disambiguator
+isset disambiguator
+str disambiguator EMPTY 128
+str disambiguator x:61626364 2
+f configed-lighthouse-gen 0 0
+i configed-lighthouse-gen 0 0
+b configed-lighthouse-gen 0 0
+s configed-lighthouse-gen 0 NULL
+type configed-lighthouse-gen
+isset configed-lighthouse-gen
+str configed-lighthouse-gen EMPTY 128
+str configed-lighthouse-gen x:61626364 2
+f ootx-ignore-sync-error 0 0
+i ootx-ignore-sync-error 0 0
+b ootx-ignore-sync-error 0 0
+s ootx-ignore-sync-error 0 NULL
+type ootx-ignore-sync-error
+isset ootx-ignore-sync-error
+str ootx-ignore-sync-error EMPTY 128
+str ootx-ignore-sync-error x:61626364 2
+path
+save
+help 1
+help 0
+helpparam pose-udp-host
+helpparam run-time
+helpparam nope
+helpparam lighthouse-max-update
+end
+case typed
+arg --configfile
+arg @DIR@/cfg.json
+file cfg.json typed.json
+script
+dump
+bsd
+f t_int 0 0
+i t_int 0 0
+b t_int 0 0
+s t_int 0 NULL
+type t_int
+isset t_int
+str t_int EMPTY 128
+str t_int EMPTY 3
+str t_int EMPTY 1
+str t_int x:61626364 2
+f t_neg 0 0
+i t_neg 0 0
+b t_neg 0 0
+s t_neg 0 NULL
+type t_neg
+isset t_neg
+str t_neg EMPTY 128
+str t_neg EMPTY 3
+str t_neg EMPTY 1
+str t_neg x:61626364 2
+f t_big 0 0
+i t_big 0 0
+b t_big 0 0
+s t_big 0 NULL
+type t_big
+isset t_big
+str t_big EMPTY 128
+str t_big EMPTY 3
+str t_big EMPTY 1
+str t_big x:61626364 2
+f t_huge 0 0
+i t_huge 0 0
+b t_huge 0 0
+s t_huge 0 NULL
+type t_huge
+isset t_huge
+str t_huge EMPTY 128
+str t_huge EMPTY 3
+str t_huge EMPTY 1
+str t_huge x:61626364 2
+f t_hex 0 0
+i t_hex 0 0
+b t_hex 0 0
+s t_hex 0 NULL
+type t_hex
+isset t_hex
+str t_hex EMPTY 128
+str t_hex EMPTY 3
+str t_hex EMPTY 1
+str t_hex x:61626364 2
+f t_oct 0 0
+i t_oct 0 0
+b t_oct 0 0
+s t_oct 0 NULL
+type t_oct
+isset t_oct
+str t_oct EMPTY 128
+str t_oct EMPTY 3
+str t_oct EMPTY 1
+str t_oct x:61626364 2
+f t_float 0 0
+i t_float 0 0
+b t_float 0 0
+s t_float 0 NULL
+type t_float
+isset t_float
+str t_float EMPTY 128
+str t_float EMPTY 3
+str t_float EMPTY 1
+str t_float x:61626364 2
+f t_exp 0 0
+i t_exp 0 0
+b t_exp 0 0
+s t_exp 0 NULL
+type t_exp
+isset t_exp
+str t_exp EMPTY 128
+str t_exp EMPTY 3
+str t_exp EMPTY 1
+str t_exp x:61626364 2
+f t_negzero 0 0
+i t_negzero 0 0
+b t_negzero 0 0
+s t_negzero 0 NULL
+type t_negzero
+isset t_negzero
+str t_negzero EMPTY 128
+str t_negzero EMPTY 3
+str t_negzero EMPTY 1
+str t_negzero x:61626364 2
+f t_nan 0 0
+i t_nan 0 0
+b t_nan 0 0
+s t_nan 0 NULL
+type t_nan
+isset t_nan
+str t_nan EMPTY 128
+str t_nan EMPTY 3
+str t_nan EMPTY 1
+str t_nan x:61626364 2
+f t_mnan 0 0
+i t_mnan 0 0
+b t_mnan 0 0
+s t_mnan 0 NULL
+type t_mnan
+isset t_mnan
+str t_mnan EMPTY 128
+str t_mnan EMPTY 3
+str t_mnan EMPTY 1
+str t_mnan x:61626364 2
+f t_inf 0 0
+i t_inf 0 0
+b t_inf 0 0
+s t_inf 0 NULL
+type t_inf
+isset t_inf
+str t_inf EMPTY 128
+str t_inf EMPTY 3
+str t_inf EMPTY 1
+str t_inf x:61626364 2
+f t_lead 0 0
+i t_lead 0 0
+b t_lead 0 0
+s t_lead 0 NULL
+type t_lead
+isset t_lead
+str t_lead EMPTY 128
+str t_lead EMPTY 3
+str t_lead EMPTY 1
+str t_lead x:61626364 2
+f t_trail 0 0
+i t_trail 0 0
+b t_trail 0 0
+s t_trail 0 NULL
+type t_trail
+isset t_trail
+str t_trail EMPTY 128
+str t_trail EMPTY 3
+str t_trail EMPTY 1
+str t_trail x:61626364 2
+f t_empty 0 0
+i t_empty 0 0
+b t_empty 0 0
+s t_empty 0 NULL
+type t_empty
+isset t_empty
+str t_empty EMPTY 128
+str t_empty EMPTY 3
+str t_empty EMPTY 1
+str t_empty x:61626364 2
+f t_true 0 0
+i t_true 0 0
+b t_true 0 0
+s t_true 0 NULL
+type t_true
+isset t_true
+str t_true EMPTY 128
+str t_true EMPTY 3
+str t_true EMPTY 1
+str t_true x:61626364 2
+f t_text 0 0
+i t_text 0 0
+b t_text 0 0
+s t_text 0 NULL
+type t_text
+isset t_text
+str t_text EMPTY 128
+str t_text EMPTY 3
+str t_text EMPTY 1
+str t_text x:61626364 2
+f t_half 0 0
+i t_half 0 0
+b t_half 0 0
+s t_half 0 NULL
+type t_half
+isset t_half
+str t_half EMPTY 128
+str t_half EMPTY 3
+str t_half EMPTY 1
+str t_half x:61626364 2
+f t_mhalf 0 0
+i t_mhalf 0 0
+b t_mhalf 0 0
+s t_mhalf 0 NULL
+type t_mhalf
+isset t_mhalf
+str t_mhalf EMPTY 128
+str t_mhalf EMPTY 3
+str t_mhalf EMPTY 1
+str t_mhalf x:61626364 2
+f t_small 0 0
+i t_small 0 0
+b t_small 0 0
+s t_small 0 NULL
+type t_small
+isset t_small
+str t_small EMPTY 128
+str t_small EMPTY 3
+str t_small EMPTY 1
+str t_small x:61626364 2
+f t_tiny 0 0
+i t_tiny 0 0
+b t_tiny 0 0
+s t_tiny 0 NULL
+type t_tiny
+isset t_tiny
+str t_tiny EMPTY 128
+str t_tiny EMPTY 3
+str t_tiny EMPTY 1
+str t_tiny x:61626364 2
+f t_prec 0 0
+i t_prec 0 0
+b t_prec 0 0
+s t_prec 0 NULL
+type t_prec
+isset t_prec
+str t_prec EMPTY 128
+str t_prec EMPTY 3
+str t_prec EMPTY 1
+str t_prec x:61626364 2
+f t_plus 0 0
+i t_plus 0 0
+b t_plus 0 0
+s t_plus 0 NULL
+type t_plus
+isset t_plus
+str t_plus EMPTY 128
+str t_plus EMPTY 3
+str t_plus EMPTY 1
+str t_plus x:61626364 2
+f t_space 0 0
+i t_space 0 0
+b t_space 0 0
+s t_space 0 NULL
+type t_space
+isset t_space
+str t_space EMPTY 128
+str t_space EMPTY 3
+str t_space EMPTY 1
+str t_space x:61626364 2
+f t_quote 0 0
+i t_quote 0 0
+b t_quote 0 0
+s t_quote 0 NULL
+type t_quote
+isset t_quote
+str t_quote EMPTY 128
+str t_quote EMPTY 3
+str t_quote EMPTY 1
+str t_quote x:61626364 2
+f t_utf8 0 0
+i t_utf8 0 0
+b t_utf8 0 0
+s t_utf8 0 NULL
+type t_utf8
+isset t_utf8
+str t_utf8 EMPTY 128
+str t_utf8 EMPTY 3
+str t_utf8 EMPTY 1
+str t_utf8 x:61626364 2
+f t_emptyarr 0 0
+i t_emptyarr 0 0
+b t_emptyarr 0 0
+s t_emptyarr 0 NULL
+type t_emptyarr
+isset t_emptyarr
+str t_emptyarr EMPTY 128
+str t_emptyarr EMPTY 3
+str t_emptyarr EMPTY 1
+str t_emptyarr x:61626364 2
+f t_intarr 0 0
+i t_intarr 0 0
+b t_intarr 0 0
+s t_intarr 0 NULL
+type t_intarr
+isset t_intarr
+str t_intarr EMPTY 128
+str t_intarr EMPTY 3
+str t_intarr EMPTY 1
+str t_intarr x:61626364 2
+f t_floatarr 0 0
+i t_floatarr 0 0
+b t_floatarr 0 0
+s t_floatarr 0 NULL
+type t_floatarr
+isset t_floatarr
+str t_floatarr EMPTY 128
+str t_floatarr EMPTY 3
+str t_floatarr EMPTY 1
+str t_floatarr x:61626364 2
+f t_one 0 0
+i t_one 0 0
+b t_one 0 0
+s t_one 0 NULL
+type t_one
+isset t_one
+str t_one EMPTY 128
+str t_one EMPTY 3
+str t_one EMPTY 1
+str t_one x:61626364 2
+f t_oneint 0 0
+i t_oneint 0 0
+b t_oneint 0 0
+s t_oneint 0 NULL
+type t_oneint
+isset t_oneint
+str t_oneint EMPTY 128
+str t_oneint EMPTY 3
+str t_oneint EMPTY 1
+str t_oneint x:61626364 2
+f t_mixed 0 0
+i t_mixed 0 0
+b t_mixed 0 0
+s t_mixed 0 NULL
+type t_mixed
+isset t_mixed
+str t_mixed EMPTY 128
+str t_mixed EMPTY 3
+str t_mixed EMPTY 1
+str t_mixed x:61626364 2
+f t_prim 0 0
+i t_prim 0 0
+b t_prim 0 0
+s t_prim 0 NULL
+type t_prim
+isset t_prim
+str t_prim EMPTY 128
+str t_prim EMPTY 3
+str t_prim EMPTY 1
+str t_prim x:61626364 2
+f t_primtrue 0 0
+i t_primtrue 0 0
+b t_primtrue 0 0
+s t_primtrue 0 NULL
+type t_primtrue
+isset t_primtrue
+str t_primtrue EMPTY 128
+str t_primtrue EMPTY 3
+str t_primtrue EMPTY 1
+str t_primtrue x:61626364 2
+f t_primnull 0 0
+i t_primnull 0 0
+b t_primnull 0 0
+s t_primnull 0 NULL
+type t_primnull
+isset t_primnull
+str t_primnull EMPTY 128
+str t_primnull EMPTY 3
+str t_primnull EMPTY 1
+str t_primnull x:61626364 2
+f t_barekey 0 0
+i t_barekey 0 0
+b t_barekey 0 0
+s t_barekey 0 NULL
+type t_barekey
+isset t_barekey
+str t_barekey EMPTY 128
+str t_barekey EMPTY 3
+str t_barekey EMPTY 1
+str t_barekey x:61626364 2
+f t_dup 0 0
+i t_dup 0 0
+b t_dup 0 0
+s t_dup 0 NULL
+type t_dup
+isset t_dup
+str t_dup EMPTY 128
+str t_dup EMPTY 3
+str t_dup EMPTY 1
+str t_dup x:61626364 2
+f inner 0 0
+i inner 0 0
+b inner 0 0
+s inner 0 NULL
+type inner
+isset inner
+str inner EMPTY 128
+str inner EMPTY 3
+str inner EMPTY 1
+str inner x:61626364 2
+f x 0 0
+i x 0 0
+b x 0 0
+s x 0 NULL
+type x
+isset x
+str x EMPTY 128
+str x EMPTY 3
+str x EMPTY 1
+str x x:61626364 2
+f t_after 0 0
+i t_after 0 0
+b t_after 0 0
+s t_after 0 NULL
+type t_after
+isset t_after
+str t_after EMPTY 128
+str t_after EMPTY 3
+str t_after EMPTY 1
+str t_after x:61626364 2
+f upper 0 0
+i upper 0 0
+b upper 0 0
+s upper 0 NULL
+type upper
+isset upper
+str upper EMPTY 128
+str upper EMPTY 3
+str upper EMPTY 1
+str upper x:61626364 2
+f t_last 0 0
+i t_last 0 0
+b t_last 0 0
+s t_last 0 NULL
+type t_last
+isset t_last
+str t_last EMPTY 128
+str t_last EMPTY 3
+str t_last EMPTY 1
+str t_last x:61626364 2
+f nope 0 0
+i nope 0 0
+b nope 0 0
+s nope 0 NULL
+type nope
+isset nope
+str nope EMPTY 128
+str nope EMPTY 3
+str nope EMPTY 1
+str nope x:61626364 2
+f EMPTY 0 0
+i EMPTY 0 0
+b EMPTY 0 0
+s EMPTY 0 NULL
+type EMPTY
+isset EMPTY
+str EMPTY EMPTY 128
+str EMPTY EMPTY 3
+str EMPTY EMPTY 1
+str EMPTY x:61626364 2
+f new_f1 1 5
+f new_f2 2 7
+f new_f3 3 7
+f new_f4 4 8
+f new_f5 6 9
+f new_f6 0 1.25
+f run-time 1 5
+f output-callback-stats 4 3
+f lighthouse-gen 2 0.5
+i new_i1 1 5
+i new_i2 2 7
+i new_i3 3 4294967295
+i new_i4 4 8
+i lighthousecount 5 2
+i run-time 0 0
+i lighthouse-max-update 0 0
+b new_b1 1 1
+b new_b2 6 1
+b force-ootx 3 1
+b lighthouse-max-update 0 0
+f force-calibrate 0 0
+s new_s1 1 abc
+s new_s2 2 abc
+s new_s3 3 abc
+s new_s4 4 NULL
+s new_s5 0 dflt
+s blacklist-devs 1 NULL
+s pose-udp-host 2 abc
+s pose-udp-host 0 NULL
+s pose-udp-host 3 abc
+s lighthousecount 0 NULL
+s lighthouse-gen 3 12
+s force-ootx 3 7
+s run-time 3 2.5e1
+s disable-calibrate 3 EMPTY
+s init-configfile 1 NULL
+f new_i1 0 0
+s new_i1 0 NULL
+s new_f1 0 NULL
+f new_s1 0 0
+i new_s3 0 0
+str new_f1 EMPTY 128
+str new_i3 EMPTY 128
+str new_s3 EMPTY 128
+str new_s2 x:7a7a 128
+type new_b2
+type new_s5
+isset new_f2
+isset new_s2
+isset new_s5
+live t_float 2.5
+live t_int 0x20
+live t_int 12abc
+live t_int EMPTY
+live t_int -1
+live t_text hello
+live nope 1
+live t_floatarr 1
+live force-calibrate on
+i force-calibrate 0 0
+live force-calibrate off
+live force-calibrate 2
+i force-calibrate 0 0
+live force-calibrate true1
+live lighthouse-max-update 0.5
+live lighthouse-max-update 1e999
+live run-time nan
+live run-time -0x1p-3
+live v -1
+live v 077
+live pose-udp-host x:2068
+str pose-udp-host EMPTY 128
+live t_one inf
+f t_one 0 0
+attach v i 0
+var i 0
+live v 9
+var i 0
+i v 3 11
+var i 0
+attach v i 0
+bound v
+attach zz f 1
+var f 1
+live zz 2.75
+var f 1
+i zz 3 5
+var f 1
+attach zz i 2
+var i 2
+f zz 3 -2.7
+var i 2
+var f 1
+f zz 3 3e9
+var i 2
+f zz 3 nan
+var i 2
+bound zz
+attach force-calibrate b 3
+var b 3
+live force-calibrate 0
+var b 3
+live force-calibrate 5
+var b 3
+f force-calibrate 3 0.25
+var b 3
+attach blacklist-devs s 4
+var s 4
+live blacklist-devs xyz
+var s 4
+bound blacklist-devs
+attach configfile s 6
+var s 6
+detach zz f 1
+bound zz
+detach zz f 1
+detach nope f 1
+bound zz
+attach t_half f 5
+var f 5
+live t_half 1.25
+var f 5
+f t_half 3 2.5
+var f 5
+bound t_half
+detach t_half f 5
+var f 5
+live t_half 7
+var f 5
+attach lighthousecount f 7
+var f 7
+type lighthousecount
+attach t_text i 8
+var i 8
+attach t_text b 9
+var b 9
+attach lighthouse-max-update f 10
+bound lighthouse-max-update
+var f 10
+live lighthouse-max-update 2
+var f 10
+bound lighthouse-max-update
+save
+ootx 2 1
+ootx 3 1
+ootx 7 1
+save
+dump
+end
+case args
+arg --configfile
+arg @DIR@/cfg.json
+arg --foo
+arg bar
+arg --flag1
+arg --no-flag2
+arg -v
+arg 5
+arg -p
+arg MPFIT2
+arg -l
+arg 3
+arg --neg
+arg -5
+arg --negf
+arg -0.5
+arg --run-time
+arg 0.25
+arg --force-calibrate
+arg true
+arg --lighthouse-gen
+arg 2x
+arg --blacklist-devs
+arg a,b
+arg --
+arg value-of-empty
+arg -x
+arg plain
+arg --output-callback-stats
+arg --disable-calibrate
+arg 3
+arg --big
+arg -99999999999999999999
+arg --str-neg
+arg -4294967296
+arg --force-ootx
+arg -1
+arg --no-
+arg x:2d2dc3a9
+arg x:ff41
+arg --last-flag
+script
+dump
+f foo 0 0
+i foo 0 0
+b foo 0 0
+s foo 0 NULL
+type foo
+isset foo
+str foo EMPTY 128
+str foo x:61626364 2
+f flag1 0 0
+i flag1 0 0
+b flag1 0 0
+s flag1 0 NULL
+type flag1
+isset flag1
+str flag1 EMPTY 128
+str flag1 x:61626364 2
+f flag2 0 0
+i flag2 0 0
+b flag2 0 0
+s flag2 0 NULL
+type flag2
+isset flag2
+str flag2 EMPTY 128
+str flag2 x:61626364 2
+f v 0 0
+i v 0 0
+b v 0 0
+s v 0 NULL
+type v
+isset v
+str v EMPTY 128
+str v x:61626364 2
+f poser 0 0
+i poser 0 0
+b poser 0 0
+s poser 0 NULL
+type poser
+isset poser
+str poser EMPTY 128
+str poser x:61626364 2
+f lighthousecount 0 0
+i lighthousecount 0 0
+b lighthousecount 0 0
+s lighthousecount 0 NULL
+type lighthousecount
+isset lighthousecount
+str lighthousecount EMPTY 128
+str lighthousecount x:61626364 2
+f neg 0 0
+i neg 0 0
+b neg 0 0
+s neg 0 NULL
+type neg
+isset neg
+str neg EMPTY 128
+str neg x:61626364 2
+f negf 0 0
+i negf 0 0
+b negf 0 0
+s negf 0 NULL
+type negf
+isset negf
+str negf EMPTY 128
+str negf x:61626364 2
+f run-time 0 0
+i run-time 0 0
+b run-time 0 0
+s run-time 0 NULL
+type run-time
+isset run-time
+str run-time EMPTY 128
+str run-time x:61626364 2
+f force-calibrate 0 0
+i force-calibrate 0 0
+b force-calibrate 0 0
+s force-calibrate 0 NULL
+type force-calibrate
+isset force-calibrate
+str force-calibrate EMPTY 128
+str force-calibrate x:61626364 2
+f lighthouse-gen 0 0
+i lighthouse-gen 0 0
+b lighthouse-gen 0 0
+s lighthouse-gen 0 NULL
+type lighthouse-gen
+isset lighthouse-gen
+str lighthouse-gen EMPTY 128
+str lighthouse-gen x:61626364 2
+f blacklist-devs 0 0
+i blacklist-devs 0 0
+b blacklist-devs 0 0
+s blacklist-devs 0 NULL
+type blacklist-devs
+isset blacklist-devs
+str blacklist-devs EMPTY 128
+str blacklist-devs x:61626364 2
+f EMPTY 0 0
+i EMPTY 0 0
+b EMPTY 0 0
+s EMPTY 0 NULL
+type EMPTY
+isset EMPTY
+str EMPTY EMPTY 128
+str EMPTY x:61626364 2
+f output-callback-stats 0 0
+i output-callback-stats 0 0
+b output-callback-stats 0 0
+s output-callback-stats 0 NULL
+type output-callback-stats
+isset output-callback-stats
+str output-callback-stats EMPTY 128
+str output-callback-stats x:61626364 2
+f disable-calibrate 0 0
+i disable-calibrate 0 0
+b disable-calibrate 0 0
+s disable-calibrate 0 NULL
+type disable-calibrate
+isset disable-calibrate
+str disable-calibrate EMPTY 128
+str disable-calibrate x:61626364 2
+f big 0 0
+i big 0 0
+b big 0 0
+s big 0 NULL
+type big
+isset big
+str big EMPTY 128
+str big x:61626364 2
+f str-neg 0 0
+i str-neg 0 0
+b str-neg 0 0
+s str-neg 0 NULL
+type str-neg
+isset str-neg
+str str-neg EMPTY 128
+str str-neg x:61626364 2
+f force-ootx 0 0
+i force-ootx 0 0
+b force-ootx 0 0
+s force-ootx 0 NULL
+type force-ootx
+isset force-ootx
+str force-ootx EMPTY 128
+str force-ootx x:61626364 2
+f last-flag 0 0
+i last-flag 0 0
+b last-flag 0 0
+s last-flag 0 NULL
+type last-flag
+isset last-flag
+str last-flag EMPTY 128
+str last-flag x:61626364 2
+f x:c3a9 0 0
+i x:c3a9 0 0
+b x:c3a9 0 0
+s x:c3a9 0 NULL
+type x:c3a9
+isset x:c3a9
+str x:c3a9 EMPTY 128
+str x:c3a9 x:61626364 2
+save
+end
+case env
+arg --configfile
+arg @DIR@/cfg.json
+arg --v
+arg 1
+arg --lighthouse-gen
+arg 1
+env SURVIVE_V=3
+env SURVIVE_FLOOR_OFFSET=2.5
+env SURVIVE_LIGHTHOUSE-GEN=2
+env SURVIVE_RUN-TIME=x1
+env SURVIVE_=empty
+env SURVIVE_ABCDEFGHIJKLMNOPQRSTUVWXYZABCDEFG=1
+env SURVIVE_MixedCase=Val
+env NOT_SURVIVE_X=1
+env SURVIVE_BLACKLIST-DEVS=a=b
+env SURVIVE_FORCE-OOTX=on
+script
+dump
+f v 0 0
+i v 0 0
+b v 0 0
+s v 0 NULL
+type v
+isset v
+str v EMPTY 128
+str v x:61626364 2
+f floor_offset 0 0
+i floor_offset 0 0
+b floor_offset 0 0
+s floor_offset 0 NULL
+type floor_offset
+isset floor_offset
+str floor_offset EMPTY 128
+str floor_offset x:61626364 2
+f lighthouse-gen 0 0
+i lighthouse-gen 0 0
+b lighthouse-gen 0 0
+s lighthouse-gen 0 NULL
+type lighthouse-gen
+isset lighthouse-gen
+str lighthouse-gen EMPTY 128
+str lighthouse-gen x:61626364 2
+f run-time 0 0
+i run-time 0 0
+b run-time 0 0
+s run-time 0 NULL
+type run-time
+isset run-time
+str run-time EMPTY 128
+str run-time x:61626364 2
+f mixedcase 0 0
+i mixedcase 0 0
+b mixedcase 0 0
+s mixedcase 0 NULL
+type mixedcase
+isset mixedcase
+str mixedcase EMPTY 128
+str mixedcase x:61626364 2
+f blacklist-devs 0 0
+i blacklist-devs 0 0
+b blacklist-devs 0 0
+s blacklist-devs 0 NULL
+type blacklist-devs
+isset blacklist-devs
+str blacklist-devs EMPTY 128
+str blacklist-devs x:61626364 2
+f force-ootx 0 0
+i force-ootx 0 0
+b force-ootx 0 0
+s force-ootx 0 NULL
+type force-ootx
+isset force-ootx
+str force-ootx EMPTY 128
+str force-ootx x:61626364 2
+f abcdefghijklmnopqrstuvwxyzabcdefg 0 0
+i abcdefghijklmnopqrstuvwxyzabcdefg 0 0
+b abcdefghijklmnopqrstuvwxyzabcdefg 0 0
+s abcdefghijklmnopqrstuvwxyzabcdefg 0 NULL
+type abcdefghijklmnopqrstuvwxyzabcdefg
+isset abcdefghijklmnopqrstuvwxyzabcdefg
+str abcdefghijklmnopqrstuvwxyzabcdefg EMPTY 128
+str abcdefghijklmnopqrstuvwxyzabcdefg x:61626364 2
+end
+case playback
+arg --playback
+arg /some/where/session.rec
+file .config/libsurvive/session.rec.json typed.json
+script
+path
+s configfile 0 NULL
+i t_int 0 0
+bsd
+save
+end
+case record
+arg --record
+arg /x/out.rec.gz
+file .config/libsurvive/config.json real.json
+script
+path
+s configfile 0 NULL
+cat @DIR@/.config/libsurvive/out.rec.gz.json
+bsd
+end
+case record-playback
+arg --record
+arg rec-dir/
+arg --hidtap-playback
+arg a\b\tap.hidtap
+arg --simulator
+file .config/libsurvive/tap.hidtap.json real.json
+script
+path
+s configfile 0 NULL
+i simulator 0 0
+s hidtap-playback 0 NULL
+s record 0 NULL
+str floor-offset EMPTY 128
+end
+case xdg
+arg -c
+arg named.json
+env XDG_CONFIG_HOME=@DIR@/xdg
+file xdg/libsurvive/named.json typed.json
+script
+path
+i t_int 0 0
+end
+case init-configfile
+arg --init-configfile
+arg @DIR@/init.json
+arg --configfile
+arg @DIR@/sub/out.json
+file init.json real.json
+script
+path
+save
+cat @DIR@/sub/out.json
+end
+case broken
+arg --configfile
+arg @DIR@/cfg.json
+file cfg.json broken.json
+script
+dump
+save
+end
+case missing
+arg --configfile
+arg @DIR@/none.json
+script
+dump
+bsd
+save
+readlh 0
+dump
+end
+case readonly
+arg --configfile
+arg @DIR@/cfg.json
+arg --lock-lighthouses
+arg 1
+file cfg.json real.json
+script
+save
+cat @DIR@/cfg.json
+end
+case lighthouse
+arg --configfile
+arg @DIR@/cfg.json
+file cfg.json real.json
+script
+setbsd 0 pose 0.1234567890123,1.5,-2.25,0.5,0.5,0.5,0.6
+setbsd 0 variance0 1e-7
+setbsd 0 accel0 -6.5
+setbsd 0 phase1 0.000123456789
+setbsd 0 ogeemag0 -0.4362792968751
+setbsd 0 id 0xdeadbeef
+setbsd 0 mode 300
+setbsd 0 unlock 7
+setlh 0
+bsd
+setbsd 5 pose 1,2,3,0,0,0,0
+setbsd 5 id 12345
+setbsd 5 PositionSet 1
+setlh 5
+ootx 5 1
+setbsd 6 pose bits:7ff8000000000000,bits:fff8000000000000,1e300,1e-300,-0.0,bits:7ff0000000000000,2
+setlh 6
+ootx 6 1
+dump
+save
+readlh 5
+readlh 6
+readlh 7
+bsd
+end
+case startup-hooks
+arg --configfile
+arg @DIR@/cfg.json
+file cfg.json real.json
+script
+setlh 0
+setlh 0
+setlh 1
+setlh 1
+setlh 2
+setlh 2
+setlh 3
+setlh 3
+save
+end

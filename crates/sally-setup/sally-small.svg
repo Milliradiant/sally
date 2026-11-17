@@ -1,0 +1,18 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- sally's icon for 16 and 24 pixels: sally.svg's leaf with fewer, larger shapes (no side veins, a larger dot). -->
+  <defs>
+    <mask id="bite"><rect width="256" height="256" fill="#fff"/><circle cx="182" cy="198" r="40" fill="#000"/></mask>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#15171B"/>
+  <g transform="translate(128 128) scale(0.86) translate(-128 -128)">
+    <g mask="url(#bite)">
+      <g transform="rotate(36 128 128)">
+        <path d="M128 214 L128 244" stroke="#2A6B36" stroke-width="13" stroke-linecap="round"/>
+        <path d="M128 214 C56 208 22 112 128 16 C234 112 200 208 128 214 Z" fill="#409A4A"/>
+        <path d="M128 214 C200 208 234 112 128 16 Z" fill="#6CC56C"/>
+        <path d="M128 208 L128 44" stroke="#2A6B36" stroke-width="11" stroke-linecap="round"/>
+      </g>
+    </g>
+    <circle cx="182" cy="198" r="27" fill="#8FF0B4"/>
+  </g>
+</svg>

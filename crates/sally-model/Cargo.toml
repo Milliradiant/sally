@@ -1,0 +1,19 @@
+[package]
+name = "sally-model"
+description = "The virtual trackers' model: trained on the user's rig put on motion capture, scored on the truth recordings (docs/mocap_plan.md)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[features]
+default = ["cpu"]
+# the cloud sandbox's CPU; the PC's RTX 5090 through Vulkan
+cpu = ["burn/flex"]
+vulkan = ["burn/vulkan"]
+
+[dependencies]
+sally-body = { path = "../sally-body" }
+sally-math = { path = "../sally-math" }
+# the network, its training and its weights (Rust, the user's choice of 10 Nov: sally stays all Rust)
+burn = { version = "=0.22.1", default-features = false, features = ["std", "optim", "store"] }

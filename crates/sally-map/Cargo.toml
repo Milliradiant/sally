@@ -1,0 +1,13 @@
+[package]
+name = "sally-map"
+description = "The live base station map solve: snapshots of slow devices' light, the joint solve over stations and snapshots, the map file, moved stations"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sally-math = { path = "../sally-math" }
+sally-lighthouse = { path = "../sally-lighthouse" }
+sally-track = { path = "../sally-track" }
+sally-os = { path = "../sally-os" }

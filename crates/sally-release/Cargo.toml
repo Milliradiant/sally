@@ -1,0 +1,10 @@
+[package]
+name = "sally-release"
+description = "sally's release made from the tree in one step: the programs built without the build machine's paths in them, checked for it, the third-party notices written, the folder `sally setup` works from laid out, and the installer packed"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sally-setup = { path = "../sally-setup" }

@@ -1,0 +1,23 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256" width="256" height="256">
+  <!-- sally's icon: a leaf on a dark tile, and a status dot where a bite is out of the leaf's edge. sally.ico is this
+       drawing at 32, 48, 64 and 256 pixels and sally-small.svg (the same with fewer, larger shapes) at 16 and 24:
+       rsvg-convert renders them. The panel paints the dot again in the colour of what sally is doing
+       (crates/sally-panel/src/icon.rs holds the dot's place and size, which must stay as they are here). -->
+  <defs>
+    <mask id="bite"><rect width="256" height="256" fill="#fff"/><circle cx="182" cy="198" r="35" fill="#000"/></mask>
+  </defs>
+  <rect width="256" height="256" rx="56" fill="#15171B"/>
+  <g transform="translate(128 128) scale(0.86) translate(-128 -128)">
+    <g mask="url(#bite)">
+      <g transform="rotate(36 128 128)">
+        <path d="M128 214 L128 244" stroke="#2A6B36" stroke-width="10" stroke-linecap="round"/>
+        <path d="M128 214 C56 208 22 112 128 16 C234 112 200 208 128 214 Z" fill="#409A4A"/>
+        <path d="M128 214 C200 208 234 112 128 16 Z" fill="#6CC56C"/>
+        <path d="M128 208 L128 44" stroke="#2A6B36" stroke-width="8" stroke-linecap="round"/>
+        <path d="M128 176 L84 146 M128 176 L172 146 M128 136 L88 106 M128 136 L168 106 M128 96 L101 72 M128 96 L155 72"
+              stroke="#2A6B36" stroke-width="6" stroke-linecap="round" fill="none" opacity="0.85"/>
+      </g>
+    </g>
+    <circle cx="182" cy="198" r="22" fill="#8FF0B4"/>
+  </g>
+</svg>

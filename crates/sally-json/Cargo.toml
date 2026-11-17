@@ -1,0 +1,9 @@
+[package]
+name = "sally-json"
+description = "The JSON tokenizer the device configs and the config file are read with (jsmn, lenient)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

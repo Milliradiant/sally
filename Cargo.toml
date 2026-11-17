@@ -1,0 +1,23 @@
+[workspace]
+resolver = "3"
+members = ["crates/*"]
+
+[workspace.package]
+# sally's one version: the runtime, the driver, the panel and the tools all report it
+version = "0.16.0"
+edition = "2021"
+license = "MIT"
+publish = false
+
+# panic = "abort" everywhere: a failed check (an out-of-bounds index, an assertion) stops sally rather than unwinding
+# through C frames
+[profile.dev]
+panic = "abort"
+
+[profile.release]
+panic = "abort"
+opt-level = 3
+# the whole program optimized as one (fat LTO, one codegen unit): the same floating-point operations (nothing in the
+# build reorders them, docs/checking.md), the replays the same to the byte, about 4 % faster
+lto = "fat"
+codegen-units = 1

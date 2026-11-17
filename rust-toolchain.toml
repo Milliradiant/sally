@@ -1,0 +1,6 @@
+# the Rust every build of sally uses: the ports are checked bit for bit against what they replace, so the compiler is
+# pinned and moves only on purpose (docs/checking.md)
+[toolchain]
+channel = "1.97.0"
+components = ["rustfmt", "clippy"]
+targets = ["x86_64-pc-windows-gnullvm"]

@@ -1,0 +1,9 @@
+[package]
+name = "sally-os"
+description = "The operating system as the C runtime's os_generic.h gave it, and as std::chrono gives it to the C++ pieces: the clocks, the sleep and the local time, each platform's own"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]

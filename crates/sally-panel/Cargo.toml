@@ -1,0 +1,44 @@
+[package]
+name = "sally-panel"
+description = "The panel: a window that shows what the runtime is doing, live, compares it against Valve's driver, and is the SteamVR dashboard overlay too (the same UI)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[lib]
+name = "sally_panel"
+
+[[bin]]
+name = "sally-panel"
+path = "src/main.rs"
+
+# every SteamVR device's pose to a CSV (tools\pose_logger.py's), through the panel's OpenVR
+[[bin]]
+name = "sally-poses"
+path = "src/bin/poses.rs"
+
+[dependencies]
+# a device config's sensors as the runtime reads them (the replay's light per sensor)
+sally-lighthouse = { path = "../sally-lighthouse" }
+sally-math = { path = "../sally-math" }
+sally-os = { path = "../sally-os" }
+# the runtime's UDP socket with the C++ panel's 4 MB receive buffer (a window being dragged on Windows stops the loop)
+socket2 = "0.6"
+# the UI and its painter (OpenGL, as the C++ panel drew: the overlay hands SteamVR a GL texture)
+egui = "0.37"
+egui_glow = "0.37"
+glow = "0.17"
+# the window: winit for the window and its input, glutin for the GL context (WGL on Windows; EGL for the headless
+# renderer on Linux, GLX for a window there)
+egui-winit = { version = "0.37", default-features = false, features = ["clipboard", "links", "x11"] }
+winit = { version = "0.30", default-features = false, features = ["x11", "rwh_06"] }
+glutin = { version = "0.32", default-features = false, features = ["egl", "glx", "wgl", "x11"] }
+glutin-winit = { version = "0.5", default-features = false, features = ["egl", "glx", "wgl", "x11"] }
+raw-window-handle = "0.6"
+# SteamVR's icons of the devices (and the screenshots' PNG)
+image = { version = "0.25", default-features = false, features = ["png"] }
+
+[dev-dependencies]
+# the driver's own output settings: the panel's copy of their defaults and ranges is held to them (tests/panel.rs)
+sally-driver = { path = "../sally-driver" }

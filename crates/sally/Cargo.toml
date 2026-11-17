@@ -1,0 +1,16 @@
+[package]
+name = "sally"
+description = "sally, the one program: the runtime (`sally run`, which the SteamVR driver starts), `replay`, `calibrate`, `ctl` (the runtime's protocol), `setup` / `off` / `stop` / `copy-log` (SteamVR set up for sally and back), `convert` (USB captures and openhouse's recordings to tap recordings), `probe` (the dongles checked, their configs fetched)"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+miniz_oxide = "0.9"
+sally-hid = { path = "../sally-hid" }
+sally-lighthouse = { path = "../sally-lighthouse" }
+sally-map = { path = "../sally-map" }
+sally-math = { path = "../sally-math" }
+sally-os = { path = "../sally-os" }
+sally-runtime = { path = "../sally-runtime" }

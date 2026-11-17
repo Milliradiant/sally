@@ -1,0 +1,11 @@
+[package]
+name = "sally-lighthouse"
+description = "The lighthouse model: base station calibration, the gen2 sweep geometry and reprojection"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+sally-json = { path = "../sally-json" }
+sally-math = { path = "../sally-math" }
