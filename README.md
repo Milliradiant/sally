@@ -51,7 +51,7 @@ Everything is in the panel, under **Settings**.
 
 - **Headset tracking**: for an Index or Vive headset, whether the headset itself is tracked by sally or by SteamVR.
   It starts on sally.
-- **Sessions kept**: sally records what your trackers send during each session, about 2 GB an hour. It uses the
+- **Sessions kept**: sally records what your trackers send during each session, about 120 MB an hour. It uses the
   recordings to keep its picture of your room right, and they are what to send along if you ask for help. Only the
   last few sessions are kept, and you choose how many. The panel shows how much space they take.
 - **Devices**: give your trackers names and say where you wear them.

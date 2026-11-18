@@ -187,6 +187,21 @@ impl Panel {
 		self.rp.paths.as_ref().expect("just found")
 	}
 
+	/// The replays of sessions that are gone removed (`replay::prune`): when the panel starts, which with SteamVR is
+	/// just after the driver has deleted the sessions no longer kept, and whenever the sessions are listed
+	pub fn replay_prune(&mut self) {
+		let paths = self.replay_paths().clone();
+		replay::prune(&paths);
+	}
+
+	/// The sessions listed again, the replays of the ones that are gone removed first
+	fn replay_scan(&mut self) {
+		self.replay_prune();
+		let paths = self.replay_paths().clone();
+		self.rp.sessions = replay::sessions(&paths);
+		self.rp.scanned = self.now;
+	}
+
 	/// Where device configs are looked for by serial (the models' names): every 30 s again
 	pub(super) fn config_dirs(&mut self) -> Vec<PathBuf> {
 		if self.now - self.rp.dirs_t > 30.0 || self.now < self.rp.dirs_t {
@@ -229,8 +244,7 @@ impl Panel {
 	pub fn replay_open(&mut self, stamp: &str, again: bool) {
 		let paths = self.replay_paths().clone();
 		if self.rp.sessions.iter().all(|s| s.key() != stamp) {
-			self.rp.sessions = replay::sessions(&paths);
-			self.rp.scanned = self.now;
+			self.replay_scan();
 		}
 		let Some(s) = self.rp.sessions.iter().find(|s| s.key() == stamp).cloned() else {
 			self.rp.error = format!("no session {stamp} in {}", paths.logs.display());
@@ -446,9 +460,7 @@ impl Panel {
 		self.rp.last_now = now;
 		self.replay_poll();
 		if self.rp.sessions.is_empty() && now - self.rp.scanned > 10.0 {
-			let paths = self.replay_paths().clone();
-			self.rp.sessions = replay::sessions(&paths);
-			self.rp.scanned = now;
+			self.replay_scan();
 		}
 		if self.replay_busy() || self.rp.playing {
 			ui.ctx().request_repaint();
@@ -566,9 +578,7 @@ impl Panel {
 		if clicked {
 			self.rp.picking = !self.rp.picking;
 			if self.rp.picking {
-				let paths = self.replay_paths().clone();
-				self.rp.sessions = replay::sessions(&paths);
-				self.rp.scanned = self.now;
+				self.replay_scan();
 				self.rp.pick_scroll = 0.0;
 			}
 		}
@@ -638,7 +648,7 @@ impl Panel {
 		p.rect_stroke(rr, 8.0, Stroke::new(1.0, theme::tk().card_edge), StrokeKind::Inside);
 		let inner = Rect::from_min_max(rr.min + Vec2::new(10.0, 10.0), rr.max - Vec2::new(10.0, 10.0 + foot));
 		let resp = ui.interact(rr, Id::unique("rp_picker"), Sense::click());
-		// the replays' room on the disk: they are kept, and removed by hand
+		// the replays' room on the disk: each is kept for as long as its session's recording is
 		let used: u64 = self.rp.sessions.iter().map(|s| s.replay_bytes).sum();
 		let foot_t = format!("replays kept in {}: {:.1} GB", self.replay_paths().replays.display(), used as f64 / 1e9);
 		let fy = rr.max.y - foot * 0.5 - 4.0;
@@ -702,7 +712,7 @@ impl Panel {
 			self.text_at(&pc, Pos2::new(row.max.x - 10.0, cy), Align2::RIGHT_CENTER, theme::label(), c, &t);
 		}
 		if n == 0 {
-			let t = format!("no sallytap_*.hidtap in {}", self.replay_paths().logs.display());
+			let t = format!("no sallytap_* recording in {}", self.replay_paths().logs.display());
 			self.text_at(&p, inner.center(), Align2::CENTER_CENTER, theme::label(), theme::tk().muted, &t);
 		}
 		if let Some(s) = chosen {

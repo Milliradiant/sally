@@ -70,16 +70,28 @@ fn parse_device(line: &[u8]) -> Line {
 
 // "R %llu %63s %x %d %d %c %n": six conversions and %n reached, then the hex from there
 fn parse_report(line: &[u8]) -> Line {
-	let mut s = Scanner::new(&line[1..]);
-	let (Some(time_us), Some(serial), Some(pid), Some(mi), Some(col), Some(kind)) =
-		(s.ull(), s.word(63), s.hex(), s.int(), s.int(), s.char())
-	else {
-		return Line::BadLine;
-	};
+	let Some((time_us, serial, pid, mi, col, kind, hex)) = report_fields(line) else { return Line::BadLine };
+	let Some(data) = decode_hex(&line[hex..]) else { return Line::BadHex };
+	Line::Report { time_us, serial, pid, mi, col, kind, data }
+}
+
+/// An `R` line's fields before its hex, and where in the line the hex starts (the format's %n)
+fn report_fields(line: &[u8]) -> Option<(u64, String, u16, i32, i32, u8, usize)> {
+	let mut s = Scanner::new(line.get(1..)?);
+	let (time_us, serial, pid, mi, col, kind) = (s.ull()?, s.word(63)?, s.hex()?, s.int()?, s.int()?, s.char()?);
 	// the format's trailing space skips white space before %n; %n then records where the hex starts
 	s.skip_ws();
-	let Some(data) = decode_hex(s.rest()) else { return Line::BadHex };
-	Line::Report { time_us, serial, pid: pid as u16, mi, col, kind, data }
+	Some((time_us, serial, pid as u16, mi, col, kind, line.len() - s.rest().len()))
+}
+
+/// sally: a report line as `parse` takes it, for changing its bytes where they stand: the device's product id and
+/// HID path numbers, the report's kind, and where in the line its hex starts. None for any other line
+pub fn report_at(line: &[u8]) -> Option<(u16, i32, i32, u8, usize)> {
+	if line.first() != Some(&b'R') {
+		return None;
+	}
+	let (_, _, pid, mi, col, kind, hex) = report_fields(line)?;
+	Some((pid, mi, col, kind, hex))
 }
 
 /// driver_hidtap.c's decode_hex: pairs of hex digits up to a newline, CR or space; an odd digit, a non-hex character or

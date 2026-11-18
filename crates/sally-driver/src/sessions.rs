@@ -3,8 +3,9 @@
 //! sally_settings.txt), and nothing else ever removes them.
 //!
 //! A kind of session file is one settings path with `{time}` in its file name: the pose log, the runtime's log, the
-//! model process's log, and every runtime argument that has one (the recording). Its files are the ones in that
-//! folder named exactly as the path with a stamp in `{time}`'s place, so a file named any other way is never touched:
+//! model process's log, and every runtime argument that has one (the recording, as text or packed: one kind). Its
+//! files are the ones in that folder named exactly as the path with a stamp in `{time}`'s place, so a file named any
+//! other way is never touched:
 //! a recording made on purpose, a copy with something added to its name. When SteamVR starts, all but the newest
 //! `keep_sessions` of each kind are deleted; the session then starting adds its own to those.
 //!
@@ -60,7 +61,11 @@ fn files_of(dir: &Path, before: &str, after: &str) -> Vec<(String, PathBuf)> {
 	files
 }
 
-/// All but the newest `keep` files of each kind deleted (`keep` 0: nothing is); how many went
+/// A tap recording's name ends in one of these: as text, or packed. The two are one kind of session file, so that
+/// the recordings from before a change of form go as the others do
+const RECORDING_ENDS: [&str; 2] = [".hidtap", ".hidtapz"];
+
+/// All but the newest `keep` sessions' files of each kind deleted (`keep` 0: nothing is); how many went
 pub fn prune(paths: &[&[u8]], keep: usize) -> usize {
 	if keep == 0 {
 		return 0;
@@ -68,8 +73,14 @@ pub fn prune(paths: &[&[u8]], keep: usize) -> usize {
 	let mut gone = 0;
 	for path in paths {
 		let Some((dir, before, after)) = kind(path) else { continue };
-		let files = files_of(&dir, &before, &after);
-		for (_, file) in files.iter().take(files.len().saturating_sub(keep)) {
+		let ends: &[&str] = if RECORDING_ENDS.contains(&after.as_str()) { &RECORDING_ENDS } else { &[after.as_str()] };
+		let mut files: Vec<(String, PathBuf)> = ends.iter().flat_map(|end| files_of(&dir, &before, end)).collect();
+		files.sort();
+		// a session recorded in both forms is one session
+		let mut stamps: Vec<&str> = files.iter().map(|(stamp, _)| stamp.as_str()).collect();
+		stamps.dedup();
+		let Some(&oldest_kept) = stamps.len().checked_sub(keep).and_then(|first| stamps.get(first)) else { continue };
+		for (_, file) in files.iter().filter(|(stamp, _)| stamp.as_str() < oldest_kept) {
 			if std::fs::remove_file(file).is_ok() {
 				gone += 1;
 			}
@@ -149,6 +160,41 @@ mod tests {
 		assert_eq!(prune(&paths, 0), 0);
 		assert_eq!(left(&dir).len(), 6);
 		let _ = std::fs::remove_dir_all(&dir);
+	}
+
+	/// A recording counts whichever form it is in: the text ones from before the packed ones go as they age
+	#[test]
+	fn recordings_of_both_forms_are_one_kind() {
+		let names = [
+			"sallytap_20261101_100000.hidtap",
+			"sallytap_20261102_100000.hidtap",
+			"sallytap_20261103_100000.hidtap",
+			"sallytap_20261103_100000.hidtapz",
+			"sallytap_20261104_100000.hidtapz",
+			"sallytap_20261105_100000.hidtapz",
+			"sallytap_20261101_100000_solver.txt",
+		];
+		for settings in ["sallytap_{time}.hidtapz", "sallytap_{time}.hidtap"] {
+			let dir = folder("forms", &names);
+			let path = in_dir(&dir, settings);
+			assert_eq!(prune(&[&path], 3), 2, "{settings}");
+			assert_eq!(
+				left(&dir),
+				[
+					"sallytap_20261101_100000_solver.txt",
+					"sallytap_20261103_100000.hidtap",
+					"sallytap_20261103_100000.hidtapz",
+					"sallytap_20261104_100000.hidtapz",
+					"sallytap_20261105_100000.hidtapz",
+				],
+				"{settings}"
+			);
+			assert_eq!(prune(&[&path], 3), 0);
+			assert_eq!(prune(&[&path], 9), 0);
+			assert_eq!(prune(&[&path], 1), 3);
+			assert_eq!(left(&dir), ["sallytap_20261101_100000_solver.txt", "sallytap_20261105_100000.hidtapz"]);
+			let _ = std::fs::remove_dir_all(&dir);
+		}
 	}
 
 	/// Only a file named exactly as the settings name it is a session's: a recording with something added to its

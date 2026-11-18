@@ -17,10 +17,16 @@
 //!    (`sally_setup::payload`). That one file is the release.
 //!
 //! It only builds, copies and packs: it neither tags nor publishes anything.
+//!
+//!   cargo run -p sally-release -- --public <folder> --names <file>
+//!
+//! writes the tree as the public repository gets it instead (`public`), and builds nothing.
 
 use std::collections::BTreeMap;
 use std::path::{Path, PathBuf};
 use std::process::Command;
+
+mod public;
 
 /// The programs a release holds: the package, what cargo names its file (the stem), and whether it is a library
 const PROGRAMS: &[(&str, &str, bool)] =
@@ -42,14 +48,21 @@ fn run(args: &[String]) -> Result<(), String> {
 	let mut target = WINDOWS.to_string();
 	let mut out = None;
 	let mut openvr_api = None;
+	let mut public = None;
+	let mut names = None;
 	let mut i = 0;
 	while i < args.len() {
 		match (args[i].as_str(), args.get(i + 1)) {
 			("--target", Some(v)) => target = v.clone(),
 			("--out", Some(v)) => out = Some(PathBuf::from(v)),
 			("--openvr-api", Some(v)) => openvr_api = Some(PathBuf::from(v)),
+			("--public", Some(v)) => public = Some(PathBuf::from(v)),
+			("--names", Some(v)) => names = Some(PathBuf::from(v)),
 			(a, _) => {
-				return Err(format!("unknown argument {a} (--target <triple>, --out <folder>, --openvr-api <file>)"))
+				return Err(format!(
+					"unknown argument {a} (--target <triple>, --out <folder>, --openvr-api <file>, or --public <folder> \
+					 --names <file>)"
+				))
 			}
 		}
 		i += 2;
@@ -58,6 +71,10 @@ fn run(args: &[String]) -> Result<(), String> {
 		return Err(format!("{} is not a file", f.display()));
 	}
 	let root = workspace_root()?;
+	if let Some(to) = public {
+		let names = names.ok_or("--public wants --names <file>: the names file")?;
+		return public::export(&root, &to, &names);
+	}
 	let version = env!("CARGO_PKG_VERSION");
 	let out = out.unwrap_or_else(|| root.join("target").join("dist").join(format!("sally-{version}")));
 	let places = Places::of_this_machine(&root)?;

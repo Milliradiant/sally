@@ -6047,7 +6047,7 @@ dependencies = [
 
 [[package]]
 name = "sally"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "miniz_oxide 0.9.1",
  "sally-hid",
@@ -6060,14 +6060,14 @@ dependencies = [
 
 [[package]]
 name = "sally-body"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-math",
 ]
 
 [[package]]
 name = "sally-check"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "miniz_oxide 0.9.1",
  "sally-hid",
@@ -6077,7 +6077,7 @@ dependencies = [
 
 [[package]]
 name = "sally-driver"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-math",
  "sally-os",
@@ -6085,7 +6085,7 @@ dependencies = [
 
 [[package]]
 name = "sally-hid"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "miniz_oxide 0.9.1",
  "sally-os",
@@ -6093,11 +6093,11 @@ dependencies = [
 
 [[package]]
 name = "sally-json"
-version = "0.16.1"
+version = "0.20.0"
 
 [[package]]
 name = "sally-lighthouse"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-json",
  "sally-math",
@@ -6105,7 +6105,7 @@ dependencies = [
 
 [[package]]
 name = "sally-map"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-lighthouse",
  "sally-math",
@@ -6115,11 +6115,11 @@ dependencies = [
 
 [[package]]
 name = "sally-math"
-version = "0.16.1"
+version = "0.20.0"
 
 [[package]]
 name = "sally-model"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "burn",
  "sally-body",
@@ -6128,11 +6128,11 @@ dependencies = [
 
 [[package]]
 name = "sally-os"
-version = "0.16.1"
+version = "0.20.0"
 
 [[package]]
 name = "sally-panel"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "egui",
  "egui-winit",
@@ -6143,6 +6143,7 @@ dependencies = [
  "image",
  "raw-window-handle",
  "sally-driver",
+ "sally-hid",
  "sally-lighthouse",
  "sally-math",
  "sally-os",
@@ -6152,14 +6153,14 @@ dependencies = [
 
 [[package]]
 name = "sally-release"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-setup",
 ]
 
 [[package]]
 name = "sally-runtime"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-hid",
  "sally-json",
@@ -6172,14 +6173,14 @@ dependencies = [
 
 [[package]]
 name = "sally-setup"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "miniz_oxide 0.9.1",
 ]
 
 [[package]]
 name = "sally-track"
-version = "0.16.1"
+version = "0.20.0"
 dependencies = [
  "sally-lighthouse",
  "sally-math",

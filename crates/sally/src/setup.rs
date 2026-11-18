@@ -240,7 +240,8 @@ fn driver_settings(home: &Home, stamp: &str, kept: &[String], keep_sessions: i32
 		"--hidtap-config-fetch".into(),
 		"0".into(),
 		"--hidtap-record".into(),
-		home.text("logs\\sallytap_{time}.hidtap"),
+		// the recording packed (sally_hid::pack): the same lines in a fourteenth of the space
+		home.text("logs\\sallytap_{time}.hidtapz"),
 		"--configfile".into(),
 		home.text(&within(l.room, "driver_config.json")),
 		"--runtime-port".into(),
@@ -1290,7 +1291,7 @@ mod tests {
 			format!("driver.runtime_cwd={root}\\data\\devices"),
 			format!("driver.panel_exe={root}\\sally-panel.exe"),
 			format!("--configfile\r\n{root}\\data\\driver_config.json"),
-			format!("--hidtap-record\r\n{root}\\logs\\sallytap_{{time}}.hidtap"),
+			format!("--hidtap-record\r\n{root}\\logs\\sallytap_{{time}}.hidtapz"),
 			"driver.keep_sessions=2".to_string(),
 			"--hidtap-config-fetch\r\n0".to_string(),
 		] {

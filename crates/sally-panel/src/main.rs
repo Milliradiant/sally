@@ -18,10 +18,10 @@
 //!   another tab;
 //! - the overlay is drawn only while SteamVR shows it, at up to 90 Hz, also with the window minimised: the laser's
 //!   events through `overlay_input`, the panel into the texture, the texture handed over;
-//! - the window is drawn with vsync; while the overlay is up and the window is in the background, at 30 Hz without
-//!   vsync, so the monitor does not hold the overlay back; minimised (or covered) it is not drawn and the loop waits
-//!   15 ms, or only until the overlay's next frame while that is up; in the background with nothing in VR it rests
-//!   8 ms after each frame;
+//! - the window is drawn 60 times a second in front and 30 in the background, and sooner for what is done to it (the
+//!   pointer, a key: a frame for each, up to 240 a second), with vsync; while the overlay is up and the window is in
+//!   the background, at 30 Hz without vsync, so the monitor does not hold the overlay back; minimised (or covered) it
+//!   is not drawn. The loop never rests longer than 15 ms, and only until the overlay's next frame while that is up;
 //! - the settings are written every 2 s while they change.
 //!
 //! At the end the settings are written, OpenVR lets go of the overlay while the GL context its textures live in is
@@ -81,14 +81,19 @@ const OVERLAY_PPP: f32 = 1.25;
 const OVERLAY_SIZE: (u32, u32) = (2000, 1175);
 /// The dashboard button's picture (pixels a side)
 const BUTTON_SIZE: u32 = 256;
-/// The overlay's frames a second at most, and the window's while it is behind the overlay
+/// The overlay's frames a second at most
 const OVERLAY_HZ: f64 = 90.0;
+/// The window's frames a second while nothing is done to it, in front and in the background: what it shows moves with
+/// the runtime's stream, so it is drawn steadily, but a monitor's 240 frames a second show nothing 60 do not
+const WINDOW_HZ: f64 = 60.0;
 const BEHIND_HZ: f64 = 30.0;
+/// The window's frames a second at most while it is used (a frame for each thing done: the swap's wait for the monitor
+/// is what paces them below this)
+const INPUT_HZ: f64 = 240.0;
 /// How often the button's picture is drawn again while the dashboard is up on another tab (s)
 const BUTTON_EVERY: f64 = 1.0;
-/// The loop's rest while the window is minimised, and in the background after a frame with nothing in VR (s)
-const HIDDEN_REST: f64 = 0.015;
-const BACKGROUND_REST: f64 = 0.008;
+/// The loop's longest rest (s): the runtime's socket and Valve's side are looked at this often at least
+const REST: f64 = 0.015;
 /// The settings are written at most this often while they change (s)
 const SAVE_EVERY: f64 = 2.0;
 
@@ -137,6 +142,7 @@ fn main() {
 		(ValveCompare::new(), None)
 	};
 	let mut panel = Panel::new(st, vc);
+	panel.replay_prune();
 	// the texture's size is the laser's scale, which the overlay is made with
 	panel.vc.overlay_w = OVERLAY_SIZE.0 as i32;
 	panel.vc.overlay_h = OVERLAY_SIZE.1 as i32;
@@ -409,6 +415,45 @@ fn next_due(due: f64, period: f64, now: f64) -> f64 {
 	}
 }
 
+/// When the window is drawn: at a steady rate, and sooner for what is done to it. Drawing it as often as the loop
+/// turns (every swap of a 240 Hz monitor) redrew the same picture several times over, in front and behind other
+/// windows alike.
+#[derive(Default)]
+struct Pace {
+	/// when the next steady frame is due
+	next: f64,
+	/// when the last frame was drawn
+	last: f64,
+	/// something was done to the window since
+	input: bool,
+}
+
+impl Pace {
+	/// Whether a frame is due at `now`, and if so taken: the steady rate's (`hz`), or, where `quick`, one for the
+	/// input since the last frame, no sooner than INPUT_HZ allows
+	fn due(&mut self, now: f64, hz: f64, quick: bool) -> bool {
+		let for_input = quick && self.input && now >= self.last + 1.0 / INPUT_HZ;
+		if !for_input && now < self.next {
+			return false;
+		}
+		if now >= self.next {
+			self.next = next_due(self.next, 1.0 / hz, now);
+		}
+		self.last = now;
+		self.input = false;
+		true
+	}
+
+	/// When the next frame can be due
+	fn wake(&self, quick: bool) -> f64 {
+		if quick && self.input {
+			self.next.min(self.last + 1.0 / INPUT_HZ)
+		} else {
+			self.next
+		}
+	}
+}
+
 /// The program: the panel, and its window once winit lets it be made
 struct Host {
 	panel: Panel,
@@ -439,7 +484,7 @@ impl Host {
 	/// One turn of the loop; when the next is due
 	fn turn(&mut self, now: f64) -> f64 {
 		let Host { panel, start, shown, session, last_save, .. } = self;
-		let Some(shown) = shown.as_mut() else { return now + HIDDEN_REST };
+		let Some(shown) = shown.as_mut() else { return now + REST };
 		// the overlay switched on or off in Settings: wanted only where its views could be made
 		if panel.toggle_overlay {
 			panel.toggle_overlay = false;
@@ -468,28 +513,22 @@ impl Host {
 			if overlay_up {
 				overlay_next.max(now + 0.001)
 			} else {
-				now + HIDDEN_REST
+				now + REST
 			}
 		} else {
+			// behind the overlay the window keeps its 30 Hz whatever the pointer does: its swaps do not wait there
 			let behind = overlay_up && !shown.focused;
-			if behind && now < shown.next_behind {
-				shown.next_behind.min(overlay_next)
-			} else {
-				if behind {
-					shown.next_behind = next_due(shown.next_behind, 1.0 / BEHIND_HZ, now);
-				}
+			let hz = if shown.focused { WINDOW_HZ } else { BEHIND_HZ };
+			if shown.pace.due(now, hz, !behind) {
 				shown.set_vsync(!behind);
 				shown.draw(panel, now);
 				drawn = true;
-				if behind {
-					shown.next_behind.min(overlay_next)
-				} else if !shown.focused && !overlay_up {
-					// in the background with nothing in VR: light (the socket is still drained every turn)
-					start.elapsed().as_secs_f64() + BACKGROUND_REST
-				} else {
-					// at once: the swap waits for the monitor
-					now
-				}
+			}
+			let wake = shown.pace.wake(!behind).min(start.elapsed().as_secs_f64() + REST);
+			if overlay_up {
+				wake.min(overlay_next)
+			} else {
+				wake
 			}
 		};
 		if panel.st.dirty && now - *last_save > SAVE_EVERY {
@@ -527,7 +566,12 @@ impl ApplicationHandler for Host {
 	fn window_event(&mut self, el: &ActiveEventLoop, _id: WindowId, event: WindowEvent) {
 		let Some(shown) = self.shown.as_mut() else { return };
 		// egui's share first: the input, the scale (ScaleFactorChanged), the focus
-		let _ = shown.egui.on_window_event(&shown.window, &event);
+		let response = shown.egui.on_window_event(&shown.window, &event);
+		if response.repaint && !matches!(event, WindowEvent::RedrawRequested) {
+			// something was done to the window: its frame is due as soon as the last one allows
+			shown.pace.input = true;
+			self.next_turn = self.next_turn.min(shown.pace.wake(true));
+		}
 		match event {
 			WindowEvent::CloseRequested => el.exit(),
 			WindowEvent::Resized(_) => shown.window.resize_surface(&shown.surface, &shown.context),
@@ -596,8 +640,8 @@ struct Shown {
 	minimised: bool,
 	/// what the icon's dot says now (none: no icon set yet)
 	dot: Option<Dot>,
-	/// when the window's next frame is due while it is behind the overlay
-	next_behind: f64,
+	/// when the window's frames are due
+	pace: Pace,
 }
 
 impl Shown {
@@ -701,7 +745,7 @@ impl Shown {
 			visible: false,
 			minimised: false,
 			dot: None,
-			next_behind: 0.0,
+			pace: Pace::default(),
 		})
 	}
 
@@ -1232,5 +1276,50 @@ mod tests {
 			}
 		}
 		assert!((89..=91).contains(&frames), "{frames}");
+	}
+
+	/// A second of the loop's turns at `turns` a second from `t0`, with input before every `input_every`th turn (0:
+	/// none): the frames drawn
+	fn paced(pace: &mut Pace, t0: f64, turns: u32, hz: f64, quick: bool, input_every: u32) -> u32 {
+		let mut frames = 0;
+		for k in 0..turns {
+			if input_every > 0 && k % input_every == 0 {
+				pace.input = true;
+			}
+			if pace.due(t0 + k as f64 / turns as f64, hz, quick) {
+				frames += 1;
+			}
+		}
+		frames
+	}
+
+	#[test]
+	fn the_window_is_drawn_steadily_and_sooner_for_input() {
+		let mut pace = Pace::default();
+		// nothing done to it: the steady rate, however often the loop turns
+		let f = paced(&mut pace, 10.0, 1000, WINDOW_HZ, true, 0);
+		assert!((59..=61).contains(&f), "{f}");
+		let f = paced(&mut pace, 11.0, 1000, BEHIND_HZ, true, 0);
+		assert!((29..=31).contains(&f), "{f}");
+		// the pointer moving over it (an event every turn): a frame as soon as INPUT_HZ allows, every fifth turn here
+		let f = paced(&mut pace, 12.0, 1000, WINDOW_HZ, true, 1);
+		assert!((190..=241).contains(&f), "{f}");
+		// a few events a second: a frame for each on top of the steady ones
+		let f = paced(&mut pace, 13.0, 1000, WINDOW_HZ, true, 100);
+		assert!((60..=71).contains(&f), "{f}");
+		// behind the overlay input brings no frame forward
+		let f = paced(&mut pace, 14.0, 1000, BEHIND_HZ, false, 1);
+		assert!((29..=31).contains(&f), "{f}");
+		// one event: its frame due a 240th after the last frame at the latest, then the steady rate again
+		let mut pace = Pace::default();
+		assert!(pace.due(20.0, WINDOW_HZ, true));
+		assert!(!pace.due(20.001, WINDOW_HZ, true));
+		pace.input = true;
+		assert!((pace.wake(true) - (20.0 + 1.0 / INPUT_HZ)).abs() < 1e-12);
+		assert!((pace.wake(false) - (20.0 + 1.0 / WINDOW_HZ)).abs() < 1e-12);
+		assert!(!pace.due(20.002, WINDOW_HZ, true));
+		assert!(pace.due(20.005, WINDOW_HZ, true));
+		assert!(!pace.input && !pace.due(20.010, WINDOW_HZ, true));
+		assert!(pace.due(20.0 + 1.0 / WINDOW_HZ, WINDOW_HZ, true));
 	}
 }

@@ -512,7 +512,7 @@ const DRIVER_POSE_UDP: [Opt; 8] = [
 ];
 
 /// driver_hidtap.c
-const DRIVER_HIDTAP: [Opt; 8] = [
+const DRIVER_HIDTAP: [Opt; 10] = [
 	("hidtap", Bool(false), "sally: read the lighthouse HID devices directly, next to Valve's driver (Windows)"),
 	(
 		"hidtap-lightcap-mode",
@@ -534,6 +534,24 @@ const DRIVER_HIDTAP: [Opt; 8] = [
 	),
 	("hidtap-playback", Str(None), "sally: HID tap recording to replay"),
 	("hidtap-record", Str(None), "sally: file to write the HID tap stream to"),
+	(
+		"hidtap-record-strip",
+		Bool(true),
+		concat!(
+			"sally: live mode: the recording is written without the bytes of a radio dongle's report that follow its ",
+			"packets (the dongle's own four and leftovers of earlier packets), which nothing reads: zeros in their ",
+			"place. 0 keeps every byte",
+		),
+	),
+	(
+		"hidtap-past-end",
+		Int(2),
+		concat!(
+			"sally: a radio packet that is not laid out as its flags say: 2 stops the parser's reading of it at the ",
+			"packet's own end, and the session's end says how many there were; 1 only counts them; 0 reads on into the ",
+			"dongle's bytes after the packet, as libsurvive does",
+		),
+	),
 	(
 		"hidtap-allow-fs-config",
 		Bool(false),
@@ -691,6 +709,15 @@ mod tests {
 		let (name, _, says) = DRIVER_POSE_UDP[7];
 		let driver_file = format!("option s {} NULL {}", quote(name.as_bytes()), quote(says.as_bytes()));
 		c.insert(at, &driver_file);
+		// the recording without what nothing reads (sally's, after the tap's record file)
+		let at = c.iter().position(|l| l.contains(r#""hidtap-record""#)).unwrap() + 1;
+		let (name, _, says) = DRIVER_HIDTAP[6];
+		let record_strip = format!("option b {} 1 {}", quote(name.as_bytes()), quote(says.as_bytes()));
+		assert_eq!(name, "hidtap-record-strip");
+		c.insert(at, &record_strip);
+		let (name, _, says) = DRIVER_HIDTAP[7];
+		let past_end = format!("option i {} 2 {}", quote(name.as_bytes()), quote(says.as_bytes()));
+		c.insert(at + 1, &past_end);
 		assert_eq!(ours, c);
 	}
 
@@ -708,6 +735,9 @@ mod tests {
 		c.insert(at, "device-learned-file");
 		let at = c.iter().position(|&o| o == "runtime-sub-timeout").unwrap() + 1;
 		c.insert(at, "runtime-driver-file");
+		let at = c.iter().position(|&o| o == "hidtap-record").unwrap() + 1;
+		c.insert(at, "hidtap-record-strip");
+		c.insert(at + 1, "hidtap-past-end");
 		assert_eq!(ours, c);
 	}
 }

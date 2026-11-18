@@ -722,8 +722,10 @@ mod openhouse {
 				_ => {}
 			}
 		}
+		// (sally: the recordings of either form, a packed one read as the text it holds)
 		let mut taps: Vec<(f64, PathBuf)> = files_like(logs, "sallytap_", ".hidtap")
 			.into_iter()
+			.chain(files_like(logs, "sallytap_", ".hidtapz"))
 			.map(|(_, p)| mtime(&p).map(|t| (t, p)))
 			.collect::<std::io::Result<_>>()
 			.map_err(|e| e.to_string())?;
@@ -731,7 +733,7 @@ mod openhouse {
 		taps.sort_by(|a, b| b.0.partial_cmp(&a.0).unwrap_or(std::cmp::Ordering::Equal));
 		for (_, t) in taps.iter().take(20) {
 			let mut head = Vec::new();
-			File::open(t).and_then(|f| f.take(1 << 16).read_to_end(&mut head)).map_err(|e| e.to_string())?;
+			sally_hid::pack::open(t).and_then(|f| f.take(1 << 16).read_to_end(&mut head)).map_err(|e| e.to_string())?;
 			let head = ascii_replace(&head);
 			if head.starts_with(MARK) {
 				continue;

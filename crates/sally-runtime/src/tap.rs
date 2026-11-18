@@ -26,6 +26,8 @@ pub fn options(rt: &mut Runtime) -> Options {
 		run_time: c.configf("run-time", SC_GET, -1.0),
 		test_drop: String::from_utf8_lossy(&c.configs("vive-test-drop", SC_GET, Some(b"")).unwrap_or_default())
 			.into_owned(),
+		record_strip: c.configi("hidtap-record-strip", SC_GET, 1) != 0,
+		past_end: c.configi("hidtap-past-end", SC_GET, 2).clamp(0, 2) as u8,
 	}
 }
 

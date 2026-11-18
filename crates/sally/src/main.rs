@@ -8,12 +8,14 @@
 //! - `sally setup`, `sally off`, `sally stop`, `sally copy-log`: SteamVR set up for sally and back, a leftover runtime
 //!   stopped, SteamVR's log copied (`setup`)
 //! - `sally convert`: tap recordings made of a USBPcap capture or of openhouse's recordings (`convert`)
+//! - `sally pack`, `sally unpack`: a tap recording packed to a fraction of its size, and back to its text (`packing`)
 //! - `sally probe`: the dongles checked, their config caches seeded (`probe`, Windows)
 
 mod autocal;
 mod calibrate;
 mod convert;
 mod ctl;
+mod packing;
 mod probe;
 mod replay;
 mod run;
@@ -38,6 +40,8 @@ fn main() {
 		Some(b"calibrate") => calibrate::main(&subcommand_argv(b"sally calibrate", &argv)),
 		Some(b"ctl") => ctl::main(&words(&argv)),
 		Some(b"convert") => convert::main(&words(&argv)),
+		Some(b"pack") => packing::pack(&words(&argv)),
+		Some(b"unpack") => packing::unpack(&words(&argv)),
 		Some(b"probe") => probe::main(&words(&argv)),
 		Some(b"setup") => setup::setup(&words(&argv)),
 		Some(b"off") => setup::off(&words(&argv)),
@@ -54,6 +58,12 @@ fn main() {
 			eprintln!("       sally convert <capture.pcap> [<capture.pcap.usbdevs>] > <tap recording>");
 			eprintln!(
 				"       sally convert [--project <folder>] [--logs <folder>] [--force] [--list] [<recording.lhraw | report.zip>...]"
+			);
+			eprintln!(
+				"       sally pack [--strip] [--to <folder>] [--replace] [--force] <tap recording>...   each packed (.hidtapz)"
+			);
+			eprintln!(
+				"       sally unpack [--to <folder>] [--replace] [--force] <tap recording>...          each as text (.hidtap)"
 			);
 			eprintln!("       sally probe [-t <seconds>] [--config] [--vid <hex>]");
 			eprintln!("       sally setup [--home <folder>] [--no-panel] [--stop-panel] SteamVR set up for sally, the panel started");

@@ -199,8 +199,8 @@ mod reader {
 		lock, path_field, reports_in, wide_to_ascii, Context, CONFIGURED_RECHECK_S, MAX_OPEN, PATH_LEN,
 		READ_ERRORS_MAX, READ_LEN, SCAN_MAX, SERIAL_LEN,
 	};
-	use crate::line;
 	use crate::tap::{DeviceId, Options, Record};
+	use crate::{line, strip};
 
 	fn info<C: Context>(ctx: &Mutex<C>, text: &str) {
 		lock(ctx).tap().1.info(text);
@@ -317,6 +317,8 @@ mod reader {
 		vid: u16,
 		config_fetch: bool,
 		config_delay: f64,
+		/// sally: the record is written without what nothing reads of a dongle's report (`strip`)
+		record_strip: bool,
 		scan: Arc<Scan>,
 		/// devs[0..ndevs]
 		devs: Vec<LiveDev>,
@@ -340,6 +342,7 @@ mod reader {
 			vid: options.vid,
 			config_fetch: options.config_fetch,
 			config_delay: options.config_delay,
+			record_strip: options.record_strip,
 			scan,
 			devs: Vec::with_capacity(MAX_OPEN),
 		};
@@ -635,7 +638,11 @@ mod reader {
 				ld.reports += 1;
 				let data = &ld.io.buf[r];
 				if let Some(rec) = self.record.as_mut() {
-					rec.put(&line::input_report(t, &ld.serial, ld.pid, ld.mi, ld.col, data));
+					// sally: the line may leave out what nothing reads; the tap is handed the report as it came
+					rec.put(&match self.record_strip {
+						true => strip::input_report(t, &ld.serial, ld.pid, ld.mi, ld.col, data),
+						false => line::input_report(t, &ld.serial, ld.pid, ld.mi, ld.col, data),
+					});
 				}
 				let mut g = lock(&self.ctx);
 				let (tap, rt) = g.tap();

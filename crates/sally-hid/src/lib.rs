@@ -9,6 +9,8 @@
 //!   caller's
 //! - `live`: the dongles read into the tap (`--hidtap 1`, Windows)
 //! - `line`: the tap recordings' line format (`R` reports, `D` devices)
+//! - `pack`: a tap recording packed to a fraction of its text's size, and read back as that text
+//! - `strip`: what a recording leaves out, the bytes of a dongle's report that nothing reads
 //! - `devices`: the known devices and which interface a report belongs to
 //! - `report`: the report parser, one `Parser` per device; what it finds goes to a `Host`
 //! - `config_stream`: a device's config as it streams out of it, inflated
@@ -21,6 +23,8 @@ pub mod config_stream;
 pub mod devices;
 pub mod line;
 pub mod live;
+pub mod pack;
 pub mod replay;
 pub mod report;
+pub mod strip;
 pub mod tap;

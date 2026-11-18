@@ -466,24 +466,32 @@ impl Auto {
 		self.flush(rt);
 	}
 
-	/// The newest recording beside this session's and named like it (its name up to the first digit, its extension)
+	/// The newest recording beside this session's and named like it (its name up to the first digit, its extension;
+	/// a tap recording's two extensions, text and packed, count as one)
 	fn previous_recording(&self) -> Option<PathBuf> {
+		// a name without its extension, and the extension: a tap recording's is "tap" in either form
+		fn split(name: &str) -> (&str, &str) {
+			match sally_hid::pack::stem(name) {
+				Some(stem) => (stem, "tap"),
+				None => name.rsplit_once('.').unwrap_or((name, "")),
+			}
+		}
 		let dir = self.record.parent()?;
 		let me = name_of(&self.record);
-		let stem: String = me.chars().take_while(|c| !c.is_ascii_digit()).collect();
-		let ext = self.record.extension().map(|e| e.to_string_lossy().into_owned());
+		let (me_stem, me_ext) = split(&me);
+		let prefix: String = me.chars().take_while(|c| !c.is_ascii_digit()).collect();
 		let mut best: Option<String> = None;
 		for e in std::fs::read_dir(dir).ok()?.flatten() {
 			let n = e.file_name().to_string_lossy().into_owned();
-			let p = Path::new(&n);
-			if n == me || !n.starts_with(&stem) || p.extension().map(|e| e.to_string_lossy().into_owned()) != ext {
+			let (stem, ext) = split(&n);
+			if n == me || !n.starts_with(&prefix) || ext != me_ext {
 				continue;
 			}
-			if !n[stem.len()..].starts_with(|c: char| c.is_ascii_digit()) {
+			if !n[prefix.len()..].starts_with(|c: char| c.is_ascii_digit()) {
 				continue;
 			}
 			// the names carry their start's time: the latest sorts last
-			if best.as_ref().is_none_or(|b| n > *b) && n < me {
+			if best.as_deref().is_none_or(|b| stem > split(b).0) && stem < me_stem {
 				best = Some(n);
 			}
 		}
@@ -1053,6 +1061,28 @@ mod tests {
 	const R1: &str = "sallytap_20261108_220000.hidtap";
 	const R2: &str = "sallytap_20261109_010000.hidtap";
 	const R3: &str = "sallytap_20261109_020000.hidtap";
+
+	#[test]
+	fn the_previous_recording_is_found_in_either_form() {
+		let (root, argv) = room("forms");
+		let logs = root.join("logs");
+		// this session's recording is 010000's, as text: the one before it is 220000's
+		let mut a = Auto::new(&argv).unwrap();
+		assert_eq!(a.previous_recording().map(|p| name_of(&p)).as_deref(), Some(R1));
+		// a packed one between them is the newer; one after this session's, or a file that is no recording, is not
+		for n in
+			["sallytap_20261108_230000.hidtapz", "sallytap_20261109_030000.hidtapz", "sallytap_20261109_000000.txt"]
+		{
+			std::fs::write(logs.join(n), "x\n").unwrap();
+		}
+		assert_eq!(a.previous_recording().map(|p| name_of(&p)).as_deref(), Some("sallytap_20261108_230000.hidtapz"));
+		// and from a session that records packed, the text ones before it count the same
+		a.record = logs.join("sallytap_20261109_040000.hidtapz");
+		assert_eq!(a.previous_recording().map(|p| name_of(&p)).as_deref(), Some("sallytap_20261109_030000.hidtapz"));
+		std::fs::remove_file(logs.join("sallytap_20261109_030000.hidtapz")).unwrap();
+		assert_eq!(a.previous_recording().map(|p| name_of(&p)).as_deref(), Some(R2));
+		let _ = std::fs::remove_dir_all(&root);
+	}
 
 	#[test]
 	fn a_session_waits_for_two_more_then_is_taken_up_at_the_start() {

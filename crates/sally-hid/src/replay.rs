@@ -11,8 +11,7 @@
 //! the pace's sleep outside the lock; a line the C ignores takes no lock. A malformed line's warning takes it, which the
 //! C logs without. `Replay` does the same work on the caller's thread with a tap of its own (`sally replay`).
 
-use std::fs::File;
-use std::io::{BufRead, BufReader};
+use std::io::{BufRead, BufReader, Read};
 use std::sync::atomic::{AtomicBool, AtomicU64, Ordering};
 use std::sync::{Arc, Mutex, MutexGuard};
 use std::thread::JoinHandle;
@@ -270,7 +269,9 @@ impl<C: Context> Playback<C> {
 	/// (factor %.2f)", the recording of the stream when `record` names a file, the playback thread started
 	/// (survive_add_threaded_driver), then its time installed as the run clock. Called with the context locked, as
 	/// survive_startup calls it (`locked` is the locked context): the thread waits for the lock at its first device
-	pub fn start(ctx: &Arc<Mutex<C>>, locked: &mut C, file: File, path: &str, record: Option<&str>) -> Playback<C> {
+	pub fn start(
+		ctx: &Arc<Mutex<C>>, locked: &mut C, file: Box<dyn Read + Send>, path: &str, record: Option<&str>,
+	) -> Playback<C> {
 		let (tap, rt) = locked.tap();
 		let player = Player::new(rt, tap.options(), path, record);
 		let (time, keep_running) = (player.time.clone(), player.keep_running.clone());
@@ -307,7 +308,7 @@ fn lock<C>(ctx: &Mutex<C>) -> MutexGuard<'_, C> {
 /// Every line of the recording, in fgets's pieces, until its end (or a read error: fgets's NULL), the run time, or the
 /// driver stopped; then "hidtap: playback finished after %llu lines" (with the lock, which the C logs without) and the
 /// driver stopped. The record file is given back for the close
-fn play<C: Context>(ctx: &Mutex<C>, mut player: Player, mut input: BufReader<File>) -> Option<Record> {
+fn play<C: Context>(ctx: &Mutex<C>, mut player: Player, mut input: impl BufRead) -> Option<Record> {
 	let mut piece = Vec::with_capacity(MAX_LINE);
 	while player.running() && read_piece(&mut input, &mut piece).unwrap_or(false) {
 		played_line(ctx, &mut player, &piece);
@@ -515,11 +516,18 @@ mod tests {
 	}
 
 	/// The playback on its own thread does what the replay on the caller's thread does, line for line, and stops at
-	/// run-time with its line count; its poll's question turns once it has stopped
+	/// run-time with its line count; its poll's question turns once it has stopped. A packed recording plays as the
+	/// text it holds
 	#[test]
 	fn the_playback_thread_replays_as_the_replay_does() {
+		use std::fs::File;
 		let path = std::env::temp_dir().join(format!("sally-hid-playback-{}.hidtap", std::process::id()));
 		std::fs::write(&path, recording()).unwrap();
+		let packed = path.with_extension("hidtapz");
+		let mut w = crate::pack::PackWriter::new(File::create(&packed).unwrap()).unwrap();
+		w.write(&recording()).unwrap();
+		w.finish().unwrap();
+		assert!(std::fs::read(&packed).unwrap().starts_with(crate::pack::MAGIC));
 		let options = Options { playback_factor: 0.0, run_time: 0.007, ..Options::default() };
 
 		let mut rt = Notes::default();
@@ -527,23 +535,24 @@ mod tests {
 		replay.run(&mut rt, &mut BufReader::new(File::open(&path).unwrap())).unwrap();
 		assert!(replay.stopped());
 		replay.close(&mut rt);
-
-		let ctx = Arc::new(Mutex::new(Ctx { tap: Tap::new(options, Mode::Playback), rt: Notes::default() }));
-		let playback = {
-			let mut g = lock(&ctx);
-			Playback::start(&ctx, &mut g, File::open(&path).unwrap(), "the recording", None)
-		};
-		while playback.running() {
-			std::thread::sleep(std::time::Duration::from_millis(1));
-		}
-		playback.stop();
-		let _ = std::fs::remove_file(&path);
-
-		let g = lock(&ctx);
-		assert_eq!(g.rt.said, rt.said);
 		assert!(rt.said.contains(&"Info: hidtap: playback finished after 14 lines".to_string()), "{:?}", rt.said);
 		// (the unknown device's report is not counted: it has no device)
 		assert!(rt.said.contains(&"Info: hidtap: 14 lines, 9 reports, 3 bad lines".to_string()), "{:?}", rt.said);
 		assert_eq!(rt.said.last().map(String::as_str), Some("clock frozen"));
+
+		for file in [&path, &packed] {
+			let ctx =
+				Arc::new(Mutex::new(Ctx { tap: Tap::new(options.clone(), Mode::Playback), rt: Notes::default() }));
+			let playback = {
+				let mut g = lock(&ctx);
+				Playback::start(&ctx, &mut g, crate::pack::open(file).unwrap(), "the recording", None)
+			};
+			while playback.running() {
+				std::thread::sleep(std::time::Duration::from_millis(1));
+			}
+			playback.stop();
+			assert_eq!(lock(&ctx).rt.said, rt.said, "{}", file.display());
+			let _ = std::fs::remove_file(file);
+		}
 	}
 }

@@ -8,6 +8,7 @@ use std::fs::File;
 use std::io::{BufRead, BufReader, Read};
 use std::sync::atomic::{AtomicU64, Ordering};
 
+use sally_hid::pack;
 use sally_hid::replay::{Replay, MAX_LINE};
 use sally_math::printf::{sprintf, Arg};
 use sally_runtime::config::{SC_GET, SC_SETCONFIG};
@@ -39,11 +40,14 @@ pub fn progress() -> f64 {
 }
 
 /// A recording's first `limit` bytes up to their last whole line (a recording being written ends in a line cut
-/// short), or all of it
-fn length_to_read(file: &mut File, limit: Option<u64>) -> u64 {
+/// short), or all of it. A packed recording's first `limit` bytes as they are: it is read to its last whole block
+fn length_to_read(file: &mut File, limit: Option<u64>, packed: bool) -> u64 {
 	use std::io::{Seek, SeekFrom};
 	let all = file.metadata().map(|m| m.len()).unwrap_or(u64::MAX);
 	let Some(limit) = limit.filter(|&l| l < all) else { return all };
+	if packed {
+		return limit;
+	}
 	let back = limit.min(1 << 16);
 	let mut tail = vec![0u8; back as usize];
 	let whole = file.seek(SeekFrom::Start(limit - back)).is_ok() && file.read_exact(&mut tail).is_ok();
@@ -111,8 +115,20 @@ pub fn run(
 	let record = rt.config.configs("hidtap-record", SC_GET, None).map(|r| text(&r));
 	let options = tap::options(&mut rt);
 	let playback_factor = options.playback_factor;
-	let mut file = match File::open(&playback) {
-		Ok(f) => f,
+	// the recording's text: the file itself, or what a packed one holds (how far it has been read is the file's
+	// bytes either way)
+	let opened = File::open(&playback).and_then(|mut file| {
+		let packed = pack::packed(&mut file)?;
+		let length = length_to_read(&mut file, limit, packed);
+		let file = Counted(file.take(length));
+		let text: Box<dyn Read> = match packed {
+			true => Box::new(pack::Unpacker::new(BufReader::with_capacity(1 << 16, file))?),
+			false => Box::new(file),
+		};
+		Ok((text, length))
+	});
+	let (text, length) = match opened {
+		Ok(o) => o,
 		Err(_) => {
 			rt.error(error::INVALID_CONFIG, &format!("hidtap: cannot open {playback}"));
 			return 1;
@@ -127,10 +143,9 @@ pub fn run(
 	startup::broadcast_stations(&mut rt);
 
 	let stop_after = rt.config.configf("stop-after", SC_GET, -1.0);
-	let length = length_to_read(&mut file, limit);
 	READ.store(0, Ordering::Relaxed);
 	LENGTH.store(length, Ordering::Relaxed);
-	let mut input = BufReader::with_capacity(1 << 20, Counted(file.take(length)));
+	let mut input = BufReader::with_capacity(1 << 20, text);
 	let end = play(&mut rt, &mut replay, &mut input, stop_after, playback_factor);
 	match &end {
 		End::Finished | End::ReadError(_) => {

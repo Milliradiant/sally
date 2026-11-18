@@ -164,6 +164,11 @@ pub struct Globals {
 	pub force_gen_warned: bool,
 	/// parse_and_process_raw1_lightcap's unknown_count
 	pub raw1_unknown_count: i32,
+	/// sally (hidtap-past-end, 2 in the runtime): 1 counts the radio packets the newer layout's reading goes past the
+	/// end of (`strip::past_end`), 2 also stops every such reading at the packet's end. 0, as the C does: neither
+	pub past_end: u8,
+	/// those packets, by `strip::Past`
+	pub past: [u32; 9],
 }
 
 /// One device's parser state: SurviveUSBInfo and the input state of the SurviveObject the parser compares against
@@ -214,11 +219,13 @@ struct OutOfBuffer;
 /// The report's bytes as the C's buffer holds them
 struct Buf<'a> {
 	b: &'a [u8; BUFFER_LEN],
+	/// where reading ends: the buffer's length, or a packet's own end (sally's, `Globals::past_end`)
+	end: isize,
 }
 
 impl Buf<'_> {
 	fn at(&self, i: isize) -> Result<u8, OutOfBuffer> {
-		if i < 0 || i as usize >= BUFFER_LEN {
+		if i < 0 || i >= self.end {
 			return Err(OutOfBuffer);
 		}
 		Ok(self.b[i as usize])
@@ -407,7 +414,7 @@ impl Parser {
 		&mut self, host: &mut dyn Host, g: &mut Globals, time_received_us: u64, iface: i32, buffer: &[u8; BUFFER_LEN],
 		actual_len: usize,
 	) -> Result<(), OutOfBuffer> {
-		let b = Buf { b: buffer };
+		let b = Buf { b: buffer, end: BUFFER_LEN as isize };
 		let mut size = actual_len as isize;
 		let enddata = size;
 		let mut rd: isize = 0;
@@ -644,6 +651,13 @@ impl Parser {
 		let payload_end = payload + payload_size as isize;
 
 		if self.use_watchman_v2(host) {
+			if g.past_end > 1 {
+				// sally: the reading stops at the packet's own end, with what it had handed on by then. A packet not
+				// laid out as its flags say would be read on into the dongle's bytes after it, and those handed on
+				let inside = Buf { b: b.b, end: payload_end.min(b.end) };
+				let _ = self.handle_watchman_v2(host, g, &inside, time_in_us, time, payload, payload_end);
+				return Ok(());
+			}
 			return self.handle_watchman_v2(host, g, b, time_in_us, time, payload, payload_end);
 		}
 
@@ -694,6 +708,12 @@ impl Parser {
 		if host.lh_version() == 1 && self.lightcap_mode != LightcapMode::Raw1 {
 			self.switch_mode(host, g);
 			return Ok(());
+		}
+
+		if g.past_end > 0 {
+			if let Some(why) = crate::strip::past_end(&collect(b, origin - 3, 29)) {
+				g.past[why as usize] += 1;
+			}
 		}
 
 		let flags = b.at(p)?;
@@ -1633,7 +1653,7 @@ mod tests {
 			0xf6, 0xb4, 0x5b, // the last event's time
 		];
 		let (buf, _) = report_buffer(&packet);
-		let b = Buf { b: &buf };
+		let b = Buf { b: &buf, end: BUFFER_LEN as isize };
 		let mut host = Recorder { last_imu: 6010000, ..Default::default() };
 		let mut parser = Parser::new("KN0");
 		let mut out = [LightcapElement::default(); 10];

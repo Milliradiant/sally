@@ -19,6 +19,7 @@ use std::sync::Arc;
 use crate::config_stream::{Chunk, ConfigStream};
 use crate::devices::{self, usb_if, DEVICES};
 use crate::line;
+use crate::pack::{self, PackWriter};
 use crate::replay::PlaybackTime;
 use crate::report::{self, Globals, Parser, BUFFER_LEN};
 
@@ -61,6 +62,12 @@ pub struct Options {
 	/// vive-test-drop: TEST ONLY, "T0,T1,CODENAME,FRACTION" drops that share of a device's reports between run times
 	/// T0 and T1, as a bad radio link would. Empty = off
 	pub test_drop: String,
+	/// hidtap-record-strip: live, the recording is written without the bytes of a dongle's report that nothing reads
+	/// (`crate::strip`)
+	pub record_strip: bool,
+	/// hidtap-past-end: what the parser does with a packet it would read past the end of
+	/// (`report::Globals::past_end`; the runtime sets 2, the reading stopped there)
+	pub past_end: u8,
 }
 
 impl Default for Options {
@@ -75,6 +82,8 @@ impl Default for Options {
 			playback_factor: 1.0,
 			run_time: -1.0,
 			test_drop: String::new(),
+			record_strip: false,
+			past_end: 0,
 		}
 	}
 }
@@ -219,12 +228,13 @@ impl Tap {
 	/// DriverRegHIDTap_'s state, before the input starts (it logs nothing)
 	pub fn new(options: Options, mode: Mode) -> Self {
 		let test_drop = parse_test_drop(&options.test_drop);
+		let globals = Globals { past_end: options.past_end, ..Globals::default() };
 		Tap {
 			options,
 			live: mode == Mode::Live,
 			devices: Vec::new(),
 			cnt_per_type: [0; 16],
-			globals: Globals::default(),
+			globals,
 			test_drop,
 			lines: 0,
 			reports: 0,
@@ -245,6 +255,22 @@ impl Tap {
 	/// its last value if the playback had installed its own (survive_install_run_time_fn(ctx, 0, 0))
 	pub fn close(&self, rt: &mut dyn Runtime, record: Option<Record>) {
 		rt.info(&format!("hidtap: {} lines, {} reports, {} bad lines", self.lines, self.reports, self.bad_lines));
+		if self.globals.past_end > 0 {
+			// (by `strip::Past`)
+			let p = self.globals.past;
+			rt.info(&format!(
+				"hidtap: packets read past their end{}: {} (no payload {}, size {}, IMU {}, status {}, input {}, light {}, light entry {})",
+				if self.globals.past_end > 1 { ", each reading stopped there" } else { "" },
+				p.iter().sum::<u32>(),
+				p[0],
+				p[1],
+				p[3],
+				p[4],
+				p[5],
+				p[6],
+				p[7]
+			));
+		}
 		if let Some(r) = record {
 			r.close();
 		}
@@ -737,21 +763,31 @@ impl Tap {
 }
 
 /// The `--hidtap-record` file (d->record): the tap's stream as lines, written by the input that reads it. The C writes
-/// it through a text-mode FILE, so on Windows each newline goes out as CR LF (the live recordings' CR LF); so does this
+/// it through a text-mode FILE, so on Windows each newline goes out as CR LF (the live recordings' CR LF); so does this.
+/// sally: a file named `.hidtapz` is written packed (`pack`): the same lines, to the byte, in a fraction of the space
 pub struct Record {
-	out: BufWriter<File>,
+	out: Out,
 	/// the text mode's CR LF (Windows)
 	crlf: bool,
+}
+
+enum Out {
+	Text(BufWriter<File>),
+	Packed(Box<PackWriter<File>>),
 }
 
 impl Record {
 	/// DriverRegHIDTap_'s fopen(record, "w"): "hidtap: recording stream to %s", or "hidtap: cannot open %s for
 	/// recording" and no recording
 	pub fn open(rt: &mut dyn Runtime, path: &str) -> Option<Record> {
-		match File::create(path) {
-			Ok(f) => {
+		let made = File::create(path).and_then(|f| match path.ends_with(pack::PACKED_END) {
+			true => Record::packed(f, cfg!(windows)),
+			false => Ok(Record::new(f, cfg!(windows))),
+		});
+		match made {
+			Ok(r) => {
 				rt.info(&format!("hidtap: recording stream to {path}"));
-				Some(Record::new(f, cfg!(windows)))
+				Some(r)
 			}
 			Err(_) => {
 				rt.warn(&format!("hidtap: cannot open {path} for recording"));
@@ -761,21 +797,33 @@ impl Record {
 	}
 
 	fn new(f: File, crlf: bool) -> Record {
-		Record { out: BufWriter::new(f), crlf }
+		Record { out: Out::Text(BufWriter::new(f)), crlf }
+	}
+
+	/// sally: the record as a packed recording, its header written
+	fn packed(f: File, crlf: bool) -> std::io::Result<Record> {
+		Ok(Record { out: Out::Packed(Box::new(PackWriter::new(f)?)), crlf })
+	}
+
+	// a write that fails is not reported, as the C's fputs is not checked
+	fn write(&mut self, text: &[u8]) {
+		let _ = match &mut self.out {
+			Out::Text(out) => out.write_all(text),
+			Out::Packed(out) => out.write(text),
+		};
 	}
 
 	/// fputs: the text up to its first NUL, through the text mode
 	pub fn put(&mut self, text: &[u8]) {
 		let text = &text[..text.iter().position(|&c| c == 0).unwrap_or(text.len())];
 		if !self.crlf {
-			let _ = self.out.write_all(text);
-			return;
+			return self.write(text);
 		}
 		for (i, part) in text.split(|&c| c == b'\n').enumerate() {
 			if i > 0 {
-				let _ = self.out.write_all(b"\r\n");
+				self.write(b"\r\n");
 			}
-			let _ = self.out.write_all(part);
+			self.write(part);
 		}
 	}
 
@@ -798,7 +846,22 @@ impl Record {
 
 	/// fclose: what is buffered written out
 	pub fn close(mut self) {
-		let _ = self.out.flush();
+		self.end();
+	}
+
+	fn end(&mut self) {
+		let _ = match &mut self.out {
+			Out::Text(out) => out.flush(),
+			Out::Packed(out) => out.end(),
+		};
+	}
+}
+
+/// sally: a record let go of without `close` still has every line it was given (the text's buffer writes itself
+/// out as it goes; a packed one's last lines would stay behind)
+impl Drop for Record {
+	fn drop(&mut self) {
+		self.end();
 	}
 }
 
@@ -1246,7 +1309,44 @@ mod tests {
 				b"R 1 a 2102 -1 -1 I 23\r\nR 2 a 2102 -1 -1 I 24\n# a piece without its newline\nx\nR 3 b 2102 -1 -1 I 23\n"
 			};
 			assert_eq!(std::fs::read(&path).unwrap(), want);
+
+			// sally: packed, the same lines to the byte
+			let packed = path.with_extension("hidtapz");
+			let mut r = Record::packed(File::create(&packed).unwrap(), crlf).unwrap();
+			r.line_as_read(b"R 1 a 2102 -1 -1 I 23\r\n");
+			r.line_as_read(b"R 2 a 2102 -1 -1 I 24\n");
+			r.line_as_read(b"# a piece without its newline");
+			r.line_as_read(b"x\0y\n");
+			r.put(&crate::line::input_report(3, "b", 0x2102, -1, -1, &[0x23]));
+			r.close();
+			let mut text = Vec::new();
+			std::io::Read::read_to_end(&mut pack::open(&packed).unwrap(), &mut text).unwrap();
+			assert_eq!(text, want);
+			assert!(pack::is_packed(&std::fs::read(&packed).unwrap()));
+			let _ = std::fs::remove_file(&packed);
 		}
 		let _ = std::fs::remove_file(&path);
+	}
+
+	#[test]
+	fn a_record_is_packed_by_its_name() {
+		let mut rt = Notes::default();
+		let dir = std::env::temp_dir();
+		for (name, packed) in [("sally-hid-named.hidtap", false), ("sally-hid-named.hidtapz", true)] {
+			let path = dir.join(format!("{}-{name}", std::process::id()));
+			let mut r = Record::open(&mut rt, path.to_str().unwrap()).unwrap();
+			r.put(b"R 1 a 2102 -1 -1 I 23\n");
+			r.close();
+			assert_eq!(pack::is_packed(&std::fs::read(&path).unwrap()), packed, "{name}");
+			// and one let go of without close holds what it was given, a line begun included
+			let mut r = Record::open(&mut rt, path.to_str().unwrap()).unwrap();
+			r.put(b"R 1 a 2102 -1 -1 I 23\nR 2 a 2102");
+			drop(r);
+			let mut text = Vec::new();
+			std::io::Read::read_to_end(&mut pack::open(&path).unwrap(), &mut text).unwrap();
+			let end = if cfg!(windows) { "\r\n" } else { "\n" };
+			assert_eq!(String::from_utf8(text).unwrap(), format!("R 1 a 2102 -1 -1 I 23{end}R 2 a 2102"), "{name}");
+			let _ = std::fs::remove_file(&path);
+		}
 	}
 }

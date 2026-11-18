@@ -218,7 +218,8 @@ fn start_playback(ctx: &Arc<Mutex<Context>>, c: &mut Context, taps: &mut Vec<Tap
 	let Some(playback) = playback else { return DRIVER_ERROR };
 	let options = tap::options(&mut c.rt);
 	let path = text(&playback);
-	let file = match File::open(startup::path(&playback)) {
+	// (a packed recording is read as the text it holds)
+	let file = match File::open(startup::path(&playback)).and_then(sally_hid::pack::text) {
 		Ok(f) => f,
 		Err(_) => {
 			c.rt.error(error::INVALID_CONFIG, &format!("hidtap: cannot open {path}"));

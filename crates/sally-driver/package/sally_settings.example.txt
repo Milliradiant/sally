@@ -38,6 +38,6 @@ run
 --hidtap
 1
 --hidtap-record
-<sally>\logs\sallytap_{time}.hidtap
+<sally>\logs\sallytap_{time}.hidtapz
 --configfile
 <sally>\survive\driver_config.json

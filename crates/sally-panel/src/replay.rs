@@ -216,9 +216,13 @@ fn r_time(line: &[u8]) -> Option<f64> {
 	Some(us / 1e6)
 }
 
-/// The first and last report times of a tap (its first 64 KB, its last 256 KB)
+/// The first and last report times of a tap (its first 64 KB, its last 256 KB; a packed one's as its blocks give them)
 pub fn tap_span(path: &Path) -> Option<(f64, f64)> {
 	let mut f = File::open(path).ok()?;
+	if sally_hid::pack::packed(&mut f).ok()? {
+		let (t0, t1) = sally_hid::pack::span(&mut f).ok()??;
+		return Some((t0 as f64 / 1e6, t1 as f64 / 1e6));
+	}
 	let size = f.metadata().ok()?.len();
 	let mut head = vec![0u8; 65536.min(size as usize)];
 	f.read_exact(&mut head).ok()?;
@@ -242,15 +246,15 @@ fn poselog_start(path: &Path) -> Option<f64> {
 	line.split(',').next()?.parse().ok()
 }
 
-/// The sessions in the logs folder, newest first: each sallytap_<stamp>.hidtap with its runtime log, and the pose
-/// log whose first row falls in the tap's span
+/// The sessions in the logs folder, newest first: each sallytap_<stamp>.hidtap (or .hidtapz, the recording packed)
+/// with its runtime log, and the pose log whose first row falls in the tap's span
 pub fn sessions(paths: &Paths) -> Vec<Session> {
 	let Ok(rd) = std::fs::read_dir(&paths.logs) else { return Vec::new() };
-	let mut taps = Vec::new();
+	let mut taps: Vec<(String, PathBuf)> = Vec::new();
 	let mut plogs = Vec::new();
 	for e in rd.flatten() {
 		let name = e.file_name().to_string_lossy().into_owned();
-		if let Some(stamp) = name.strip_prefix("sallytap_").and_then(|n| n.strip_suffix(".hidtap")) {
+		if let Some(stamp) = name.strip_prefix("sallytap_").and_then(sally_hid::pack::stem) {
 			if stamp.len() == 15 && stamp.as_bytes()[8] == b'_' {
 				taps.push((stamp.to_string(), e.path()));
 			}
@@ -258,6 +262,9 @@ pub fn sessions(paths: &Paths) -> Vec<Session> {
 			plogs.push(e.path());
 		}
 	}
+	// a session there in both forms is listed once, as its text
+	taps.sort();
+	taps.dedup_by(|b, a| a.0 == b.0);
 	let plog_t: Vec<(f64, PathBuf)> = plogs.into_iter().filter_map(|p| poselog_start(&p).map(|t| (t, p))).collect();
 	let mut out: Vec<Session> = taps
 		.into_iter()
@@ -300,6 +307,53 @@ pub fn sessions(paths: &Paths) -> Vec<Session> {
 	}
 	out.sort_by(|a, b| b.stamp.cmp(&a.stamp));
 	out
+}
+
+/// A session's stamp: "20261107_123001"
+fn is_stamp(s: &str) -> bool {
+	s.len() == 15 && s.bytes().enumerate().all(|(i, c)| if i == 8 { c == b'_' } else { c.is_ascii_digit() })
+}
+
+/// The replays whose session is gone, removed; how many went. A replay is made from its session's recording and
+/// reached through it alone (the picker lists the recordings), so once the recording is deleted (the driver keeps
+/// the newest few sessions' files) its replay is hundreds of megabytes that nothing shows any more. A replay is a
+/// folder in `replays` named as a session's key (`Session::key`) with a replay's args.txt in it: nothing named or
+/// filled any other way is touched, and nothing at all while the recordings cannot be listed.
+pub fn prune(paths: &Paths) -> usize {
+	let Ok(logs) = std::fs::read_dir(&paths.logs) else { return 0 };
+	let mut kept: Vec<String> = logs
+		.flatten()
+		.filter_map(|e| {
+			let name = e.file_name().to_string_lossy().into_owned();
+			let stamp = name.strip_prefix("sallytap_").and_then(sally_hid::pack::stem)?;
+			is_stamp(stamp).then(|| stamp.to_string())
+		})
+		.collect();
+	// sally-check's recordings: none where their folder is not there, unknown (their replays left) where it cannot be read
+	let checks_known = match std::fs::read_dir(&paths.checks) {
+		Ok(rd) => {
+			kept.extend(rd.flatten().filter_map(|e| {
+				let name = e.file_name().to_string_lossy().into_owned();
+				name.strip_prefix("sally-check_").filter(|s| is_stamp(s)).map(|s| format!("check_{s}"))
+			}));
+			true
+		}
+		Err(e) => e.kind() == std::io::ErrorKind::NotFound,
+	};
+	let Ok(rd) = std::fs::read_dir(&paths.replays) else { return 0 };
+	let mut gone = 0;
+	for e in rd.flatten() {
+		let name = e.file_name().to_string_lossy().into_owned();
+		let check = name.strip_prefix("check_");
+		if !is_stamp(check.unwrap_or(&name)) || (check.is_some() && !checks_known) || kept.contains(&name) {
+			continue;
+		}
+		let dir = e.path();
+		if dir.join("args.txt").is_file() && std::fs::remove_dir_all(&dir).is_ok() {
+			gone += 1;
+		}
+	}
+	gone
 }
 
 /// A sally-check recording's stations (its devices.txt: "LHB-15B80A74 ... station"), as the ids a config has them
@@ -487,12 +541,10 @@ pub fn start(paths: &Paths, s: &Session) -> Result<Job, String> {
 	}
 	let mut notes: Vec<String> = Vec::new();
 	// the device configs as the session had them
-	let mut head = vec![0u8; 0];
-	if let Ok(mut f) = File::open(&s.tap) {
-		let mut b = vec![0u8; 1 << 20];
-		let n = f.read(&mut b).unwrap_or(0);
-		b.truncate(n);
-		head = b;
+	let mut head = Vec::new();
+	if let Ok(f) = sally_hid::pack::open(&s.tap) {
+		// (what was read before an error still counts)
+		let _ = f.take(1 << 20).read_to_end(&mut head);
 	}
 	let solver =
 		s.solver.as_ref().and_then(|p| std::fs::read(p).ok()).map(|b| String::from_utf8_lossy(&b).into_owned());
@@ -1688,6 +1740,113 @@ pub fn note(dir: &Path, text: &str) {
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	/// A session is listed whichever form its recording is in, with the same span; one there in both forms is listed
+	/// once
+	#[test]
+	fn a_replay_goes_when_its_session_has() {
+		let dir = std::env::temp_dir().join(format!("sally_panel_prune_{}", std::process::id()));
+		let _ = std::fs::remove_dir_all(&dir);
+		let (logs, replays, checks) = (dir.join("logs"), dir.join("replays"), dir.join("checks"));
+		let replay = |name: &str, marked: bool| {
+			let d = replays.join(name);
+			std::fs::create_dir_all(&d).unwrap();
+			std::fs::write(d.join("run.rec"), "POSE").unwrap();
+			if marked {
+				std::fs::write(d.join("args.txt"), "--hidtap-playback").unwrap();
+			}
+		};
+		let left = |replays: &Path| {
+			let mut names: Vec<String> = std::fs::read_dir(replays)
+				.unwrap()
+				.flatten()
+				.map(|e| e.file_name().to_string_lossy().into_owned())
+				.collect();
+			names.sort();
+			names
+		};
+		let paths = Paths { logs: logs.clone(), replays: replays.clone(), checks: checks.clone(), ..Paths::default() };
+		// a session there as text, one packed, one gone; a sally-check recording there, one gone; and what is no replay
+		for name in
+			["20261101_100000", "20261102_100000", "20261103_100000", "check_20261104_100000", "check_20261105_100000"]
+		{
+			replay(name, true);
+		}
+		replay("20261106_100000", false);
+		replay("notes", true);
+		replay("20261107_100000_mine", true);
+		std::fs::write(replays.join("20261108_100000"), "a file").unwrap();
+		// the recordings cannot be listed: nothing goes
+		assert_eq!(prune(&paths), 0);
+		assert_eq!(left(&replays).len(), 9);
+		std::fs::create_dir_all(&logs).unwrap();
+		std::fs::write(logs.join("sallytap_20261101_100000.hidtap"), "R").unwrap();
+		std::fs::write(logs.join("sallytap_20261102_100000.hidtapz"), "R").unwrap();
+		std::fs::write(logs.join("sallytap_20261103_100000_solver.txt"), "its log alone").unwrap();
+		std::fs::create_dir_all(checks.join("sally-check_20261104_100000")).unwrap();
+		assert_eq!(prune(&paths), 2);
+		assert_eq!(
+			left(&replays),
+			[
+				"20261101_100000",
+				"20261102_100000",
+				"20261106_100000",
+				"20261107_100000_mine",
+				"20261108_100000",
+				"check_20261104_100000",
+				"notes"
+			]
+		);
+		assert_eq!(prune(&paths), 0);
+		// no folder of sally-check recordings at all: there are none, and their replays go
+		std::fs::remove_dir_all(&checks).unwrap();
+		assert_eq!(prune(&paths), 1);
+		assert!(!replays.join("check_20261104_100000").exists());
+		let _ = std::fs::remove_dir_all(&dir);
+	}
+
+	#[test]
+	fn a_packed_recording_is_a_session_as_a_text_one_is() {
+		let dir = std::env::temp_dir().join(format!("sally_panel_sessions_{}", std::process::id()));
+		let _ = std::fs::remove_dir_all(&dir);
+		let logs = dir.join("logs");
+		std::fs::create_dir_all(&logs).unwrap();
+		let text: String = (0..3000u64)
+			.map(|n| format!("R {} 4BCAD73D0E-6YX 2102 -1 -1 I 23{:0116x}\r\n", 5_000_000 + n * 2000, n))
+			.collect();
+		let text = format!("# cache 4BCAD73D0E-6YX LHR-00000001\r\n{text}");
+		let packed = |to: &Path| {
+			let mut w = sally_hid::pack::PackWriter::new(File::create(to).unwrap()).unwrap();
+			w.write(text.as_bytes()).unwrap();
+			w.finish().unwrap();
+		};
+		std::fs::write(logs.join("sallytap_20261101_100000.hidtap"), &text).unwrap();
+		packed(&logs.join("sallytap_20261102_100000.hidtapz"));
+		std::fs::write(logs.join("sallytap_20261103_100000.hidtap"), &text).unwrap();
+		packed(&logs.join("sallytap_20261103_100000.hidtapz"));
+		std::fs::write(logs.join("sallytap_20261104_100000.hidtapz.part"), &text).unwrap();
+		let paths = Paths { logs: logs.clone(), replays: dir.join("replays"), ..Paths::default() };
+		let found = sessions(&paths);
+		let names: Vec<String> =
+			found.iter().map(|s| s.tap.file_name().unwrap().to_string_lossy().into_owned()).collect();
+		assert_eq!(
+			names,
+			["sallytap_20261103_100000.hidtap", "sallytap_20261102_100000.hidtapz", "sallytap_20261101_100000.hidtap"]
+		);
+		for s in &found {
+			assert_eq!((s.t0, s.t1), (5.0, 10.998), "{}", s.stamp);
+		}
+		assert!(found[1].bytes * 4 < found[2].bytes);
+		// and the devices it names are read out of either
+		let head = |s: &Session| {
+			let mut head = Vec::new();
+			sally_hid::pack::open(&s.tap).unwrap().take(1 << 20).read_to_end(&mut head).unwrap();
+			configs_needed(&head, None)
+		};
+		assert_eq!(head(&found[1]), head(&found[2]));
+		assert_eq!(head(&found[1]), [("4BCAD73D0E-6YX_config.json".to_string(), "LHR-00000001".to_string())]);
+		let _ = std::fs::remove_dir_all(&dir);
+	}
 
 	#[test]
 	fn a_tracker_line_is_an_event() {
