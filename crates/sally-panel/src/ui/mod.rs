@@ -7,6 +7,7 @@
 //! Layout is in points: the body text is 15 points, and a point is a pixel at the window's scale 1 (the overlay draws
 //! the 1600 x 940 point layout at 1.25 pixels a point). The look is `theme`'s, the controls `kit`'s.
 
+mod check;
 pub mod icons;
 mod kit;
 mod output;
@@ -233,6 +234,8 @@ pub struct Panel {
 	style_set: [Option<theme::Tk>; 2],
 	/// the Replay tab's
 	rp: replay::ReplayState,
+	/// the Check tab's: the check that is recording, being made, or done
+	ck: crate::check::Check,
 }
 
 impl Panel {
@@ -282,6 +285,7 @@ impl Panel {
 			sym: [std::collections::HashMap::new(), std::collections::HashMap::new()],
 			style_set: [None, None],
 			rp: replay::ReplayState::default(),
+			ck: crate::check::Check::default(),
 		}
 	}
 
@@ -298,6 +302,7 @@ impl Panel {
 			self.vc.overlay_set_width(self.st.overlay_width as f32);
 		}
 		self.vc.poll(now, &mut self.rt);
+		self.check_poll();
 	}
 
 	/// The device whose page is open (its codename)
@@ -634,6 +639,7 @@ impl Panel {
 			1 => self.replay_tab(ui, body),
 			2 => self.output_tab(ui, body),
 			3 => self.settings_tab(ui, body),
+			4 => self.check_tab(ui, body),
 			_ => {
 				if self.page.is_some() {
 					self.device_page(ui, body);

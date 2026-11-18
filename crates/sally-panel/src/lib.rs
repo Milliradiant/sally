@@ -9,6 +9,7 @@
 //! `offscreen` (a view drawn into a texture: the overlay, its button), and for tests and screenshots `headless`
 //! (rendering without a display) and `fake_runtime`. The program (`main.rs`) is the window and the overlay around them.
 
+pub mod check;
 pub mod fake_runtime;
 #[cfg(target_os = "linux")]
 pub mod headless;

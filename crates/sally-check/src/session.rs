@@ -1,16 +1,17 @@
 //! A check's session: one folder holding what was recorded, named so that sally replays it as it is (`sally replay
-//! --hidtap-playback tap.hidtap --hidtap-allow-fs-config 1`, run in the folder), and the same folder zipped to send.
+//! --hidtap-playback tap.hidtapz --hidtap-allow-fs-config 1`, run in the folder), and the same folder zipped to send.
 //!
-//! - `tap.hidtap`: every report the dongles sent, in the tap's line format
+//! - `tap.hidtapz`: every report the dongles sent, in the tap's line format, packed (`tap.hidtap`, the text, in a
+//!   session an older sally-check recorded)
 //! - `<dongle serial>_config.json`: the config of the device paired to each dongle (SteamVR's own copy)
-//! - `steamvr_poses.csv`: what SteamVR showed for every device, 250 times a second, on the tap's clock
+//! - `steamvr_poses.csv`: what SteamVR showed for every device on the tap's clock
 //! - `devices.txt`: SteamVR's devices: serial, class, role, dongle, model, tracking system, mode label
 //! - `steamvr_log.txt`: SteamVR's server log (vrserver.txt) at the end of the session
 //! - `report.html`: what the check found
 //! - `about.txt`: what the folder is
-
-// the writing half is the recorder's, which is Windows only
-#![cfg_attr(not(windows), allow(dead_code))]
+//!
+//! A session the panel shares (`share`) has stand-ins for every serial in all of these, the room's files and sally's
+//! own log beside them, and of SteamVR's log only the lines of Valve's lighthouse driver and of sally's.
 
 use std::collections::HashMap;
 use std::fs;
@@ -22,7 +23,9 @@ use sally_hid::tap::Options;
 
 use crate::analysis::Analyzer;
 
-pub const TAP: &str = "tap.hidtap";
+pub const TAP: &str = "tap.hidtapz";
+/// The recording as an older sally-check wrote it
+pub const TAP_TEXT: &str = "tap.hidtap";
 pub const POSES: &str = "steamvr_poses.csv";
 pub const DEVICES: &str = "devices.txt";
 pub const STEAMVR_LOG: &str = "steamvr_log.txt";
@@ -99,6 +102,7 @@ pub struct Pose {
 }
 
 impl Pose {
+	/// The row of `steamvr_poses.csv` for the device `serial`
 	pub fn csv(&self, serial: &str) -> String {
 		format!(
 			"{},{},{},{},{},{:.5},{:.5},{:.5},{:.6},{:.6},{:.6},{:.6},{:.4},{:.4},{:.4},{:.4},{:.4},{:.4}\n",
@@ -199,6 +203,22 @@ impl Session {
 	}
 }
 
+/// The session's recording, packed or as text; None for a folder that is not a session
+pub fn tap(dir: &Path) -> Option<std::path::PathBuf> {
+	[TAP, TAP_TEXT].iter().map(|n| dir.join(n)).find(|p| p.is_file())
+}
+
+/// What SteamVR's devices are, for the session's devices.txt (base stations included, for their channels)
+pub fn devices_text(devices: &[SteamDevice]) -> String {
+	let mut s = String::from(DEVICES_HEADER);
+	s.push('\n');
+	for d in devices {
+		s.push_str(&d.line());
+		s.push('\n');
+	}
+	s
+}
+
 /// The file in the session's folder a dongle's device config is kept in (`<dongle serial>_config.json`), for a serial
 /// that can only name a file there: the serials of a recording are read from it, and a recording to check may come
 /// from anyone (one with "../" or a drive in a serial read configs from anywhere on the disk)
@@ -210,11 +230,11 @@ pub fn config_file(dongle: &str) -> Option<String> {
 pub fn analyze(dir: &Path) -> std::io::Result<Analyzer> {
 	let cfg_dir = dir.to_path_buf();
 	let mut a = Analyzer::new(Box::new(move |dongle: &str| fs::read(cfg_dir.join(config_file(dongle)?)).ok()));
-	let tap = dir.join(TAP);
-	let file = fs::File::open(&tap)?;
+	let tap = tap(dir).ok_or_else(|| std::io::Error::new(std::io::ErrorKind::NotFound, "no recording"))?;
+	let text = sally_hid::pack::open(&tap)?;
 	let options = Options { playback_factor: 0.0, allow_fs_read: true, config_fetch: false, ..Options::default() };
 	let mut replay = Replay::new(&mut a, options, &tap.to_string_lossy(), None);
-	replay.run(&mut a, &mut BufReader::with_capacity(1 << 20, file))?;
+	replay.run(&mut a, &mut BufReader::with_capacity(1 << 20, text))?;
 	replay.close(&mut a);
 	a.finish();
 	Ok(a)

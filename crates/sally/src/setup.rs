@@ -223,7 +223,7 @@ fn driver_settings(home: &Home, stamp: &str, kept: &[String], keep_sessions: i32
 	lines.push("# (Settings, Recordings) stands over this one".into());
 	lines.push(format!("driver.keep_sessions={keep_sessions}"));
 	if !kept.is_empty() {
-		lines.push("# kept from the settings before this setup (the virtual trackers, ...)".into());
+		lines.push("# kept from the settings before this setup".into());
 		lines.extend(kept.iter().cloned());
 	}
 	lines.push("# the panel the driver starts with SteamVR".into());
@@ -275,8 +275,7 @@ fn written_options() -> Vec<&'static str> {
 }
 
 /// The `driver.<name>` lines of the settings as they stand that setup does not write itself: options set since the
-/// last setup (driver.hmd, the virtual trackers' driver.virtual and its files) stay through the next one, as they
-/// are. The last line of a name is the one kept (the driver takes the last too)
+/// last setup (driver.hmd, say) stay through the next one, as they are. The last line of a name is the one kept (the driver takes the last too)
 fn kept_options(old: &str) -> Vec<String> {
 	let written = written_options();
 	let mut kept: Vec<(String, String)> = Vec::new();
@@ -1210,17 +1209,17 @@ mod tests {
 	#[test]
 	fn setup_keeps_the_options_it_does_not_write() {
 		let home = Home { root: PathBuf::from(r"C:\P"), at: &PROJECT };
-		let old = "driver.extra_latency_ms=4\r\ndriver.hmd=0\r\ndriver.hmd=1\r\n driver.virtual=1\r\n\
-		           driver.virtual_trackers=lknee,rknee,lelbow,relbow\r\ndriver.runtime_exe=D:\\old.exe\r\n# driver.x=1\r\nrun\r\n";
+		let old = "driver.extra_latency_ms=4\r\ndriver.hmd=0\r\ndriver.hmd=1\r\n driver.level=0\r\n\
+		           driver.fit_window_s=90\r\ndriver.runtime_exe=D:\\old.exe\r\n# driver.x=1\r\nrun\r\n";
 		let kept = kept_options(old);
-		assert_eq!(kept, ["driver.hmd=1", "driver.virtual=1", "driver.virtual_trackers=lknee,rknee,lelbow,relbow"]);
+		assert_eq!(kept, ["driver.hmd=1", "driver.level=0", "driver.fit_window_s=90"]);
 		let s = driver_settings(&home, "20261111_120000", &kept, 0);
 		// setup's own values stand, the others come through once, before the runtime's arguments; the pose's age,
 		// which the driver no longer reads there, goes
 		assert!(s.contains("driver.lost_timeout_ms=150\r\n") && !s.contains("extra_latency_ms"));
 		assert!(!s.contains("old.exe"));
 		assert_eq!(s.matches("driver.hmd=1\r\n").count(), 1);
-		assert!(s.find("driver.virtual=1").unwrap() < s.find("\r\nrun\r\n").unwrap());
+		assert!(s.find("driver.level=0").unwrap() < s.find("\r\nrun\r\n").unwrap());
 		// and a second setup keeps them again, no more of them
 		assert_eq!(kept_options(&s), kept);
 	}

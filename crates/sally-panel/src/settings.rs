@@ -99,7 +99,7 @@ impl Default for Settings {
 }
 
 /// The tabs as the file names them, by their number
-const TABS: [&str; 4] = ["tracking", "replay", "output", "settings"];
+const TABS: [&str; 5] = ["tracking", "replay", "output", "settings", "check"];
 
 /// A file's `tab`: its name, or a number as the panel wrote it until 2.0 (0 tracking, 1 replay, 2 settings, 3
 /// advanced, which is in Settings now)
@@ -276,7 +276,7 @@ mod tests {
 		frustum_len 3.00\ntrail_seconds 6.0\ntrails 1\nsensors 1\nfrustums 1\nrays 1\nlabels 1\nvalve_trails 0\n\
 		heat 1\ncompare 1\nfollow 0\ntab 1\nevents_filter 0\noverlay 1\noverlay_width 2.50\noverlay_flip_pointer 0\n\
 		background sky.jpg\nbackground_dim 0.12\nglass_tint 0.32\nrole.LHR-0334A73B head\n\
-		name.LHR-0334A73B Head\nname.LHR-2D779713 Tracker 242B\n";
+		name.LHR-0334A73B Head\nname.LHR-2D779713 Tracker one\n";
 
 	#[test]
 	fn the_cpp_panels_file_reads() {
@@ -286,7 +286,7 @@ mod tests {
 		assert!(st.show_heat && !st.show_valve && st.show_models);
 		assert_eq!(st.tab, 1);
 		assert_eq!(st.roles["LHR-0334A73B"], "head");
-		assert_eq!(st.names["LHR-2D779713"], "Tracker 242B");
+		assert_eq!(st.names["LHR-2D779713"], "Tracker one");
 		// and its own lines come back from the text it writes
 		let mut again = Settings::default();
 		again.parse(&st.text());

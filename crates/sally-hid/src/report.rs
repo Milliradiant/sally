@@ -131,6 +131,14 @@ pub trait Host {
 	fn register_runtime(&mut self, time_received_us: u64);
 	/// the sync hook (gen2): a station's sync pulse
 	fn sync(&mut self, channel: u8, timecode: u32, ootx: bool, gen: bool);
+	/// sally: where in the report the sync that `sync` is about to be given stands (its entry's first byte, counted
+	/// from the report's id). For a host that changes a recording's syncs where they stand; the others pass it over
+	fn sync_at(&mut self, _at: usize) {}
+	/// sally: the bytes [at, at + len) of the report are not read as a gen2 station's light: a packet (from the byte
+	/// after its flags) or the rest of one passed over, or light read as the pulses of a 1.0 station. The byte at
+	/// `at` is the last that the parser, or the tap's look at the light mode, goes by. For a host that clears what
+	/// sally does not read; the others pass it over
+	fn light_unread(&mut self, _at: usize, _len: usize) {}
 	/// the sweep hook (gen2): a sensor hit by a station's sweep (sensor_id already mapped)
 	fn sweep(&mut self, channel: u8, sensor_id: u8, timecode: u32, half_clock: bool);
 	/// handle_lightcap: an LH1-style pulse (raw0); false when the disambiguator rejects it
@@ -257,6 +265,22 @@ pub fn report_buffer(data: &[u8]) -> ([u8; BUFFER_LEN], usize) {
 	let n = data.len().min(BUFFER_LEN);
 	b[..n].copy_from_slice(&data[..n]);
 	(b, n)
+}
+
+/// sally: `Host::light_unread` for the bytes from `from` (the last one read) up to `to`
+fn unread(host: &mut dyn Host, from: isize, to: isize) {
+	if from >= 0 && to > from {
+		host.light_unread(from as usize, (to - from) as usize);
+	}
+}
+
+/// sally: `Host::light_unread` for a radio packet passed over whole: from the byte after its flags (the one the tap's
+/// look at the mode may read) to its end
+fn unread_after_flags(host: &mut dyn Host, b: &Buf, readdata: isize) {
+	if let Ok(size) = b.at(readdata + 1) {
+		let payload = readdata + 3;
+		unread(host, payload + 1, payload + size.wrapping_sub(1) as isize);
+	}
 }
 
 /// fix_time24: a 24-bit time placed in the 32-bit range nearest the reference
@@ -642,6 +666,7 @@ impl Parser {
 	) -> Result<(), OutOfBuffer> {
 		if self.ignore_cnt > 0 {
 			self.ignore_cnt -= 1;
+			unread_after_flags(host, b, readdata);
 			return Ok(());
 		}
 		// AS_SHORT(readdata[0], readdata[2]): the time's two bytes around the size byte
@@ -662,6 +687,7 @@ impl Parser {
 		}
 
 		if self.lightcap_mode != LightcapMode::Raw0 {
+			unread(host, payload + 1, payload_end);
 			return Ok(());
 		}
 		let mut p = payload;
@@ -670,6 +696,7 @@ impl Parser {
 			return Ok(());
 		}
 		if p < payload_end {
+			unread(host, p, payload_end);
 			let mut les = [LightcapElement::default(); 10];
 			let cnt = self.read_light_data(host, b, time, &mut p, payload_end, &mut les)?;
 			if cnt < 0 {
@@ -703,6 +730,7 @@ impl Parser {
 		let origin = payload;
 		let mut p = payload;
 		if !self.configured {
+			unread(host, payload + 1, payload_end);
 			return Ok(());
 		}
 		if host.lh_version() == 1 && self.lightcap_mode != LightcapMode::Raw1 {
@@ -752,6 +780,7 @@ impl Parser {
 				}
 				_ => {
 					// SV_VERBOSE only; the rest of the packet is dropped
+					unread(host, p - 1, payload_end);
 					return Ok(());
 				}
 			}
@@ -789,6 +818,10 @@ impl Parser {
 			}
 		}
 
+		// sally: light that is passed over, or read as the pulses of a 1.0 station
+		if flags & 0x10 == 0x10 && !(flag_lightcap && !has_errors && self.lightcap_mode != LightcapMode::Raw0) {
+			unread(host, p, payload_end);
+		}
 		if flag_lightcap && !has_errors {
 			if self.lightcap_mode == LightcapMode::Raw0 {
 				self.parse_and_process_lightcap(host, b, time, p, payload_end)?;
@@ -1228,6 +1261,7 @@ impl Parser {
 						));
 						dump_binary = true;
 					}
+					unread(host, packet + idx as isize, packet + length as isize);
 					break;
 				}
 				// encodes like so: 0bcccc ?F?C
@@ -1257,6 +1291,7 @@ impl Parser {
 						host.warn("No channel specified for sync");
 						dump_binary = true;
 					} else {
+						host.sync_at((packet + idx as isize) as usize);
 						host.sync(channel, timecode, ootx, gbit);
 					}
 				} else {
@@ -1274,6 +1309,7 @@ impl Parser {
 				if channel == 255 {
 					dump_binary = true;
 					has_errors = true;
+					unread(host, packet + idx as isize, packet + length as isize);
 					break;
 				}
 				idx = idx.wrapping_add(4);

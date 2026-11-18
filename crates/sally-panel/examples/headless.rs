@@ -6,7 +6,7 @@
 //!            [--page KN0@3] [--tab 3@2] [--click x,y@t] [--overlay-click x,y@t] [--type text@t] [--key enter@t]
 //!            [--hover x,y@t] [--drag x,y:x,y@t]
 //!            [--cfg panel.cfg [--save]] [--fake-vr [--keyboard text]]
-//!            [--fake-driver [--output scope.name=value]... [--virtual on|off|none]]
+//!            [--fake-driver [--output scope.name=value]...]
 //!            [--project dir] [--steamvr dir] [--replay key@t] [--replay-seek secs[:device[:metres]]@t]
 //!            [--replay-view from:to@t] [--replay-focus track|-:station|-@t] [--replay-cam yaw:pitch@t]
 //!
@@ -15,7 +15,7 @@
 //! a press and, a frame later, a release. `--fake-vr` is SteamVR with Valve's driver seeing what the runtime sees (in
 //! another frame, with noise: valve::fake), its overlay up, its keyboard answering with `--keyboard`'s text.
 //! `--fake-driver` is the sally driver's side (valve::fake_driver): SteamVR shown sally's tracking, the output layer's
-//! settings (`--output` sets one before the start), the virtual trackers. `--replay` opens a session in the Replay tab
+//! settings (`--output` sets one before the start). `--replay` opens a session in the Replay tab
 //! (`--project`: the project folder, `--steamvr`: where the render models are); the script's clock stops while it
 //! replays and loads, so the times after it are from when it is there.
 
@@ -82,7 +82,7 @@ mod linux {
 		let (mut select, mut select_station) = (String::new(), String::new());
 		let (mut fake_vr, mut keyboard) = (false, String::from("Spare"));
 		let (mut project, mut steamvr_dir) = (None::<String>, None::<String>);
-		let (mut fake_driver, mut outputs, mut virtual_on) = (false, Vec::<String>::new(), String::from("off"));
+		let (mut fake_driver, mut outputs) = (false, Vec::<String>::new());
 		while let Some(a) = args.next() {
 			let mut next = || args.next().unwrap_or_default();
 			match a.as_str() {
@@ -127,7 +127,6 @@ mod linux {
 				}
 				"--fake-driver" => fake_driver = true,
 				"--output" => outputs.push(next()),
-				"--virtual" => virtual_on = next(),
 				"--type" => {
 					let (c, t) = at(&next());
 					inputs.push((t, Input::Text(c)));
@@ -226,11 +225,6 @@ mod linux {
 					}
 				}
 			}
-			d.virtual_on = match virtual_on.as_str() {
-				"on" => Some(true),
-				"none" => None,
-				_ => Some(false),
-			};
 			d
 		});
 		let mut panel = Panel::new(st, vc);

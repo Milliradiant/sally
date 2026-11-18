@@ -460,29 +460,30 @@ mod tests {
 		}
 	}
 
-	/// A real frame: station a9f87465 (channel 9) as a tracker received it in a recording's sync lines, 17 zeros and
-	/// the preamble's one, then 25 words of 16 bits and a sync bit
-	const A9F87465: [&str; 6] = [
+	/// A real frame: a station on channel 9 as a tracker received it in a recording's sync lines, 17 zeros and the
+	/// preamble's one, then 25 words of 16 bits and a sync bit. Its id is a made-up one (1a2b3c4d, and the checksum
+	/// that goes with it); every other bit is as received
+	const FRAME: [&str; 6] = [
 		"000000000000000001",
-		"0010101100000000100001000000010101011001010111010011111100010101001100000000000000001",
+		"0010101100000000100001000000010101010011010011110010010101100011010100000000000000001",
 		"0100011110100000101000101101010101100010010010100110000000100001111111101000001101001",
 		"1001001000110100111111111011111111011000110110111010011111000001100100111110110001111",
 		"1001011100011110110011010100010011000000001100100110011110010011100100111011110010111",
-		"1011000011001101110101110001111111000100110000000011011001100110011110100000101010111",
+		"1011000011001101110101110001111111000100110000000010111000010110111110001010101000011",
 	];
 
 	#[test]
 	fn a_real_packet() {
-		let bits: Vec<i8> = A9F87465.concat().bytes().map(|c| (c - b'0') as i8).collect();
+		let bits: Vec<i8> = FRAME.concat().bytes().map(|c| (c - b'0') as i8).collect();
 		let mut d = OotxDecoder::new(7.034201);
 		let events = pump(&mut d, &bits);
 		assert_eq!(events.len(), 2, "{events:?}");
 		assert_eq!(events[0], OotxEvent::Error("Preamble found"));
 		let OotxEvent::Packet(p) = &events[1] else { panic!("{events:?}") };
-		assert_eq!((p.length, p.crc32), (43, 0xaba033b3));
+		assert_eq!((p.length, p.crc32), (43, 0xa18ab770));
 		let data: Vec<u8> = (0..43)
 			.map(|i| {
-				let hex = "080a6574f8a9000047a045aa8929010fe8349234ff7f636e3e0c3ec7971e9a8900c93c9c3bcbb0cdae3f13";
+				let hex = "080a4d3c2b1a000047a045aa8929010fe8349234ff7f636e3e0c3ec7971e9a8900c93c9c3bcbb0cdae3f13";
 				u8::from_str_radix(&hex[2 * i..2 * i + 2], 16).unwrap()
 			})
 			.collect();
@@ -491,7 +492,7 @@ mod tests {
 
 		// every field as the C decodes it (its driver's output for this frame), the floats to the bit
 		let v = LighthouseInfoV15::new(&p.data).unwrap();
-		assert_eq!((v.fw_version, v.id, v.sys_unlock_count, v.ootx_model), (2568, 0xa9f87465, 1, 15));
+		assert_eq!((v.fw_version, v.id, v.sys_unlock_count, v.ootx_model), (2568, 0x1a2b3c4d, 1, 15));
 		assert_eq!((v.accel_dir, v.mode_current, v.sys_faults, v.nonce), ([-1, 127, 99], 137, 0, 4927));
 		assert_eq!(v.mode_current & 0x7f, 9);
 		let b = |f: [f32; 2]| f.map(f32::to_bits);

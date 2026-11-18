@@ -797,13 +797,13 @@ mod tests {
 		let p = dir.join("c.json");
 		std::fs::write(
 			&p,
-			"\"v\":\"0\",\n\"lighthouse0\":{\n\"index\":\"0\",\n\"id\":\"609880014\",\n\"mode\":\"7\",\n\"pose\":[\"1.0\",\"2.0\",\"3.0\",\"1.0\",\"0.0\",\"0.0\",\"0.0\"],\n\"OOTXSet\":\"1\",\n\"PositionSet\":\"1\"\n}\n\"lighthouse1\":{\n\"index\":\"1\",\n\"id\":\"2851632229\",\n\"mode\":\"9\",\n\"pose\":[\"0\",\"0\",\"0\",\"1\",\"0\",\"0\",\"0\"],\n\"OOTXSet\":\"1\",\n\"PositionSet\":\"0\"\n}\n",
+			"\"v\":\"0\",\n\"lighthouse0\":{\n\"index\":\"0\",\n\"id\":\"287454020\",\n\"mode\":\"7\",\n\"pose\":[\"1.0\",\"2.0\",\"3.0\",\"1.0\",\"0.0\",\"0.0\",\"0.0\"],\n\"OOTXSet\":\"1\",\n\"PositionSet\":\"1\"\n}\n\"lighthouse1\":{\n\"index\":\"1\",\n\"id\":\"2578103244\",\n\"mode\":\"9\",\n\"pose\":[\"0\",\"0\",\"0\",\"1\",\"0\",\"0\",\"0\"],\n\"OOTXSet\":\"1\",\n\"PositionSet\":\"0\"\n}\n",
 		)
 		.unwrap();
 		let placed = placed_in(&p.to_string_lossy());
 		let _ = std::fs::remove_dir_all(&dir);
 		assert_eq!(placed.len(), 1);
-		assert_eq!(placed[0].0, 609880014);
+		assert_eq!(placed[0].0, 287454020);
 		assert_eq!(placed[0].1.pos, [1.0, 2.0, 3.0]);
 	}
 }

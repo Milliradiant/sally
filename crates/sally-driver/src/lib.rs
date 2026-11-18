@@ -6,7 +6,7 @@
 //! dongles read-only and solves; this driver subscribes to the runtime's driver stream over loopback UDP and, through a
 //! hook on IVRServerDriverHost::TrackedDevicePoseUpdated, swaps Valve's pose for sally's on Valve's own device entries.
 //! Valve's pose is the per-device fallback whenever sally has none, and every switch between the two is blended. The
-//! driver never touches the hardware, and adds no devices but the virtual trackers (driver.virtual, off by default).
+//! driver never touches the hardware and adds no devices of its own.
 //!
 //! Settings: sally_settings.txt next to the driver (`sally setup` writes it): "driver.<name>=<value>" lines for the
 //! driver, and every other non-comment line is one argument for the runtime, which the driver starts when SteamVR
@@ -25,8 +25,6 @@
 //!   of it
 //! - `body`: dash punch, the whole body slid with a fist on its rail
 //! - `provider`: what vrserver calls, the receive thread and the protocol's lines
-//! - `virtual_trackers`: the five virtual trackers (driver.virtual), the driver's only devices of its own, their poses
-//!   from the model process
 //! - `net`, `cstdio`: the sockets and the files, through the C library's calls
 //!
 //! Exact as the runtime's crates are (docs/checking.md): the same floating-point operations in the same order, the C
@@ -52,7 +50,6 @@ pub mod sessions;
 pub mod settings;
 pub mod toys;
 pub mod user;
-pub mod virtual_trackers;
 
 use std::ffi::{c_char, c_void, CStr};
 

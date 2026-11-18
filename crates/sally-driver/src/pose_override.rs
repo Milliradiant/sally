@@ -642,12 +642,18 @@ impl PoseOverride {
 			self.identify(id, now);
 		}
 		// not ours: handed on as it came
-		let (mut out, mut replace, exp) = self.on_pose_locked(ver, this, id, pr, now).unwrap_or((*pr, false, None));
+		let (mut out, mut replace, exp, record) =
+			self.on_pose_locked(ver, this, id, pr, now).unwrap_or((*pr, false, None, None));
 		// the toys that move the whole body (body.rs): every device's pose, ours or not, goes out moved as one
 		if self.body_on.load(SeqCst) {
 			if let Some(moved) = self.body_move(id, if replace { &out } else { pr }, now) {
 				(out, replace) = (moved, true);
 			}
+		}
+		// a pose of sally's goes out on Valve's own record (valve_record), last: everything up to here goes by the head
+		// pose
+		if let Some(dfh) = record.filter(|_| replace) {
+			valve_record(&mut out, &dfh);
 		}
 		// SAFETY: the caller's interface and id, with its pose or ours (which lives through the call), handed to the
 		// function the hook replaced
@@ -679,13 +685,16 @@ impl PoseOverride {
 	}
 
 	/// on_pose under m_: None for a device that is not ours (handed on as it is), else the pose SteamVR gets (ours
-	/// where `replace`) and the V line to send once it has it
+	/// where `replace`), the V line to send once it has it, and for a pose of sally's the driver-from-head it goes out
+	/// on (`valve_record`; None for Valve's own pose, and with driver.valve_record off)
+	#[allow(clippy::type_complexity)]
 	fn on_pose_locked(
 		&self, ver: usize, this: *mut c_void, id: u32, p: &DriverPose_t, now: f64,
-	) -> Option<(DriverPose_t, bool, Option<VLine>)> {
+	) -> Option<(DriverPose_t, bool, Option<VLine>, Option<Pose>)> {
 		let o = g_opt();
 		let mut out = DriverPose_t::default();
 		let mut replace = false;
+		let mut record: Option<Pose> = None;
 		let mut st = self.lock();
 		let fit_ok = self.fit_ok();
 		if !st.devs.entry(id).or_default().target {
@@ -912,6 +921,14 @@ impl PoseOverride {
 					out.result = TrackingResult_Running_OK;
 				}
 				replace = true;
+				if o.valve_record {
+					// on Valve's driver-from-head, with the device's offset as a fallback to Valve's pose has it: the
+					// driver pose is then the IMU's, as Valve's own is
+					record = Some(match &offset {
+						Some(off) => compose(&h, off),
+						None => h,
+					});
+				}
 				if want != 0 {
 					d.shown_sally += 1;
 				} else {
@@ -931,7 +948,7 @@ impl PoseOverride {
 				d.shown_valve += 1;
 			}
 		}
-		Some((out, replace, exp))
+		Some((out, replace, exp, record))
 	}
 
 	/// OnSallyPose: a runtime pose for serial (receive thread); pushed to SteamVR when Valve's driver has gone quiet
@@ -1426,7 +1443,7 @@ impl PoseOverride {
 			return st;
 		}
 		let o = g_opt();
-		let mut push: Option<(usize, u32, i32, DriverPose_t)> = None;
+		let mut push: Option<(usize, u32, i32, DriverPose_t, Pose)> = None;
 		{
 			let State { devs, sally, t, runtime_dongles, dongles_agree, frame_wfd, .. } = &mut *st;
 			let Some(si) = sally.get(serial) else { return st };
@@ -1473,11 +1490,17 @@ impl PoseOverride {
 				}
 				d.last_push = now;
 				d.pushed += 1;
-				push = Some((d.this, id, d.ver, out));
+				// the driver-from-head of Valve's last pose of the device, with the device's offset (on_pose_locked's)
+				let h = pose_of(&last.qDriverFromHeadRotation, &last.vecDriverFromHeadTranslation);
+				let dfh = match &si.shown.offset {
+					Some(off) => compose(&h, off),
+					None => h,
+				};
+				push = Some((d.this, id, d.ver, out, dfh));
 				break;
 			}
 		}
-		let Some((this, id, ver, mut out)) = push else { return st };
+		let Some((this, id, ver, mut out, dfh)) = push else { return st };
 		if self.body_on.load(SeqCst) {
 			// with the body's move (body.rs), as every pose that goes to SteamVR
 			if let Some(m) = st.body.at(now) {
@@ -1487,6 +1510,9 @@ impl PoseOverride {
 					d.sent_w = xform(&wu, V3::new(out.vecPosition[0], out.vecPosition[1], out.vecPosition[2]));
 				}
 			}
+		}
+		if o.valve_record {
+			valve_record(&mut out, &dfh);
 		}
 		let orig = self.orig(ver as usize);
 		drop(st);
@@ -1609,9 +1635,8 @@ impl PoseOverride {
 	}
 
 	/// Commands: "seen sally" / "seen valve" / "seen toggle", "refit", "output [<scope> <name> <value>]" (the output
-	/// layer's settings, answered with its O lines first; output.rs), "virtual [on | off | toggle | calibrate]" (the
-	/// virtual trackers, answered with the X line first; virtual_trackers.rs) (anything else: just the status), each
-	/// answered with the status line, at most 16 a frame
+	/// layer's settings, answered with its O lines first; output.rs) (anything else: just the status), each answered
+	/// with the status line, at most 16 a frame
 	fn commands(&self) {
 		let cmd = self.cmd.load(SeqCst);
 		if cmd == SOCK_BAD {
@@ -1630,11 +1655,6 @@ impl PoseOverride {
 			if f.first() == Some(&&b"output"[..]) {
 				// the output layer's settings (output.rs): its O lines, then the status as for every command
 				for l in crate::output::command(&f[1..]) {
-					net::sendto(cmd, &l, &from, fl);
-				}
-			} else if f.first() == Some(&&b"virtual"[..]) {
-				// the virtual trackers' switch (virtual_trackers.rs): its X line, then the status
-				for l in crate::virtual_trackers::G_VIRTUAL.command(&f[1..]) {
 					net::sendto(cmd, &l, &from, fl);
 				}
 			} else if c == b"seen sally" {
@@ -2099,6 +2119,39 @@ fn head_fixed(pose: &DriverPose_t, c: &Pose) -> DriverPose_t {
 	o
 }
 
+/// ValveRecord: a pose sally built (the head pose, no driver-from-head) on Valve's own record: the driver pose at the
+/// origin `dfh` puts the head from (Valve's IMU, in the IMU's axes), `dfh` as its driver-from-head. Driver pose *
+/// driver-from-head is the head pose as it was, so SteamVR and apps are shown the same pose; a reader of the driver
+/// pose alone (Space Calibrator skips the driver-from-head) sees the device where Valve's own pose has it, and no
+/// turn when SteamVR goes from one's pose to the other's. The origin's velocity is the head point's carried to it
+/// (v + w x r), the body rate is in the IMU's axes. The accelerations stay as they are: every pose of sally's has
+/// none (`substitute`), as Valve's own, and SteamVR's prediction reads none. SteamVR carries the driver pose by its
+/// velocity and turns it by its rate, the head on top: the head then goes on the arc the turn gives it about the
+/// origin where it went straight, the same to first order
+pub fn valve_record(o: &mut DriverPose_t, dfh: &Pose) {
+	let qh = Q4::new(o.qRotation.w, o.qRotation.x, o.qRotation.y, o.qRotation.z);
+	let qi = qnorm(qmul(qh, qconj(dfh.q)));
+	// from the head point to the origin, driver space
+	let r = qrot(qi, dfh.p) * -1.0;
+	let w_head = V3::new(o.vecAngularVelocity[0], o.vecAngularVelocity[1], o.vecAngularVelocity[2]);
+	let dv = cross(qrot(qh, w_head), r);
+	let w_imu = qrot(dfh.q, w_head);
+	let al_imu =
+		qrot(dfh.q, V3::new(o.vecAngularAcceleration[0], o.vecAngularAcceleration[1], o.vecAngularAcceleration[2]));
+	let moving = o.vecVelocity != [0.0; 3];
+	o.qRotation = hmd_quat(qi);
+	for i in 0..3 {
+		o.vecPosition[i] += r.get(i);
+		if moving {
+			o.vecVelocity[i] += dv.get(i);
+		}
+		o.vecAngularVelocity[i] = w_imu.get(i);
+		o.vecAngularAcceleration[i] = al_imu.get(i);
+	}
+	o.qDriverFromHeadRotation = hmd_quat(dfh.q);
+	o.vecDriverFromHeadTranslation = [dfh.p.x, dfh.p.y, dfh.p.z];
+}
+
 /// SameDevice: whether the runtime's pose of a device's serial is the device's: unless Valve's driver and the runtime
 /// both say which dongle it is on and differ (the runtime has the serial's config on a dongle that carries another
 /// device). Where either says nothing, or the two do not name dongles alike, it is taken on its serial as before
@@ -2490,13 +2543,13 @@ mod tests {
 		let p = valve_pose();
 		// on Valve's dongle: the runtime's pose, 1 m up
 		let po = bench(3, DONGLE, now);
-		let (out, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
+		let (out, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
 		assert!(replace);
 		assert_eq!(out.vecPosition, [0.0, 1.0, 0.0]);
 		assert_eq!(po.lock().devs[&3].shown_sally, 1);
 		// on another: Valve's, as it came
 		let po = bench(3, OTHER, now);
-		let (_, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
+		let (_, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
 		assert!(!replace);
 		let st = po.lock();
 		assert!(!st.devs[&3].ours);
@@ -2504,7 +2557,7 @@ mod tests {
 		drop(st);
 		// the runtime has it on Valve's dongle again: the runtime's pose (blended in from Valve's)
 		po.runtime_dongle(DONGLE, Some(SERIAL));
-		let (out, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.01).unwrap();
+		let (out, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.01).unwrap();
 		assert!(replace && po.lock().devs[&3].ours);
 		assert!(out.vecPosition[1] > 0.0 && out.vecPosition[1] < 1.0);
 	}
@@ -2648,15 +2701,143 @@ mod tests {
 			s.shown.offset = Some(offset);
 			s.lost = true; // sally has lost it: Valve's pose is the one to show
 		}
-		let (out, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
+		let (out, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
 		assert!(replace);
 		assert_eq!((out.vecPosition, out.qRotation.w), (p.vecPosition, p.qRotation.w));
 		let dfh = out.vecDriverFromHeadTranslation;
 		assert!((dfh[1] - p.vecDriverFromHeadTranslation[1] - 0.05).abs() < 1e-12, "{dfh:?}");
 		// Valve for everything: as it came
 		po.seen.store(1, SeqCst);
-		let (_, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.004).unwrap();
+		let (_, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.004).unwrap();
 		assert!(!replace);
+	}
+
+	/// The head pose a record gives: the driver pose with its driver-from-head on top
+	fn head_of(o: &DriverPose_t) -> Pose {
+		compose(
+			&pose_of(&o.qRotation, &o.vecPosition),
+			&pose_of(&o.qDriverFromHeadRotation, &o.vecDriverFromHeadTranslation),
+		)
+	}
+
+	/// Where SteamVR shows a record's head `dt` on: the driver pose carried by its velocity and turned by its body
+	/// rate, the driver-from-head on top
+	fn shown_ahead(o: &DriverPose_t, dt: f64) -> Pose {
+		let w = V3::new(o.vecAngularVelocity[0], o.vecAngularVelocity[1], o.vecAngularVelocity[2]);
+		let th = len(w) * dt;
+		let ax = if th > 0.0 { w * (1.0 / len(w)) } else { V3::default() };
+		let (sh, ch) = ((th / 2.0).sin(), (th / 2.0).cos());
+		let mut c = *o;
+		c.qRotation = hmd_quat(qmul(
+			Q4::new(o.qRotation.w, o.qRotation.x, o.qRotation.y, o.qRotation.z),
+			Q4::new(ch, ax.x * sh, ax.y * sh, ax.z * sh),
+		));
+		for i in 0..3 {
+			c.vecPosition[i] += o.vecVelocity[i] * dt;
+		}
+		head_of(&c)
+	}
+
+	/// A pose of sally's: the head pose, no driver-from-head, moving and turning
+	fn head_record() -> DriverPose_t {
+		let q = qnorm(Q4::new(0.8, 0.1, -0.5, 0.3));
+		DriverPose_t {
+			qRotation: hmd_quat(q),
+			vecPosition: [1.0, 2.0, 3.0],
+			vecVelocity: [0.4, -0.2, 0.7],
+			vecAngularVelocity: [1.5, -2.0, 0.5],
+			..valve_pose()
+		}
+	}
+
+	/// An Index controller's driver-from-head, about: 159 mm off and turned
+	fn controller_dfh() -> Pose {
+		Pose { p: V3::new(0.006, -0.015, 0.158), q: qnorm(Q4::new(0.2, 0.9, -0.1, 0.35)) }
+	}
+
+	/// On Valve's record the head is where it was, turned as it was, and moves as it did: the driver pose * the
+	/// driver-from-head is the head pose, the origin's velocity carried back to the head point (v + w x r) is the head
+	/// point's, and the body rate is the same turn in the origin's axes
+	#[test]
+	fn valves_record_shows_the_same_head() {
+		let head = head_record();
+		let dfh = controller_dfh();
+		let mut o = head;
+		valve_record(&mut o, &dfh);
+		assert!(near(&head_of(&o), &head_of(&head), 1e-12, 1e-12));
+		assert!(near(&pose_of(&o.qDriverFromHeadRotation, &o.vecDriverFromHeadTranslation), &dfh, 1e-15, 1e-15));
+		let qd = Q4::new(o.qRotation.w, o.qRotation.x, o.qRotation.y, o.qRotation.z);
+		let w = V3::new(o.vecAngularVelocity[0], o.vecAngularVelocity[1], o.vecAngularVelocity[2]);
+		let head_v =
+			V3::new(o.vecVelocity[0], o.vecVelocity[1], o.vecVelocity[2]) + cross(qrot(qd, w), qrot(qd, dfh.p));
+		assert!(len(head_v - V3::new(0.4, -0.2, 0.7)) < 1e-12, "{head_v:?}");
+		assert!(len(qrot(qconj(dfh.q), w) - V3::new(1.5, -2.0, 0.5)) < 1e-12);
+		// the origin's velocity is what the origin does: where it is a moment on, the head carried as a rigid body
+		let dt = 1e-6;
+		let later = compose(&shown_ahead(&head, dt), &inverse(&dfh));
+		let moved = (later.p - V3::new(o.vecPosition[0], o.vecPosition[1], o.vecPosition[2])) * (1.0 / dt);
+		assert!(len(moved - V3::new(o.vecVelocity[0], o.vecVelocity[1], o.vecVelocity[2])) < 1e-5, "{moved:?}");
+		// what SteamVR shows 40 ms on: the head on the arc its turn gives it about the origin where it went straight,
+		// apart by 1/2 w^2 r t^2 at most (2.6 rad/s, 159 mm: under 1 mm), and turned the same
+		let (a, b) = (shown_ahead(&head, 0.04), shown_ahead(&o, 0.04));
+		let apart = len(a.p - b.p);
+		assert!(apart > 1e-5 && apart < 0.5 * 6.5 * 0.16 * 0.04 * 0.04, "{apart}");
+		assert!(qangle(qmul(a.q, qconj(b.q))) < 1e-12);
+		// a pose without a velocity keeps none, and no driver-from-head leaves the pose as it is
+		let mut still = DriverPose_t { vecVelocity: [0.0; 3], ..head };
+		valve_record(&mut still, &dfh);
+		assert_eq!(still.vecVelocity, [0.0; 3]);
+		let mut same = head;
+		valve_record(&mut same, &Pose::default());
+		assert!(near(
+			&pose_of(&same.qRotation, &same.vecPosition),
+			&pose_of(&head.qRotation, &head.vecPosition),
+			1e-15,
+			1e-15
+		));
+		assert_eq!((same.vecVelocity, same.vecAngularVelocity), (head.vecVelocity, head.vecAngularVelocity));
+	}
+
+	/// sally's pose of a device goes out as Valve's own of it does: the driver pose Valve's driver gives for that head
+	/// (head * driver-from-head^-1), so what reads the driver pose alone sees the same device under either
+	#[test]
+	fn valves_record_is_the_driver_pose_valves_driver_gives() {
+		let dfh = controller_dfh();
+		let valve_driver = Pose { p: V3::new(-0.3, 1.1, 0.4), q: qnorm(Q4::new(0.3, -0.6, 0.2, 0.7)) };
+		let head = compose(&valve_driver, &dfh);
+		let mut o =
+			DriverPose_t { qRotation: hmd_quat(head.q), vecPosition: [head.p.x, head.p.y, head.p.z], ..valve_pose() };
+		valve_record(&mut o, &dfh);
+		assert!(near(&pose_of(&o.qRotation, &o.vecPosition), &valve_driver, 1e-12, 1e-12));
+	}
+
+	/// on_pose: a pose of sally's comes with the driver-from-head it goes out on, Valve's of that call with the device's
+	/// offset as the fallback has it; Valve's own pose with none
+	#[test]
+	fn a_pose_of_sallys_goes_out_on_valves_driver_from_head() {
+		let now = 100.0;
+		let dfh = controller_dfh();
+		let p = DriverPose_t {
+			qDriverFromHeadRotation: hmd_quat(dfh.q),
+			vecDriverFromHeadTranslation: [dfh.p.x, dfh.p.y, dfh.p.z],
+			..valve_pose()
+		};
+		let offset = Pose { p: V3::new(0.0, 0.05, 0.0), q: Q4::new(1.0, 0.0, 0.0, 0.0) };
+		let po = bench(3, DONGLE, now);
+		po.fit_ok.store(true, SeqCst);
+		let (out, replace, _, record) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
+		assert!(replace && po.lock().devs[&3].source == 1);
+		assert!(near(&record.unwrap(), &dfh, 1e-15, 1e-15));
+		// the pose itself is still the head pose here: it is put on the record as it leaves (on_pose)
+		assert_eq!(out.vecDriverFromHeadTranslation, [0.0; 3]);
+		po.lock().sally.get_mut(SERIAL).unwrap().shown.offset = Some(offset);
+		let (_, _, _, record) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.004).unwrap();
+		assert!(near(&record.unwrap(), &compose(&dfh, &offset), 1e-15, 1e-15));
+		// Valve for everything: its own pose, as it came
+		po.seen.store(1, SeqCst);
+		po.lock().devs.get_mut(&3).unwrap().blend = 0.0;
+		let (_, replace, _, record) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.008).unwrap();
+		assert!(!replace && record.is_none());
 	}
 
 	#[test]
@@ -2780,7 +2961,7 @@ mod tests {
 		po.on_pose_locked(0, std::ptr::null_mut(), 4, &valve_at(&at(4), &a), now).unwrap();
 		assert_eq!(po.lock().frame_wfd, Some(a));
 		let x = compose(&a, &Pose { p: V3::new(0.1, 1.2, 0.3), q: Q4::default() });
-		let (out, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &valve_at(&x, &b), now).unwrap();
+		let (out, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &valve_at(&x, &b), now).unwrap();
 		assert!(replace);
 		// sally's pose (the fit maps it into the frame's driver space) on the frame's world-from-driver, not its own
 		assert_eq!(pose_of(&out.qWorldFromDriverRotation, &out.vecWorldFromDriverTranslation), a);
@@ -2949,7 +3130,7 @@ mod tests {
 		let dv = V3::new(got.vecVelocity[0] - 0.5, got.vecVelocity[1], got.vecVelocity[2] + 0.1);
 		assert!(len(dv - cross(w_world, r)) < 1e-12);
 		// and SteamVR gets it so
-		let (out, replace, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
+		let (out, replace, _, _) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
 		assert!(replace && near(&pose_of(&out.qRotation, &out.vecPosition), &want, 1e-12, 1e-9));
 	}
 

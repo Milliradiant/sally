@@ -158,6 +158,11 @@ fn random_like(like: &str, taken: &dyn Fn(&str) -> bool) -> String {
 	}
 }
 
+/// An id of eight hex digits as the decimal number it is
+fn decimal(id: &str) -> Option<String> {
+	(id.len() == 8).then(|| u32::from_str_radix(id, 16).ok()).flatten().map(|n| n.to_string())
+}
+
 /// Where a text of `needles` stands in `text`, whatever its case: the first found
 fn holds<'a>(text: &[u8], needles: &'a [String]) -> Option<&'a str> {
 	let lower = text.to_ascii_lowercase();
@@ -271,6 +276,8 @@ pub fn export(root: &Path, to: &Path, names_file: &Path) -> Result<(), String> {
 
 	// nothing private left in what was written
 	let mut never: Vec<String> = names.pairs.keys().cloned().collect();
+	// (a base station's id is a decimal number in a room's files: the swap does not see that form, so it is looked for)
+	never.extend(names.pairs.keys().filter_map(|id| decimal(id)));
 	never.extend(names.never.iter().cloned());
 	let mut left = Vec::new();
 	let mut written: Vec<PathBuf> = Vec::new();
@@ -381,5 +388,13 @@ mod tests {
 		assert_eq!(holds(b"at lhr-1a2b3c4d", &never), Some("1A2B3C4D"));
 		assert_eq!(holds(b"in some folder\\logs", &never), Some("Some Folder"));
 		assert_eq!(holds(b"LHR-99887766", &never), None);
+	}
+
+	#[test]
+	fn an_id_as_a_decimal_number() {
+		assert_eq!(decimal("1A2B3C4D").as_deref(), Some("439041101"));
+		assert_eq!(decimal("0000000A").as_deref(), Some("10"));
+		assert_eq!(decimal("0011223344"), None);
+		assert_eq!(decimal("1PASHXYZ"), None);
 	}
 }

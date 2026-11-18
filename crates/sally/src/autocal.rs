@@ -1136,7 +1136,7 @@ mod tests {
 		assert!(a.finish_if_done());
 		assert!(a.ready().exists(), "a calibration placing stations the room's did not is ready at once");
 		// the room's config changed by hand since: a station placed
-		let placed = "\"lighthouse0\":{\n\"index\":\"0\",\n\"id\":\"609880014\",\n\"mode\":\"7\",\n\"pose\":[\"1\",\"2\",\"3\",\"1\",\"0\",\"0\",\"0\"],\n\"OOTXSet\":\"1\",\n\"PositionSet\":\"1\"\n}\n";
+		let placed = "\"lighthouse0\":{\n\"index\":\"0\",\n\"id\":\"287454020\",\n\"mode\":\"7\",\n\"pose\":[\"1\",\"2\",\"3\",\"1\",\"0\",\"0\",\"0\"],\n\"OOTXSet\":\"1\",\n\"PositionSet\":\"1\"\n}\n";
 		std::fs::write(root.join("survive/driver_config.json"), placed).unwrap();
 		let mut b = Auto::new(&argv).unwrap();
 		b.adopt();
@@ -1198,12 +1198,12 @@ mod tests {
 
 	#[test]
 	fn the_same_stations_survive_the_runtime_writing_them_again() {
-		let a = "609880014:-1.837475,-1.174987,2.277723,0.655081,0.400424,-0.296132,-0.568186";
-		let b = "609880014:-1.837475,-1.174986,2.277723,0.655081,0.400424,-0.296132,-0.568186";
+		let a = "287454020:-1.837475,-1.174987,2.277723,0.655081,0.400424,-0.296132,-0.568186";
+		let b = "287454020:-1.837475,-1.174986,2.277723,0.655081,0.400424,-0.296132,-0.568186";
 		assert!(same_stations(a, b));
-		let flipped = "609880014:-1.837475,-1.174986,2.277723,-0.655081,-0.400424,0.296132,0.568186";
+		let flipped = "287454020:-1.837475,-1.174986,2.277723,-0.655081,-0.400424,0.296132,0.568186";
 		assert!(same_stations(a, flipped));
-		let moved = "609880014:-1.837975,-1.174986,2.277723,0.655081,0.400424,-0.296132,-0.568186";
+		let moved = "287454020:-1.837975,-1.174986,2.277723,0.655081,0.400424,-0.296132,-0.568186";
 		assert!(!same_stations(a, moved));
 		assert!(!same_stations(a, "none"));
 		assert!(same_stations("none", "none"));

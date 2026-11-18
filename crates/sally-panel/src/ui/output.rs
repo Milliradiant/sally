@@ -4,9 +4,8 @@
 //! A box for each device class, headset, controllers and trackers, side by side so that a setting reads across them:
 //! smoothing, recovery blend, prediction and velocity boost, each a slider with a stepper at either end and a tick at
 //! its default. The chips under a box's title pick whose values it shows: the class's, or one of its devices' own
-//! over them, with where that device is shown against where it is (its offset, in its own axes). The virtual
-//! trackers' switch is with the trackers. Under the controllers' four are the punch rail and the dash punch that goes
-//! by it, each a switch with its two numbers.
+//! over them, with where that device is shown against where it is (its offset, in its own axes). Under the
+//! controllers' four are the punch rail and the dash punch that goes by it, each a switch with its two numbers.
 //!
 //! The panel asks the driver for the values every 2 s while the tab is open and sends a value when it is let go; the
 //! driver keeps them in its sally_output.txt and applies them from its next report.
@@ -207,35 +206,6 @@ pub(super) fn shown(v: f64, step: f64) -> String {
 	}
 }
 
-/// The X line's `trackers` (the model's names, commas between) in words: "chest, knees, elbows", "knees, elbows", "left
-/// knee"; a driver before it named them has all five
-fn shown_words(names: &str) -> String {
-	if names.is_empty() {
-		return "chest, knees, elbows".into();
-	}
-	let has = |n: &str| names.split(',').any(|x| x == n);
-	let mut words = Vec::new();
-	if has("chest") {
-		words.push("chest");
-	}
-	for (l, r, both, left, right) in [
-		("lknee", "rknee", "knees", "left knee", "right knee"),
-		("lelbow", "relbow", "elbows", "left elbow", "right elbow"),
-	] {
-		match (has(l), has(r)) {
-			(true, true) => words.push(both),
-			(true, false) => words.push(left),
-			(false, true) => words.push(right),
-			_ => {}
-		}
-	}
-	if words.is_empty() {
-		"none shown: driver.virtual_trackers".into()
-	} else {
-		words.join(", ")
-	}
-}
-
 impl Panel {
 	/// The Output tab opened on a device's own values (from its box in the Tracking tab)
 	pub(super) fn output_show(&mut self, d: &Device) {
@@ -382,7 +352,6 @@ impl Panel {
 		if self.output_drag.is_none() {
 			self.vc.output_ask(self.now);
 		}
-		self.vc.virtual_ask(self.now);
 		let known = self.vc.output_known(self.now);
 		self.output_hint[self.view.index()] = "";
 		let foot_h = 34.0;
@@ -560,9 +529,6 @@ impl Panel {
 		if ci == 1 {
 			self.punch_block(ui, Rect::from_min_max(Pos2::new(x0, y), Pos2::new(xr, r.max.y - PAD)), known);
 		}
-		if ci == 2 {
-			self.virtual_block(ui, Rect::from_min_max(Pos2::new(x0, y), Pos2::new(xr, r.max.y - PAD)));
-		}
 	}
 
 	/// The controllers' punch settings under their four: each a switch with its two numbers. The dash goes by the
@@ -608,90 +574,6 @@ impl Panel {
 			y += 6.0;
 		}
 	}
-
-	/// The virtual trackers' switch (sally_driver.md "The virtual trackers"), kept by the driver for the next start: on
-	/// and off, which ones SteamVR is given, what the model process says, the T-pose looked for again. Nothing where
-	/// the driver has none of them
-	fn virtual_block(&mut self, ui: &mut egui::Ui, r: Rect) {
-		let t = tk();
-		if !self.vc.virtual_known(self.now) {
-			return;
-		}
-		let x = self.vc.virtual_x.clone();
-		if x.first().map(String::as_str) == Some("none") {
-			return;
-		}
-		let word = |k: &str| x.iter().position(|w| w == k).and_then(|i| x.get(i + 1)).cloned().unwrap_or_default();
-		let on = x.first().map(String::as_str) == Some("on");
-		let in_steamvr = word("devices").parse::<u32>().unwrap_or(0);
-		let p = ui.painter().clone();
-		p.line_segment([r.left_top(), r.right_top()], egui::Stroke::new(1.0, t.line));
-		let mut y = r.min.y + 14.0;
-		kit::text(
-			&p,
-			Pos2::new(r.min.x + 2.0, y + 12.0),
-			Align2::LEFT_CENTER,
-			"Virtual trackers",
-			semibold(16.0),
-			t.text,
-		);
-		if kit::switch(ui, Id::unique("virtual-switch"), Pos2::new(r.max.x - 42.0, y), on, true) {
-			self.vc.virtual_cmd(if on { "off" } else { "on" });
-		}
-		y += 34.0;
-		// the model's word: after "model", its state, the seconds in it
-		let m = x.iter().position(|w| w == "model").map(|i| &x[i + 1..]).unwrap_or(&[]);
-		let model = m.first().cloned().unwrap_or_default();
-		let secs = m.get(1).and_then(|v| v.parse::<f64>().ok()).unwrap_or(0.0);
-		let (line1, c1) = if !on && in_steamvr == 0 {
-			("Off: SteamVR has none of them, and none at its next start.".to_string(), t.muted)
-		} else if !on {
-			("Off: they show disconnected until SteamVR starts again.".to_string(), t.muted)
-		} else if in_steamvr == 0 {
-			(format!("{}: being added", shown_words(&word("trackers"))), t.soft)
-		} else {
-			(
-				format!("{}: {} of {} tracking", shown_words(&word("trackers")), word("tracking"), word("devices")),
-				t.soft,
-			)
-		};
-		let line2 = match (on, model.as_str()) {
-			(false, _) => String::new(),
-			(_, "tracking") => format!("The model: tracking, {secs:.0} s since your T-pose"),
-			(_, "searching") => {
-				"The model: looking for your T-pose (still, hands level and wide, for a second)".to_string()
-			}
-			(_, "none") | (_, "") => "The model process is not running".to_string(),
-			(_, other) => format!("The model: {other}"),
-		};
-		for (s, c) in [(line1, c1), (line2, if model == "tracking" { t.good } else { t.muted })] {
-			if s.is_empty() {
-				continue;
-			}
-			let g = p.layout(s, label(), c, r.width());
-			let gh = g.size().y;
-			p.galley(Pos2::new(r.min.x, y), g, c);
-			y += gh + 6.0;
-		}
-		if on {
-			y += 6.0;
-			let bw = kit::button_w(&p, "Calibrate again", true);
-			let br = Rect::from_min_size(Pos2::new(r.min.x, y), Vec2::new(bw, CTL_H));
-			let resp = kit::button(
-				ui,
-				Id::unique("virtual-calibrate"),
-				br,
-				"Calibrate again",
-				Some(icons::PERSON_ARMS_SPREAD),
-				Look::Plain,
-				true,
-			)
-			.on_hover_text("The model looks for your T-pose anew");
-			if resp.clicked() {
-				self.vc.virtual_cmd("calibrate");
-			}
-		}
-	}
 }
 
 #[cfg(test)]
@@ -735,15 +617,6 @@ mod tests {
 		assert_eq!(super::class_of("index_hmd"), 0);
 		assert_eq!(super::class_of("knuckles_l"), 1);
 		assert_eq!(super::class_of("tracker_gen2"), 2);
-	}
-
-	#[test]
-	fn the_trackers_in_words() {
-		assert_eq!(super::shown_words(""), "chest, knees, elbows");
-		assert_eq!(super::shown_words("chest,lknee,rknee,lelbow,relbow"), "chest, knees, elbows");
-		assert_eq!(super::shown_words("lknee,rknee,lelbow,relbow"), "knees, elbows");
-		assert_eq!(super::shown_words("rknee,lelbow"), "right knee, left elbow");
-		assert_eq!(super::shown_words("none"), "none shown: driver.virtual_trackers");
 	}
 
 	#[test]

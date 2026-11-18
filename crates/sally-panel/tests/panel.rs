@@ -308,8 +308,6 @@ fn the_output_tab_sets_the_drivers_values() {
 	r.run_until(4.4);
 	assert_eq!(value(&r, "LHR-9365E531", "smoothing_ms"), Some(10.0));
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
-	// the virtual trackers' switch, under the trackers' settings
-	assert_eq!(r.panel.vc.virtual_x.first().map(String::as_str), Some("off"));
 }
 
 /// The panel's copy of the driver's output settings (the fake driver's list, which the Output tab's ticks and its

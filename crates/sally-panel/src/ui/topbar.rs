@@ -13,7 +13,7 @@ use super::Panel;
 pub const BAR_H: f32 = 54.0;
 
 /// The tabs in the bar's order, each with its number
-const TABS: [(&str, i32); 4] = [("Tracking", 0), ("Replay", 1), ("Output", 2), ("Settings", 3)];
+const TABS: [(&str, i32); 5] = [("Tracking", 0), ("Replay", 1), ("Check", 4), ("Output", 2), ("Settings", 3)];
 
 /// Seconds as m:ss, or h:mm:ss from an hour
 pub fn clock(s: f64) -> String {

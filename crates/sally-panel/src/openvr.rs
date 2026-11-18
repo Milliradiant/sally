@@ -62,7 +62,10 @@ pub const TrackedDeviceClass_TrackingReference: ETrackedDeviceClass = 4;
 
 pub type ETrackedDeviceProperty = i32;
 pub const Prop_TrackingSystemName_String: ETrackedDeviceProperty = 1000;
+pub const Prop_ModelNumber_String: ETrackedDeviceProperty = 1001;
 pub const Prop_SerialNumber_String: ETrackedDeviceProperty = 1002;
+pub const Prop_ConnectedWirelessDongle_String: ETrackedDeviceProperty = 1009;
+pub const Prop_ModeLabel_String: ETrackedDeviceProperty = 4006;
 pub const Prop_ResourceRoot_String: ETrackedDeviceProperty = 1035;
 pub const Prop_RegisteredDeviceType_String: ETrackedDeviceProperty = 1036;
 

@@ -1,7 +1,7 @@
 //! A stand-in for the sally driver's side of the panel (docs/sally_driver.md), for the tests and the headless
 //! renderer: it sends the panel what the driver sends while SteamVR shows sally's tracking (the V lines with Valve's
 //! pose of each device, the C line, the F line with its fit) and answers the panel's commands as the driver does:
-//! `seen sally|valve`, `refit`, `output` and `output <scope> <name> <value|->`, `virtual` and `virtual on|off|calibrate`.
+//! `seen sally|valve`, `refit`, `output` and `output <scope> <name> <value|->`.
 //!
 //! Valve's poses are the runtime's own, in the driver's space (OpenVR's axes, Y up) with a few millimetres of noise, and
 //! the fit is the identity: the panel compares through the driver's alignment and finds the two close.
@@ -45,8 +45,6 @@ pub struct FakeDriver {
 	pub seen: String,
 	/// the output layer's values by (scope, name): every class's, and the devices' own
 	pub output: BTreeMap<(String, String), f64>,
-	/// the virtual trackers: None without `driver.virtual`, else on or off
-	pub virtual_on: Option<bool>,
 	/// every command the panel sent, in order
 	pub commands: Vec<String>,
 	/// the pairs a re-align has (150 and it is done)
@@ -77,7 +75,6 @@ impl FakeDriver {
 			to: SocketAddrV4::new(Ipv4Addr::LOCALHOST, panel_port),
 			seen: "sally".into(),
 			output,
-			virtual_on: Some(false),
 			commands: Vec::new(),
 			refit: None,
 			next_status: 0.0,
@@ -94,16 +91,6 @@ impl FakeDriver {
 			self.send(&format!("O {scope} {name} {v}"));
 		}
 		self.send("O end");
-	}
-
-	fn send_virtual(&self) {
-		match self.virtual_on {
-			None => self.send("X none"),
-			Some(true) => {
-				self.send("X on devices 4 tracking 4 trackers lknee,rknee,lelbow,relbow model tracking 42.0 -")
-			}
-			Some(false) => self.send("X off devices 0 tracking 0 trackers lknee,rknee,lelbow,relbow model none"),
-		}
 	}
 
 	fn status(&self) {
@@ -135,13 +122,6 @@ impl FakeDriver {
 						(Some(_), _, _) => self.send(&format!("O error {name}: {value} is out of range")),
 						(None, _, _) => self.send(&format!("O error no setting {name}")),
 					}
-				}
-				["virtual"] => self.send_virtual(),
-				["virtual", what @ ("on" | "off" | "calibrate")] => {
-					if self.virtual_on.is_some() && *what != "calibrate" {
-						self.virtual_on = Some(*what == "on");
-					}
-					self.send_virtual();
 				}
 				_ => {}
 			}

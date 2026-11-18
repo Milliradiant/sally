@@ -1,6 +1,6 @@
 [package]
 name = "sally-check"
-description = "sally check: records a lighthouse session next to SteamVR (read-only), and says per device whether tracking trouble comes from the light, the radio or the device"
+description = "sally check: says per device whether tracking trouble comes from the light, the radio or the device, and makes a session into one file to send with a stand-in for every serial"
 version.workspace = true
 edition.workspace = true
 license.workspace = true
@@ -10,4 +10,3 @@ publish.workspace = true
 miniz_oxide = "0.9"
 sally-hid = { path = "../sally-hid" }
 sally-lighthouse = { path = "../sally-lighthouse" }
-sally-os = { path = "../sally-os" }

@@ -188,7 +188,6 @@ impl Provider {
 			log("sally: driver.runtime_exe not set: the runtime is started separately\n", &[]);
 		}
 		G_OVERRIDE.start(ctx);
-		crate::virtual_trackers::G_VIRTUAL.init(&dir);
 		crate::panel::start();
 		self.running.store(true, SeqCst);
 		*locked(&self.thread) = Some(std::thread::spawn(|| G_PROVIDER.receive_thread()));
@@ -217,7 +216,6 @@ impl Provider {
 			self.sock.store(SOCK_BAD, SeqCst);
 		}
 		G_OVERRIDE.stop();
-		crate::virtual_trackers::G_VIRTUAL.cleanup();
 		let mut l = locked(&self.lock);
 		l.devices.clear();
 		// VR_CLEANUP_SERVER_DRIVER_CONTEXT()
@@ -233,7 +231,6 @@ impl Provider {
 		for d in devices {
 			d.check_lost(now);
 		}
-		crate::virtual_trackers::G_VIRTUAL.run_frame(now);
 	}
 
 	/// Send(cmd): one line to the runtime

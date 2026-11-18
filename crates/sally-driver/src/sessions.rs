@@ -91,7 +91,7 @@ pub fn prune(paths: &[&[u8]], keep: usize) -> usize {
 
 /// The settings' kinds of session file pruned to `driver.keep_sessions`; how many files went
 pub fn prune_settings(o: &Options) -> usize {
-	let mut paths: Vec<&[u8]> = vec![&o.pose_log, &o.runtime_log, &o.virtual_log];
+	let mut paths: Vec<&[u8]> = vec![&o.pose_log, &o.runtime_log];
 	paths.extend(o.runtime_args.iter().map(Vec::as_slice));
 	prune(&paths, o.keep_sessions.max(0) as usize)
 }

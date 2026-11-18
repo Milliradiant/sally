@@ -6,7 +6,7 @@
 use std::sync::atomic::Ordering::SeqCst;
 
 use driver_sally::openvr::DriverPose_t;
-use sally_math::math3d::{fit_rigid, inverse, len, qconj, qmul, qrot, xform, Pose, Q4, V3};
+use sally_math::math3d::{cross, fit_rigid, inverse, len, qconj, qmul, qrot, xform, Pose, Q4, V3};
 
 use crate::host::{quat, v3, world_head, Call, Server};
 use crate::runtime::AGE;
@@ -62,6 +62,11 @@ fn clean_world(sch: &Schedule, dev: usize, t: f64) -> V3 {
 /// (its time plus its poseTimeOffset: the hand-over's timing is checked apart, this is the mapping)
 fn off_runtime(sch: &Schedule, dev: usize, x: &Call) -> f64 {
 	len(world_head(&x.pose) - clean_world(sch, dev, x.t + x.pose.poseTimeOffset))
+}
+
+/// A pose's world-from-driver
+fn wfd_of(p: &DriverPose_t) -> Pose {
+	Pose { p: v3(&p.vecWorldFromDriverTranslation), q: quat(&p.qWorldFromDriverRotation) }
 }
 
 /// The head's rotation in the world: world-from-driver * driver pose * driver-from-head
@@ -569,6 +574,9 @@ pub fn run(r: &Record) -> Checks {
 	}
 	// (medians over the poses: a report the receive thread got late is stamped late, and is a few ms off by that alone)
 	let mut res = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
+	// and the record each is on (driver.valve_record): Valve's driver-from-head for the device, the driver pose where
+	// Valve's own of the same call has the device, in the world
+	let mut rec = (Vec::new(), Vec::new(), Vec::new(), Vec::new());
 	let mut current = (0, 0);
 	for (a, b) in stretches {
 		let mut src = Vec::new();
@@ -580,7 +588,24 @@ pub fn run(r: &Record) -> Checks {
 			for x in of(d.id, a, b).into_iter().filter(|x| x.fed.is_some() && !untouched(x)) {
 				let m = shown(i, x.t + x.pose.poseTimeOffset);
 				src.push(yup(m.p));
-				dst.push(v3(&x.pose.vecPosition));
+				// the head, in the driver space: the driver pose with its driver-from-head on top
+				dst.push(
+					v3(&x.pose.vecPosition) + qrot(quat(&x.pose.qRotation), v3(&x.pose.vecDriverFromHeadTranslation)),
+				);
+				if let Some(f) = fed_of(x).filter(|f| f.pose.poseIsValid != 0) {
+					let (xw, fw) = (wfd_of(&x.pose), wfd_of(&f.pose));
+					rec.0
+						.push(len(v3(&x.pose.vecDriverFromHeadTranslation) - v3(&f.pose.vecDriverFromHeadTranslation)));
+					rec.1.push(angle(qmul(
+						quat(&x.pose.qDriverFromHeadRotation),
+						qconj(quat(&f.pose.qDriverFromHeadRotation)),
+					)));
+					rec.2.push(len(xform(&xw, v3(&x.pose.vecPosition)) - xform(&fw, v3(&f.pose.vecPosition))));
+					rec.3.push(angle(qmul(
+						qmul(xw.q, quat(&x.pose.qRotation)),
+						qconj(qmul(fw.q, quat(&f.pose.qRotation))),
+					)));
+				}
 				rows.push((x, m));
 				current.0 += (x.pose.poseTimeOffset == 0.0) as usize;
 				current.1 += 1;
@@ -591,10 +616,16 @@ pub fn run(r: &Record) -> Checks {
 		}
 		let Some((t, _)) = fit_rigid(&src, &dst) else { continue };
 		for (k, (x, m)) in rows.into_iter().enumerate() {
+			// the head's orientation, the head point's velocity (the driver pose's origin's, carried: v + w x r) and
+			// the body rate in the head's axes
+			let (qd, qh) = (quat(&x.pose.qRotation), quat(&x.pose.qDriverFromHeadRotation));
+			let w_drv = v3(&x.pose.vecAngularVelocity);
+			let arm = qrot(qd, v3(&x.pose.vecDriverFromHeadTranslation));
+			let head_v = v3(&x.pose.vecVelocity) + cross(qrot(qd, w_drv), arm);
 			res.0.push(len(xform(&t, src[k]) - dst[k]));
-			res.1.push(angle(qmul(quat(&x.pose.qRotation), qconj(qmul(t.q, yup_q(m.q))))));
-			res.2.push(len(v3(&x.pose.vecVelocity) - qrot(t.q, yup(m.v))));
-			res.3.push(len(v3(&x.pose.vecAngularVelocity) - qrot(qconj(m.q), m.w)));
+			res.1.push(angle(qmul(qmul(qd, qh), qconj(qmul(t.q, yup_q(m.q))))));
+			res.2.push(len(head_v - qrot(t.q, yup(m.v))));
+			res.3.push(len(qrot(qconj(qh), w_drv) - qrot(qconj(m.q), m.w)));
 		}
 	}
 	let current_share = current.0 as f64 / current.1.max(1) as f64;
@@ -617,6 +648,24 @@ pub fn run(r: &Record) -> Checks {
 			mm(median(&res.3)),
 			res.0.len(),
 			mm(AGE)
+		),
+	);
+
+	c.check(
+		rec.0.len() > 1000
+			&& max(&rec.0) < 1e-9
+			&& max(&rec.1) < 1e-9
+			&& median(&rec.2) < 0.04
+			&& median(&rec.3) < 0.03,
+		format!(
+			"sally's poses are on Valve's own record: Valve's driver-from-head for the device (within {:.1e} mm, {:.1e} \
+			 mrad of it), the driver pose where Valve's own of that call has the device ({:.1} mm, {:.1} mrad, medians of \
+			 {} poses; Valve's wobbles 25 mm), so a reader of the driver pose alone sees no turn between the two",
+			mm(max(&rec.0)),
+			mm(max(&rec.1)),
+			mm(median(&rec.2)),
+			mm(median(&rec.3)),
+			rec.0.len()
 		),
 	);
 

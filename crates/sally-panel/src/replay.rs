@@ -285,7 +285,8 @@ pub fn sessions(paths: &Paths) -> Vec<Session> {
 		for e in rd.flatten() {
 			let name = e.file_name().to_string_lossy().into_owned();
 			let Some(stamp) = name.strip_prefix("sally-check_").filter(|s| s.len() == 15) else { continue };
-			let tap = e.path().join("tap.hidtap");
+			// packed in a session the panel's Check shared, text in an older sally-check's own
+			let Some(tap) = sally_check::session::tap(&e.path()) else { continue };
 			let Some((t0, t1)) = tap_span(&tap) else { continue };
 			let bytes = std::fs::metadata(&tap).map(|m| m.len()).unwrap_or(0);
 			let poselog = Some(e.path().join("steamvr_poses.csv")).filter(|p| p.is_file());

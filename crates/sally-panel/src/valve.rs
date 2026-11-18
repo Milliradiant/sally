@@ -189,11 +189,6 @@ pub struct ValveCompare {
 	/// the clock of the driver's last status line (C): every command is answered with one, the output command by a
 	/// driver without an output layer too (with no O lines)
 	drv_c_t: f64,
-	/// the virtual trackers (docs/sally_driver.md "The virtual trackers"): the driver's last X line's words after "X"
-	/// and when it came; `virtual` asks for it, every switch answers with it
-	pub virtual_x: Vec<String>,
-	pub virtual_t: f64,
-	virtual_asked: f64,
 
 	/// the SteamVR dashboard overlay ("sally" tab): the host renders the panel itself into a GL texture and hands it
 	/// to overlay_submit while overlay_visible. Made once SteamVR is seen (it takes an Overlay session)
@@ -255,6 +250,8 @@ pub struct ValveCompare {
 	/// the serial each pair is of
 	samples_dev: Vec<String>,
 	by_index: BTreeMap<i32, ValveDevice>,
+	/// while a check records: what SteamVR shows, written down as it is read (check.rs)
+	pub check_log: Option<crate::check::PoseLog>,
 	/// the last poll's clock (`refit` is asked between polls)
 	last_poll: f64,
 	/// when the driver was asked to re-align, until an F line says it is at it: F lines sent before it had the
@@ -306,7 +303,7 @@ impl Drop for ValveCompare {
 }
 
 /// HmdMatrix34_t to a pose: the rotation's rows, the position in the last column
-fn from_mat34(m: &HmdMatrix34_t) -> Pose {
+pub(crate) fn from_mat34(m: &HmdMatrix34_t) -> Pose {
 	let mut r = [[0.0f64; 3]; 3];
 	for (i, row) in r.iter_mut().enumerate() {
 		for (j, x) in row.iter_mut().enumerate() {
@@ -391,9 +388,6 @@ impl ValveCompare {
 			output_asked: f64::NEG_INFINITY,
 			output_next: BTreeMap::new(),
 			drv_c_t: f64::NEG_INFINITY,
-			virtual_x: Vec::new(),
-			virtual_t: f64::NEG_INFINITY,
-			virtual_asked: f64::NEG_INFINITY,
 			overlay_wanted: true,
 			overlay_ok: false,
 			overlay_visible: false,
@@ -432,12 +426,43 @@ impl ValveCompare {
 			samples_t: Vec::new(),
 			samples_dev: Vec::new(),
 			by_index: BTreeMap::new(),
+			check_log: None,
 			last_poll: 0.0,
 			refit_asked: None,
 			scratch: Vec::new(),
 			next_walls: 0.0,
 			buzz: None,
 		}
+	}
+
+	/// SteamVR's devices as it lists them now, for a check's session (check.rs): each with its class, role, dongle,
+	/// model and tracking system, a base station with its mode's label (its channel). Empty without SteamVR
+	pub fn steam_devices(&mut self) -> Vec<sally_check::session::SteamDevice> {
+		if !self.running {
+			return Vec::new();
+		}
+		let vr = &mut self.vr;
+		self.by_index
+			.values()
+			.filter(|d| d.cls != TrackedDeviceClass_Invalid && !d.serial.is_empty())
+			.map(|d| {
+				let i = d.index as u32;
+				let class = crate::check::class_word(d.cls);
+				sally_check::session::SteamDevice {
+					serial: d.serial.clone(),
+					class: class.to_string(),
+					role: if class == "hmd" { "Head".to_string() } else { d.role.clone() },
+					dongle: vr.string_tracked_device_property(i, Prop_ConnectedWirelessDongle_String),
+					model: vr.string_tracked_device_property(i, Prop_ModelNumber_String),
+					system: d.system.clone(),
+					mode: if class == "station" {
+						vr.string_tracked_device_property(i, Prop_ModeLabel_String)
+					} else {
+						String::new()
+					},
+				}
+			})
+			.collect()
 	}
 
 	/// "Re-align to Valve": through the driver's fit, the driver re-aligns (`refit`: new pairs, SteamVR keeps its
@@ -907,12 +932,6 @@ impl ValveCompare {
 					}
 					_ => {}
 				}
-			} else if line.first() == Some(&b'X') && line.get(1) == Some(&b' ') {
-				// the virtual trackers: "X none", or "X <on|off> devices N tracking N trackers <names> model <the
-				// model's word>" (trackers since driver.virtual_trackers)
-				let text = String::from_utf8_lossy(line);
-				self.virtual_x = text.split_whitespace().skip(1).map(str::to_string).collect();
-				self.virtual_t = now;
 			} else if line.first() == Some(&b'C') {
 				let (got, v) = sscanf(line, C_LINE);
 				self.drv_c_t = now;
@@ -964,24 +983,6 @@ impl ValveCompare {
 		self.output_next.clear();
 		self.output.remove(&(serial.to_string(), name.to_string()));
 		self.driver_cmd(&format!("output {serial} {name} -"));
-	}
-
-	/// The virtual trackers' state asked for again (every OUTPUT_ASK_S while the Settings tab shows it)
-	pub fn virtual_ask(&mut self, now: f64) {
-		if now - self.virtual_asked >= OUTPUT_ASK_S {
-			self.virtual_asked = now;
-			self.driver_cmd("virtual");
-		}
-	}
-
-	/// `virtual on`, `virtual off` or `virtual calibrate`; the driver answers with its X line
-	pub fn virtual_cmd(&mut self, what: &str) {
-		self.driver_cmd(&format!("virtual {what}"));
-	}
-
-	/// The driver has answered `virtual` lately (a driver of 0.10 on)
-	pub fn virtual_known(&self, now: f64) -> bool {
-		now - self.virtual_t < 3.0 * OUTPUT_ASK_S
 	}
 
 	/// The driver has answered an output list lately (it runs, it is a driver with the output layer)
@@ -1108,6 +1109,9 @@ impl ValveCompare {
 
 		let mut poses = [TrackedDevicePose_t::default(); k_unMaxTrackedDeviceCount as usize];
 		self.vr.device_to_absolute_tracking_pose(TrackingUniverseRawAndUncalibrated, 0.0, &mut poses);
+		if let Some(log) = &mut self.check_log {
+			log.rows(&self.by_index, &poses);
+		}
 		self.have_hmd = false;
 		for d in self.devs.values_mut() {
 			d.valid = false;

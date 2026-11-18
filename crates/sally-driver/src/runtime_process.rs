@@ -75,7 +75,7 @@ impl RuntimeProcess {
 		sys::start(self, &exe, &cwd, &log_path, &argv)
 	}
 
-	/// Another program started the same way (the virtual trackers' model process): `exe` in `cwd` with `argv`, its
+	/// Another program started the same way (the panel): `exe` in `cwd` with `argv`, its
 	/// console output to `log_path` (none: discarded); each path as the caller resolved it
 	pub fn start_program(&mut self, exe: &[u8], cwd: &[u8], log_path: &[u8], argv: &[Vec<u8>]) -> bool {
 		sys::start(self, exe, cwd, log_path, argv)

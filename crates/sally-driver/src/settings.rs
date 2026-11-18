@@ -47,6 +47,11 @@ pub struct Options {
 	/// the frame fit's tilt from gravity, not from the pairs (`level` in pose_override.rs): the runtime's up on the
 	/// apps' up with a headset in its own space, on the room setup's long-run up with a lighthouse headset
 	pub level: bool,
+	/// sally's pose on Valve's own record (`valve_record` in pose_override.rs): the driver pose at Valve's IMU origin
+	/// with Valve's driver-from-head, not the head pose with none. What SteamVR shows is the same either way; what
+	/// reads the driver pose without the driver-from-head (Space Calibrator) then sees the device where Valve's own
+	/// pose has it
+	pub valve_record: bool,
 	/// fallback (design doc 5): when sally has no fresh pose for a device, SteamVR gets Valve's pose for it instead of
 	/// "out of range"; every switch between the two sources is blended over blend_ms rather than cut
 	pub fallback: bool,
@@ -82,20 +87,6 @@ pub struct Options {
 	pub runtime_args: Vec<Vec<u8>>,
 	/// the panel, started with SteamVR (panel.rs); empty = the driver starts none
 	pub panel_exe: Vec<u8>,
-	// the virtual trackers (0.10, docs/sally_driver.md "The virtual trackers")
-	/// the five virtual trackers are added and fed by the model process; off: none are added
-	pub virtual_on: bool,
-	/// the model process's port on 127.0.0.1: SteamVR's poses go there, the five poses come back
-	pub virtual_port: i32,
-	/// the model process (sally-model.exe), started when SteamVR starts and again when it exits; empty = never
-	pub virtual_exe: Vec<u8>,
-	/// the model folder it runs (`run --model`), relative to the program's folder or absolute
-	pub virtual_model: Vec<u8>,
-	/// its console output ({time} = this start); empty = discarded
-	pub virtual_log: Vec<u8>,
-	/// which of the five SteamVR is given, by the model's names (chest, lknee, rknee, lelbow, relbow), commas between;
-	/// empty = all five. The model works out all five whatever this says; the others' poses are dropped
-	pub virtual_trackers: Vec<u8>,
 }
 
 impl Default for Options {
@@ -117,6 +108,7 @@ impl Default for Options {
 			seen: b"sally".to_vec(),
 			fit_window_s: 60.0,
 			level: true,
+			valve_record: true,
 			fallback: true,
 			fallback_after_ms: 100.0,
 			blend_ms: 150.0,
@@ -132,12 +124,6 @@ impl Default for Options {
 			runtime_stop: true,
 			runtime_args: Vec::new(),
 			panel_exe: Vec::new(),
-			virtual_on: false,
-			virtual_port: 9106,
-			virtual_exe: Vec::new(),
-			virtual_model: Vec::new(),
-			virtual_log: Vec::new(),
-			virtual_trackers: Vec::new(),
 		}
 	}
 }
@@ -186,6 +172,7 @@ pub fn parse_option(o: &mut Options, s: &[u8]) {
 		b"seen" => o.seen = v.to_vec(),
 		b"fit_window_s" => o.fit_window_s = c_atof(v),
 		b"level" => o.level = parse_bool(v),
+		b"valve_record" => o.valve_record = parse_bool(v),
 		b"fallback" => o.fallback = parse_bool(v),
 		b"fallback_after_ms" => o.fallback_after_ms = c_atof(v),
 		b"blend_ms" => o.blend_ms = c_atof(v),
@@ -200,12 +187,6 @@ pub fn parse_option(o: &mut Options, s: &[u8]) {
 		b"runtime_log" => o.runtime_log = v.to_vec(),
 		b"runtime_restart" => o.runtime_restart = parse_bool(v),
 		b"runtime_stop" => o.runtime_stop = parse_bool(v),
-		b"virtual" => o.virtual_on = parse_bool(v),
-		b"virtual_port" => o.virtual_port = c_atoi(v),
-		b"virtual_exe" => o.virtual_exe = v.to_vec(),
-		b"virtual_model" => o.virtual_model = v.to_vec(),
-		b"virtual_log" => o.virtual_log = v.to_vec(),
-		b"virtual_trackers" => o.virtual_trackers = v.to_vec(),
 		_ => log("sally: unknown option driver.%s\n", &[BArg::S(k)]),
 	}
 }

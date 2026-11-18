@@ -15,7 +15,7 @@ use std::ffi::{c_char, c_int, c_void, CStr};
 use std::sync::atomic::{AtomicU32, AtomicUsize, Ordering::SeqCst};
 use std::sync::{Mutex, OnceLock};
 
-use driver_sally::openvr::{DriverPose_t, PropertyRead_t, PropertyWrite_t, TrackedDevicePose_t};
+use driver_sally::openvr::{DriverPose_t, PropertyRead_t, TrackedDevicePose_t};
 use sally_math::math3d::{qmul, qrot, Q4, V3};
 
 /// TrackedDevicePoseUpdated(this, id, &pose, size)
@@ -85,14 +85,9 @@ pub struct Server {
 	pub reads: Mutex<BTreeMap<u64, u32>>,
 	/// the versions the driver asked GetGenericInterface for
 	pub asked: Mutex<Vec<String>>,
-	/// TrackedDeviceAdded and WritePropertyBatch calls (the driver adds no devices and writes no properties, but the
-	/// virtual trackers with driver.virtual)
+	/// TrackedDeviceAdded and WritePropertyBatch calls (the driver adds no devices and writes no properties)
 	pub added: AtomicU32,
 	pub writes: AtomicU32,
-	/// the devices added, each activated as vrserver does (Activate(id), its id from FIRST_ADDED on), and what was
-	/// written into each property container: (property, tag, the value's bytes)
-	pub added_devices: Mutex<Vec<Added>>,
-	pub written: Mutex<BTreeMap<u64, Vec<Written>>>,
 	/// id -> Prop_DeviceClass_Int32 (a device without one has none that reads)
 	pub classes: Mutex<BTreeMap<u32, i32>>,
 	/// GetRawTrackedDevicePoses' answer: the last pose of each device, as SteamVR has it (world)
@@ -100,43 +95,6 @@ pub struct Server {
 	/// another driver's hook on _006 (the test plays one): its calls, and the slot's function it hands them on to
 	pub other_calls: AtomicU32,
 	other_next: AtomicUsize,
-}
-
-/// A device the driver added
-#[derive(Clone, Debug)]
-pub struct Added {
-	pub serial: String,
-	pub class: i32,
-	/// the ITrackedDeviceServerDriver it gave
-	pub device: usize,
-	pub id: u32,
-	/// what Activate returned
-	pub activated: i32,
-}
-
-/// One property written: (property, tag, the value's bytes)
-pub type Written = (i32, u32, Vec<u8>);
-
-/// The first id vrserver gives a device the driver adds
-pub const FIRST_ADDED: u32 = 40;
-
-/// ITrackedDeviceServerDriver's slots: Activate, Deactivate, EnterStandby, GetComponent, DebugRequest, GetPose
-type ActivateFn = unsafe extern "C" fn(*mut c_void, u32) -> i32;
-type GetPoseFn = unsafe extern "C" fn(*mut c_void) -> DriverPose_t;
-
-/// A device's slot k
-///
-/// # Safety
-/// `device` is an ITrackedDeviceServerDriver (its first word its vtable of six slots)
-unsafe fn device_slot(device: usize, k: usize) -> *const c_void {
-	// SAFETY: as the caller says
-	unsafe { (*(device as *const *const *const c_void)).add(k).read() }
-}
-
-/// GetPose through the device's vtable, as vrserver calls it (the Itanium ABI on Linux)
-pub fn device_get_pose(device: usize) -> DriverPose_t {
-	// SAFETY: a device the driver added; slot 5 is GetPose(this)
-	unsafe { std::mem::transmute::<*const c_void, GetPoseFn>(device_slot(device, 5))(device as *mut c_void) }
 }
 
 /// The objects' server, and which object this is
@@ -172,24 +130,15 @@ unsafe extern "C" fn get_driver_handle(_this: *mut c_void) -> u64 {
 }
 
 unsafe extern "C" fn tracked_device_added(
-	this: *mut c_void, serial: *const c_char, class: c_int, d: *mut c_void,
+	this: *mut c_void, _serial: *const c_char, _class: c_int, _d: *mut c_void,
 ) -> bool {
-	// SAFETY: one of the server's objects, the driver's NUL-terminated serial and its device
+	// SAFETY: one of the server's objects
 	unsafe {
 		let (s, _) = object(this);
 		s.added.fetch_add(1, SeqCst);
-		let serial = CStr::from_ptr(serial).to_string_lossy().into_owned();
-		let id = {
-			let mut a = s.added_devices.lock().unwrap();
-			let id = FIRST_ADDED + a.len() as u32;
-			a.push(Added { serial, class, device: d as usize, id, activated: -1 });
-			id
-		};
-		// vrserver activates the device it took (here at once, outside the list's lock: Activate writes properties)
-		let r = std::mem::transmute::<*const c_void, ActivateFn>(device_slot(d as usize, 0))(d, id);
-		s.added_devices.lock().unwrap().iter_mut().find(|x| x.id == id).unwrap().activated = r;
-		true
 	}
+	// counted and refused: the driver has no device of its own to add
+	false
 }
 
 unsafe extern "C" fn tracked_device_pose_updated(this: *mut c_void, id: u32, pose: *const DriverPose_t, size: u32) {
@@ -277,7 +226,6 @@ unsafe extern "C" fn read_property_batch(this: *mut c_void, c: u64, batch: *mut 
 		let props = s.props.lock().unwrap();
 		let dongles = s.dongles.lock().unwrap();
 		let classes = s.classes.lock().unwrap();
-		let written = s.written.lock().unwrap();
 		for i in 0..n as usize {
 			let r = &mut *batch.add(i);
 			let id = c.checked_sub(1000).map(|id| id as u32);
@@ -294,18 +242,10 @@ unsafe extern "C" fn read_property_batch(this: *mut c_void, c: u64, batch: *mut 
 				}
 				continue;
 			}
-			// a device the driver added reads what it wrote
-			let own: Option<String> = written.get(&c).and_then(|w| {
-				w.iter()
-					.rev()
-					.find(|x| x.0 == r.prop && x.1 == 5)
-					.map(|x| String::from_utf8_lossy(&x.2[..x.2.len().saturating_sub(1)]).into_owned())
-			});
-			let value: &str = match (entry, dongle, r.prop, &own) {
-				(Some((system, _)), _, 1000, _) => system,  // Prop_TrackingSystemName_String
-				(Some((_, serial)), _, 1002, _) => serial,  // Prop_SerialNumber_String
-				(Some(_), Some(dongle), 1009, _) => dongle, // Prop_ConnectedWirelessDongle_String
-				(None, _, _, Some(v)) => v.as_str(),
+			let value: &str = match (entry, dongle, r.prop) {
+				(Some((system, _)), _, 1000) => system,  // Prop_TrackingSystemName_String
+				(Some((_, serial)), _, 1002) => serial,  // Prop_SerialNumber_String
+				(Some(_), Some(dongle), 1009) => dongle, // Prop_ConnectedWirelessDongle_String
 				_ => {
 					r.eError = 4; // TrackedProp_UnknownProperty
 					r.unTag = 0;
@@ -327,21 +267,14 @@ unsafe extern "C" fn read_property_batch(this: *mut c_void, c: u64, batch: *mut 
 	}
 }
 
-unsafe extern "C" fn write_property_batch(this: *mut c_void, c: u64, batch: *mut c_void, n: u32) -> i32 {
-	// SAFETY: one of the server's objects, and the driver's batch of n writes, each with its buffer and its size
+unsafe extern "C" fn write_property_batch(this: *mut c_void, _c: u64, _batch: *mut c_void, _n: u32) -> i32 {
+	// SAFETY: one of the server's objects
 	unsafe {
 		let (s, _) = object(this);
 		s.writes.fetch_add(1, SeqCst);
-		let batch = batch.cast::<PropertyWrite_t>();
-		let mut w = s.written.lock().unwrap();
-		for i in 0..n as usize {
-			let b = &mut *batch.add(i);
-			let bytes = std::slice::from_raw_parts(b.pvBuffer.cast::<u8>(), b.unBufferSize as usize).to_vec();
-			w.entry(c).or_default().push((b.prop, b.unTag, bytes));
-			b.eError = 0;
-		}
-		0
 	}
+	// counted and refused (TrackedProp_NotYetAvailable): the driver writes no property
+	9
 }
 
 unsafe extern "C" fn tracked_device_to_property_container(_this: *mut c_void, id: u32) -> u64 {
@@ -425,8 +358,6 @@ impl Server {
 			asked: Mutex::new(Vec::new()),
 			added: AtomicU32::new(0),
 			writes: AtomicU32::new(0),
-			added_devices: Mutex::new(Vec::new()),
-			written: Mutex::new(BTreeMap::new()),
 			classes: Mutex::new(BTreeMap::new()),
 			raw: Mutex::new([TrackedDevicePose_t::default(); 64]),
 			other_calls: AtomicU32::new(0),

@@ -7,9 +7,7 @@
 //! OpenVR's driver interfaces are pure virtual C++ classes without overloads or virtual destructors: an object starts
 //! with a pointer to its vtable, which has one slot per method in declaration order, each called with `this` first.
 //! That is the same for MSVC (vrserver) and the Itanium ABI llvm-mingw builds with, and on Linux, and `extern "C"` is
-//! the platform's calling convention for them (Win64, SysV). The one method returning a struct,
-//! ITrackedDeviceServerDriver::GetPose (the virtual trackers', `virtual_trackers`), is declared as each platform's C++
-//! calls it: MSVC passes a member function's hidden return pointer after `this`, SysV before it.
+//! the platform's calling convention for them (Win64, SysV).
 
 #![allow(non_camel_case_types, non_snake_case, non_upper_case_globals, clippy::upper_case_acronyms)]
 
@@ -34,40 +32,15 @@ pub const TrackedProp_CouldNotContactServer: ETrackedPropertyError = 6;
 
 pub type ETrackedDeviceProperty = i32;
 pub const Prop_TrackingSystemName_String: ETrackedDeviceProperty = 1000;
-pub const Prop_ModelNumber_String: ETrackedDeviceProperty = 1001;
 pub const Prop_SerialNumber_String: ETrackedDeviceProperty = 1002;
-pub const Prop_RenderModelName_String: ETrackedDeviceProperty = 1003;
-pub const Prop_WillDriftInYaw_Bool: ETrackedDeviceProperty = 1004;
-pub const Prop_ManufacturerName_String: ETrackedDeviceProperty = 1005;
 /// the dongle a wireless device talks through, as Valve's lighthouse driver names it (its USB serial, "00A4AE2B50-RYB")
 pub const Prop_ConnectedWirelessDongle_String: ETrackedDeviceProperty = 1009;
-pub const Prop_DeviceProvidesBatteryStatus_Bool: ETrackedDeviceProperty = 1026;
 pub const Prop_DeviceClass_Int32: ETrackedDeviceProperty = 1029;
-pub const Prop_InputProfilePath_String: ETrackedDeviceProperty = 1037;
-pub const Prop_Identifiable_Bool: ETrackedDeviceProperty = 1043;
-pub const Prop_ControllerRoleHint_Int32: ETrackedDeviceProperty = 3007;
-pub const Prop_NamedIconPathDeviceOff_String: ETrackedDeviceProperty = 5001;
-pub const Prop_NamedIconPathDeviceSearching_String: ETrackedDeviceProperty = 5002;
-pub const Prop_NamedIconPathDeviceSearchingAlert_String: ETrackedDeviceProperty = 5003;
-pub const Prop_NamedIconPathDeviceReady_String: ETrackedDeviceProperty = 5004;
-pub const Prop_NamedIconPathDeviceReadyAlert_String: ETrackedDeviceProperty = 5005;
-pub const Prop_NamedIconPathDeviceNotReady_String: ETrackedDeviceProperty = 5006;
-pub const Prop_NamedIconPathDeviceStandby_String: ETrackedDeviceProperty = 5007;
-pub const Prop_NamedIconPathDeviceAlertLow_String: ETrackedDeviceProperty = 5008;
-pub const Prop_ControllerType_String: ETrackedDeviceProperty = 7000;
 
 pub type ETrackedDeviceClass = i32;
-pub const TrackedDeviceClass_HMD: ETrackedDeviceClass = 1;
-pub const TrackedDeviceClass_Controller: ETrackedDeviceClass = 2;
-pub const TrackedDeviceClass_GenericTracker: ETrackedDeviceClass = 3;
-pub const TrackedControllerRole_OptOut: i32 = 3;
 
 pub type PropertyTypeTag_t = u32;
-pub const k_unInt32PropertyTag: PropertyTypeTag_t = 2;
-pub const k_unBoolPropertyTag: PropertyTypeTag_t = 4;
 pub const k_unStringPropertyTag: PropertyTypeTag_t = 5;
-pub const PropertyWrite_Set: i32 = 0;
-pub const k_unTrackedDeviceIndexInvalid: u32 = 0xFFFF_FFFF;
 pub type PropertyContainerHandle_t = u64;
 pub type DriverHandle_t = u64;
 
@@ -140,17 +113,6 @@ pub struct PropertyRead_t {
 	pub eError: ETrackedPropertyError,
 }
 
-#[repr(C)]
-pub struct PropertyWrite_t {
-	pub prop: ETrackedDeviceProperty,
-	pub writeType: i32,
-	pub eSetError: ETrackedPropertyError,
-	pub pvBuffer: *mut c_void,
-	pub unBufferSize: u32,
-	pub unTag: PropertyTypeTag_t,
-	pub eError: ETrackedPropertyError,
-}
-
 // the layouts the C++ compilers give them (g++ 13 on Linux, llvm-mingw's clang for Windows: the same)
 const _: () = {
 	use std::mem::{offset_of, size_of};
@@ -181,11 +143,6 @@ const _: () = {
 	assert!(offset_of!(PropertyRead_t, unTag) == 20);
 	assert!(offset_of!(PropertyRead_t, unRequiredBufferSize) == 24);
 	assert!(offset_of!(PropertyRead_t, eError) == 28);
-	assert!(size_of::<PropertyWrite_t>() == 40);
-	assert!(offset_of!(PropertyWrite_t, pvBuffer) == 16);
-	assert!(offset_of!(PropertyWrite_t, unBufferSize) == 24);
-	assert!(offset_of!(PropertyWrite_t, unTag) == 28);
-	assert!(offset_of!(PropertyWrite_t, eError) == 32);
 };
 
 /// IVRServerDriverHost::TrackedDevicePoseUpdated's slot, as the hook replaces it: (this, id, &pose, size)
@@ -260,26 +217,6 @@ pub struct IServerTrackedDeviceProviderVtbl {
 	pub LeaveStandby: unsafe extern "C" fn(*mut IServerTrackedDeviceProvider),
 }
 pub type IServerTrackedDeviceProvider = Interface<IServerTrackedDeviceProviderVtbl>;
-
-/// ITrackedDeviceServerDriver::GetPose as vrserver (MSVC) calls it: the return pointer after `this`, returned
-#[cfg(windows)]
-pub type GetPoseFn = unsafe extern "C" fn(*mut ITrackedDeviceServerDriver, *mut DriverPose_t) -> *mut DriverPose_t;
-/// ITrackedDeviceServerDriver::GetPose as the Itanium ABI calls it on Linux: the return pointer first, which a C
-/// function returning the struct takes the same way
-#[cfg(not(windows))]
-pub type GetPoseFn = unsafe extern "C" fn(*mut ITrackedDeviceServerDriver) -> DriverPose_t;
-
-/// The interface a device the driver adds implements (ITrackedDeviceServerDriver_005)
-#[repr(C)]
-pub struct ITrackedDeviceServerDriverVtbl {
-	pub Activate: unsafe extern "C" fn(*mut ITrackedDeviceServerDriver, u32) -> EVRInitError,
-	pub Deactivate: unsafe extern "C" fn(*mut ITrackedDeviceServerDriver),
-	pub EnterStandby: unsafe extern "C" fn(*mut ITrackedDeviceServerDriver),
-	pub GetComponent: unsafe extern "C" fn(*mut ITrackedDeviceServerDriver, *const c_char) -> *mut c_void,
-	pub DebugRequest: unsafe extern "C" fn(*mut ITrackedDeviceServerDriver, *const c_char, *mut c_char, u32),
-	pub GetPose: GetPoseFn,
-}
-pub type ITrackedDeviceServerDriver = Interface<ITrackedDeviceServerDriverVtbl>;
 
 // SAFETY: an interface object the driver makes is a static vtable pointer that nothing writes
 unsafe impl<V> Sync for Interface<V> {}
@@ -515,19 +452,6 @@ pub fn get_raw_tracked_device_poses(t: f32, poses: &mut [TrackedDevicePose_t]) {
 	unsafe { ((*(*host).vtbl).GetRawTrackedDevicePoses)(host, t, poses.as_mut_ptr(), poses.len() as u32) };
 }
 
-/// VRServerDriverHost()->TrackedDeviceAdded(serial, class, device): whether vrserver took it
-///
-/// # Safety
-/// `device` is an ITrackedDeviceServerDriver that lives as long as the driver
-pub unsafe fn tracked_device_added(serial: &CStr, class: ETrackedDeviceClass, device: *mut c_void) -> bool {
-	let host = CONTEXT.server_driver_host();
-	if host.is_null() {
-		return false;
-	}
-	// SAFETY: host is vrserver's IVRServerDriverHost; the serial is NUL-terminated and the device lives on
-	unsafe { ((*(*host).vtbl).TrackedDeviceAdded)(host, serial.as_ptr(), class, device) }
-}
-
 /// VRServerDriverHost()->TrackedDevicePoseUpdated(id, pose, sizeof pose), through the interface's vtable as any
 /// driver's pose goes (the override's hook, if it is in, hands a device not one of Valve's on as it is)
 pub fn tracked_device_pose_updated(id: u32, pose: &DriverPose_t) {
@@ -539,55 +463,4 @@ pub fn tracked_device_pose_updated(id: u32, pose: &DriverPose_t) {
 	unsafe {
 		((*(*host).vtbl).TrackedDevicePoseUpdated)(host.cast(), id, pose, std::mem::size_of::<DriverPose_t>() as u32)
 	};
-}
-
-/// One property written (CVRPropertyHelpers::SetProperty): the value's bytes and its tag; the error vrserver set
-fn set_property(
-	c: PropertyContainerHandle_t, prop: ETrackedDeviceProperty, value: &mut [u8], tag: PropertyTypeTag_t,
-) -> ETrackedPropertyError {
-	let props = CONTEXT.properties();
-	if props.is_null() {
-		return TrackedProp_CouldNotContactServer;
-	}
-	let mut batch = PropertyWrite_t {
-		prop,
-		writeType: PropertyWrite_Set,
-		eSetError: TrackedProp_Success,
-		pvBuffer: value.as_mut_ptr().cast(),
-		unBufferSize: value.len() as u32,
-		unTag: tag,
-		eError: TrackedProp_Success,
-	};
-	// SAFETY: props is vrserver's IVRProperties; the batch's buffer is `value`, of the size it says, read by vrserver
-	unsafe { ((*(*props).vtbl).WritePropertyBatch)(props, c, (&mut batch as *mut PropertyWrite_t).cast(), 1) };
-	batch.eError
-}
-
-/// SetStringProperty: the string with its NUL
-pub fn set_string_property(
-	c: PropertyContainerHandle_t, prop: ETrackedDeviceProperty, v: &[u8],
-) -> ETrackedPropertyError {
-	let mut b = v.to_vec();
-	b.push(0);
-	set_property(c, prop, &mut b, k_unStringPropertyTag)
-}
-
-pub fn set_int32_property(c: PropertyContainerHandle_t, prop: ETrackedDeviceProperty, v: i32) -> ETrackedPropertyError {
-	set_property(c, prop, &mut v.to_ne_bytes(), k_unInt32PropertyTag)
-}
-
-/// SetBoolProperty: a C++ bool, one byte
-pub fn set_bool_property(c: PropertyContainerHandle_t, prop: ETrackedDeviceProperty, v: bool) -> ETrackedPropertyError {
-	set_property(c, prop, &mut [v as u8], k_unBoolPropertyTag)
-}
-
-/// GetInt32Property: the value, or None where it does not read as one
-pub fn get_int32_property(c: PropertyContainerHandle_t, prop: ETrackedDeviceProperty) -> Option<i32> {
-	let props = CONTEXT.properties();
-	if props.is_null() {
-		return None;
-	}
-	let mut buf = [0u8; 4];
-	let (_, tag, err) = get_property(props, c, prop, &mut buf);
-	(err == TrackedProp_Success && tag == k_unInt32PropertyTag).then(|| i32::from_ne_bytes(buf))
 }

@@ -52,8 +52,8 @@ Everything is in the panel, under **Settings**.
 - **Headset tracking**: for an Index or Vive headset, whether the headset itself is tracked by sally or by SteamVR.
   It starts on sally.
 - **Sessions kept**: sally records what your trackers send during each session, about 120 MB an hour. It uses the
-  recordings to keep its picture of your room right, and they are what to send along if you ask for help. Only the
-  last few sessions are kept, and you choose how many. The panel shows how much space they take.
+  recordings to keep its picture of your room right, and a check (below) is made from the one being recorded. Only
+  the last few sessions are kept, and you choose how many. The panel shows how much space they take.
 - **Devices**: give your trackers names and say where you wear them.
 
 ## If something is wrong
@@ -62,8 +62,23 @@ Everything is in the panel, under **Settings**.
 - Flip the switch to **Valve**. If the problem stays, it is not sally.
 - If SteamVR starts without sally (after a crash SteamVR switches add-ons off), switch it on again in SteamVR:
   Settings, Startup / Shutdown, Manage add-ons, sally. Then restart SteamVR.
-- When you ask for help, send the newest files from the folder `logs` inside sally's folder. To get there, press
-  Windows + R and enter `%LOCALAPPDATA%\sally\logs`.
+
+## Asking for help
+
+Open the panel's **Check** tab while SteamVR runs. Press **Start**, do whatever goes wrong for a minute or two, and
+press **Stop**. sally then says for each tracker, controller and headset where its trouble comes from (the light of
+the base stations, the radio, or the device itself), and makes one file to send: **Show the file to send** opens its
+folder.
+
+To send it, join [sally's Discord server](https://discord.gg/4A836TmKtv), post the file there and say what you saw.
+
+The file does not say whose it is. Every serial number in it is replaced by a stand-in (your trackers', your
+dongles', your base stations'), and it holds neither your Windows user name nor your PC's name, so it can be posted
+where others can see it. What it does hold is what it takes to look into the problem: what your devices sent during
+the check (the light they saw and how they moved), where your base stations stand, your devices' factory
+calibration, sally's settings and log, and the lines of SteamVR's log that come from its lighthouse driver and from
+sally. **Open the report** shows the same check as a page, with a list of which of your devices each stand-in is.
+That page stays on your PC.
 
 ## What sally does and does not touch
 

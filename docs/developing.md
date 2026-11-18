@@ -43,7 +43,8 @@ sally driver swaps Valve's poses for sally's,        <---    decode, live map so
 - **Panel**: a desktop panel, and the same panel as a SteamVR dashboard overlay: what the runtime is doing per device
   and per station, a page per device, the live comparison against Valve, recordings replayed.
 - **Diagnosis**: per device every 0.5 s, the cause of a problem (light, reflections, radio, base station, device), live
-  and on replays; `sally-check`, one program other people run, records and diagnoses a session next to SteamVR.
+  and on replays; the panel's Check: a stretch of the session checked per device and made into one file to send,
+  every serial in it a stand-in (`crates/sally-check`).
 - **Hardware**: tested with VIVE Tracker 3.0, Index controllers and Tundra trackers on LH2 base stations (up to four),
   and the Index headset. Untried, and so "might work": other lighthouse trackers and controllers,
   other lighthouse headsets, more than four stations. LH1 base stations are not supported: sally says so in its log
@@ -57,13 +58,12 @@ All of sally is Rust, one crate each under `crates/`:
 | program | crate | what |
 |---|---|---|
 | `sally` | `sally` (with `sally-runtime`, `sally-track`, `sally-hid`, `sally-lighthouse`, `sally-map`, `sally-math`, `sally-json`, `sally-os`) | the runtime (`sally run`, which the SteamVR driver starts), `replay`, `calibrate`, `ctl` (the runtime's protocol), `setup` / `off` / `stop` / `copy-log` (SteamVR set up for sally and back), `convert` (USBPcap captures and openhouse recordings to tap recordings), `probe` (the dongles checked, their configs fetched) |
-| `driver_sally.dll` | `sally-driver` | the SteamVR driver: sally's poses in place of Valve's, Valve's as the fallback; the virtual trackers |
+| `driver_sally.dll` | `sally-driver` | the SteamVR driver: sally's poses in place of Valve's, Valve's as the fallback |
 | `sally-panel`, `sally-poses` | `sally-panel` | the panel and its SteamVR overlay; every SteamVR device's pose to a CSV |
-| `sally-check` | `sally-check` | the check other people run on their own setups, one file, nothing installed |
+| `sally-check` | `sally-check` | the check (what a session's devices sent, read per device for where trouble comes from) and the share (a session as one file to send, with stand-ins for every serial): a library the panel's Check tab runs; the program checks a session that came back |
 | `sally-setup.exe` | `sally-setup` | the installer and uninstaller: one file that carries the others, puts them in the user's own folder and has `sally setup` put them on SteamVR's list |
 | `sally-release` | `sally-release` | a release made from the tree: built without the build machine's paths, checked, the third-party notices, the project's folder laid out and the installer packed |
-| `sally-bench` | `sally-bench` (with `sally-body`; not in the public repository) | the replay bench and its scorecard; the truth recordings' check for the virtual trackers |
-| `sally-model` | `sally-model` (with `sally-body`, burn) | the virtual trackers' model: trained on a tracker rig put on motion capture, tuned and scored on the truth recordings, and run live for the driver's virtual trackers |
+| `sally-bench` | `sally-bench` (not in the public repository) | the replay bench and its scorecard |
 
 | path | what |
 |---|---|
@@ -91,7 +91,7 @@ they call from the Windows UCRT, as llvm-mingw's builds do: that is what keeps a
 the bit. `cargo build --release --target x86_64-pc-windows-gnullvm` gives `sally.exe`,
 `driver_sally.dll` (it goes in the driver folder `crates/sally-driver/package/` lays out),
 `sally-panel.exe` and `sally-poses.exe` (OpenVR's `openvr_api.dll` beside them),
-`sally-check.exe`, `sally-bench.exe` and `sally-model.exe`.
+`sally-check.exe` and `sally-bench.exe`.
 
 On the Windows PC `sally setup` (from the folder the runtime sits in, `survive\hidtap\` of the project) puts the
 driver on SteamVR's list and writes its settings, SteamVR running or not; from then on starting SteamVR is all a
