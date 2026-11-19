@@ -294,18 +294,23 @@ fn the_output_tab_sets_the_drivers_values() {
 		|r: &Rig, scope: &str, name: &str| r.panel.vc.output.get(&(scope.to_string(), name.to_string())).copied();
 	// the driver's list is in: the controllers' smoothing at its default
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(0.0));
-	// the stepper at the right end of the controllers' Smoothing: 5 ms more, sent to the driver
-	r.click(1031.0, 194.0);
+	// the stepper at the right end of the controllers' Still smoothing: 5 ms more, sent to the driver
+	r.click(1031.0, 192.0);
 	r.run_until(3.6);
 	let d = r.driver.as_ref().unwrap();
 	assert!(d.commands.iter().any(|c| c == "output controllers smoothing_ms 5"), "{:?}", d.commands);
 	assert_eq!(d.output[&("controllers".to_string(), "smoothing_ms".to_string())], 5.0);
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
+	// the row under it is the other smoothing, the movement's: its own setting, and the still one's stays
+	r.click(1031.0, 250.0);
+	r.run_until(4.0);
+	assert_eq!(value(&r, "controllers", "movement_smoothing"), Some(5.0));
+	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
 	// a device's own values: its chip (the left hand's, after All controllers), the same stepper, and the driver has
 	// the value under its serial; the class's stays
 	r.click(706.0, 123.0);
-	r.click(1031.0, 194.0);
-	r.run_until(4.4);
+	r.click(1031.0, 192.0);
+	r.run_until(4.8);
 	assert_eq!(value(&r, "LHR-9365E531", "smoothing_ms"), Some(10.0));
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
 }
@@ -323,7 +328,7 @@ fn the_panels_output_settings_are_the_drivers() {
 	}
 }
 
-/// The controllers' punch settings, under their four on the Output tab: the dash's switch is the rail's too (on with
+/// The controllers' punch settings, under their five on the Output tab: the dash's switch is the rail's too (on with
 /// it, off with it), the rail's off takes the dash with it, and the rail's own switch is the hands' rail alone
 #[test]
 fn the_output_tab_switches_the_punch_rail_and_the_dash() {
@@ -335,27 +340,27 @@ fn the_output_tab_switches_the_punch_rail_and_the_dash() {
 	let both = |r: &Rig| (value(r, "controllers", "rail"), value(r, "controllers", "dash"));
 	assert_eq!(both(&r), (Some(0.0), Some(0.0)));
 	// dash punch's switch: on, and the rail with it; for the hands alone
-	r.click(1025.0, 642.0);
+	r.click(1025.0, 664.0);
 	r.run_until(3.6);
 	assert_eq!(both(&r), (Some(1.0), Some(1.0)));
 	assert_eq!((value(&r, "trackers", "rail"), value(&r, "headset", "dash")), (Some(0.0), Some(0.0)));
 	// the stepper at the right end of "Taken from": a tenth of a metre a second more
-	r.click(1031.0, 530.0);
+	r.click(1031.0, 562.0);
 	r.run_until(4.2);
 	assert_eq!(value(&r, "controllers", "rail_speed"), Some(1.6));
 	// dash punch's switch again: off, and the rail with it
-	r.click(1025.0, 642.0);
+	r.click(1025.0, 664.0);
 	r.run_until(4.8);
 	assert_eq!(both(&r), (Some(0.0), Some(0.0)));
 	// the rail's own switch: the rail alone
-	r.click(1025.0, 464.0);
+	r.click(1025.0, 498.0);
 	r.run_until(5.4);
 	assert_eq!(both(&r), (Some(1.0), Some(0.0)));
 	// the dash on it, then the rail off: the dash goes with it
-	r.click(1025.0, 642.0);
+	r.click(1025.0, 664.0);
 	r.run_until(6.0);
 	assert_eq!(both(&r), (Some(1.0), Some(1.0)));
-	r.click(1025.0, 464.0);
+	r.click(1025.0, 498.0);
 	r.run_until(6.6);
 	assert_eq!(both(&r), (Some(0.0), Some(0.0)));
 }

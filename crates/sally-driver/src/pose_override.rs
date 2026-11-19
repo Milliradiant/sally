@@ -304,8 +304,9 @@ fn rotation_between(a: V3, b: V3) -> Q4 {
 /// against the headset by a fixed direction of the room: turning around turns that lean against the body.
 ///
 /// With a headset tracked in its own space (a Quest over Virtual Desktop or ALVR), the apps' world is level by that
-/// headset's own IMU, so the fit's up goes on the apps' +Y seen from driver space through the frame's world-from-driver
-/// (Space Calibrator's alignment included). With a lighthouse headset the apps' world is Valve's room setup, tilted
+/// headset's own IMU, so the fit's up goes on the +Y of the frame's world-from-driver seen from driver space: the
+/// apps' +Y as far as nothing tilts the devices after this driver (Space Calibrator's alignment is put on after it,
+/// and what that tilts is not seen here). With a lighthouse headset the apps' world is Valve's room setup, tilted
 /// against gravity as it may be, and the headset sits in it: the fit keeps the room setup's tilt, the free fits' up
 /// averaged over LEVEL_TAU instead of the last 60 s's. Yaw and position stay the fit's: the free fit is turned about the
 /// pairs' centroid by the smallest rotation that takes its up onto the target
@@ -1770,8 +1771,9 @@ impl PoseOverride {
 	/// FrameLine: "F ..." for the panels, after each fit: whether the fit is ready, the pairs it has now, whether a
 	/// re-align is under way, the fit (T_: the runtime's world, OpenVR's axes, to the frame's driver space) and the
 	/// frame's world-from-driver (0 and the identity without one), positions in metres, rotations w x y z. The panel
-	/// shows Valve's devices through the fit SteamVR shows sally's through, and the headset (OpenVR's raw universe)
-	/// through the world-from-driver too
+	/// shows Valve's devices through the fit SteamVR shows sally's through. The world-from-driver is Valve's own: what
+	/// a driver hooked in after this one adds to it (Space Calibrator) is not in it, so it does not say where
+	/// OpenVR's raw universe is, and the panel measures that itself
 	pub fn frame_line(&self) -> Vec<u8> {
 		let st = self.lock();
 		let (t, f) = (st.t, st.frame_wfd);
@@ -2322,8 +2324,8 @@ pub fn substitute(
 		pp.p = V3::new(o.vecPosition[0], o.vecPosition[1], o.vecPosition[2]);
 	}
 	// the output layer (output.rs), after the carry: where the device is shown against where it is, in its own axes
-	// (the pose moved and turned as a rigid body: the offset point's velocity, the body rate in the turned axes), and
-	// the velocity SteamVR is given scaled
+	// (the pose moved and turned as a rigid body: the offset point's velocity, the body rate in the turned axes), the
+	// velocity SteamVR is given scaled, and SteamVR's own prediction cut
 	if let Some(off) = &s.shown.offset {
 		let q = Q4::new(o.qRotation.w, o.qRotation.x, o.qRotation.y, o.qRotation.z);
 		let w_body = V3::new(o.vecAngularVelocity[0], o.vecAngularVelocity[1], o.vecAngularVelocity[2]);
@@ -2341,6 +2343,14 @@ pub fn substitute(
 	if s.shown.velocity_scale != 1.0 {
 		for v in o.vecVelocity.iter_mut() {
 			*v *= s.shown.velocity_scale;
+		}
+	}
+	if s.shown.prediction != 1.0 {
+		// the movement smoothing: SteamVR draws its straight line ahead along the velocity and the body rate (no
+		// acceleration is handed on), so this much of each is this much of its prediction, the shake in them with it
+		for i in 0..3 {
+			o.vecVelocity[i] *= s.shown.prediction;
+			o.vecAngularVelocity[i] *= s.shown.prediction;
 		}
 	}
 	if s.lost && !opt.fallback {
@@ -2610,7 +2620,8 @@ mod tests {
 	}
 
 	/// The output layer's part of the hand-over: the device shown where its offset puts it, as a rigid body (the offset
-	/// point's velocity, the body rate in the turned axes), and the velocity SteamVR gets scaled
+	/// point's velocity, the body rate in the turned axes), the velocity SteamVR gets scaled, and with the movement
+	/// smoothing the velocity and the body rate both cut to the share of its prediction SteamVR is left
 	#[test]
 	fn the_offset_moves_the_device_as_a_rigid_body_and_the_boost_scales_its_velocity() {
 		let h = 0.5f64.sqrt();
@@ -2624,7 +2635,7 @@ mod tests {
 		};
 		// shown 10 cm along its x, turned 90 deg about its z; the velocity half again
 		let offset = Pose { p: V3::new(0.1, 0.0, 0.0), q: Q4::new(h, 0.0, 0.0, h) };
-		let shown = Shown { velocity_scale: 1.5, offset: Some(offset), reshaped: None, dash: None };
+		let shown = Shown { velocity_scale: 1.5, offset: Some(offset), ..Shown::default() };
 		let s = SallyLatest { have: true, lost: false, t_recv: 100.0, pose, shown };
 		let (mut o, mut d) = (DriverPose_t::default(), ValveDev::default());
 		substitute(&Options::default(), &Pose::default(), &s, &valve_pose(), None, 100.0, &mut o, &mut d);
@@ -2637,6 +2648,12 @@ mod tests {
 		let q = o.qRotation;
 		assert!((q.w - want.w).abs() < 1e-12 && (q.x - want.x).abs() < 1e-12 && (q.y - want.y).abs() < 1e-12);
 		assert_eq!(d.sent_head, V3::new(o.vecPosition[0], o.vecPosition[1], o.vecPosition[2]));
+		// SteamVR left half its prediction: the pose where it was, half the velocity and half the body rate to go on
+		let s = SallyLatest { shown: Shown { prediction: 0.5, ..shown }, ..s };
+		substitute(&Options::default(), &Pose::default(), &s, &valve_pose(), None, 100.0, &mut o, &mut d);
+		assert!(near3(o.vecPosition, [1.0, 2.0, 2.9]), "{:?}", o.vecPosition);
+		assert!(near3(o.vecVelocity, [0.075, 0.15, 0.0]), "{:?}", o.vecVelocity);
+		assert!(near3(o.vecAngularVelocity, [0.0, 0.0, 1.0]), "{:?}", o.vecAngularVelocity);
 		// nothing set: the pose as the runtime has it
 		let s = SallyLatest { shown: Shown::default(), ..s };
 		substitute(&Options::default(), &Pose::default(), &s, &valve_pose(), None, 100.0, &mut o, &mut d);

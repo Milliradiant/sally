@@ -12,8 +12,12 @@
 //!   section "trackers"); every poll the poses in the raw universe, the headset's with them.
 //! - The fit: Valve's trackers and controllers paired with the runtime's devices by serial; a pair of positions every
 //!   3 cm of motion while both track, the last minute's (3000 at most); the robust Horn fit (outliers trimmed) every
-//!   2 s from 60 pairs. Then per device the distance (its median and p90 over 10 s), the rotation once the constant
+//!   2 s from 100 pairs. Then per device the distance (its median and p90 over 10 s), the rotation once the constant
 //!   offset between the two device frames is learnt, and a trail.
+//! - The raw universe's place (`from_raw`): where SteamVR has the same devices, as OpenVR shows them, paired with the
+//!   runtime's poses and fitted the same way. The headset and the chaperone's walls, which OpenVR gives in the raw
+//!   universe, are shown through it: whatever lies between a driver's pose and the raw universe (Valve's
+//!   world-from-driver, another driver's offset put on after the sally driver) is in what OpenVR shows.
 //! - The sally driver's compare mode: SteamVR shows sally's poses on Valve's device entries, so OpenVR no longer has
 //!   Valve's; the driver sends them as UDP "V" lines to 127.0.0.1:9103 instead, with "C" lines of its state, and takes
 //!   `driver_cmd`'s on 9104.
@@ -69,10 +73,6 @@ pub struct ValveDevice {
 	/// the constant rotation between Valve's device frame and ours, learnt over the first 300 frames
 	pub rot_offset: Q4,
 	pub rot_offset_n: i32,
-	/// where and when the last fit pair was taken (raw)
-	pub last_sample: V3,
-	pub last_sample_t: f64,
-	pub sampled: bool,
 	pub trail: VecDeque<TrailPoint>,
 }
 
@@ -96,9 +96,6 @@ impl Default for ValveDevice {
 			err_p90: -1.0,
 			rot_offset: Q4::default(),
 			rot_offset_n: 0,
-			last_sample: V3::default(),
-			last_sample_t: 0.0,
-			sampled: false,
 			trail: VecDeque::new(),
 		}
 	}
@@ -126,6 +123,119 @@ pub struct OverlayEvent {
 	pub wheel: f32,
 }
 
+/// Pairs of one point in two frames, a window of them, and the rigid transform between the frames that they give. A
+/// device gives a pair when it has moved 3 cm since its last one, and every 2 s while it is still: a still device is
+/// evidence of the frame too, and without its pairs whatever moves most fills the window
+#[derive(Default)]
+struct Pairs {
+	src: Vec<V3>,
+	dst: Vec<V3>,
+	t: Vec<f64>,
+	/// the serial each pair is of
+	dev: Vec<String>,
+	/// where (src) and when each device's last pair was taken
+	last: BTreeMap<String, (V3, f64)>,
+}
+
+impl Pairs {
+	fn len(&self) -> usize {
+		self.src.len()
+	}
+
+	fn clear(&mut self) {
+		*self = Pairs::default();
+	}
+
+	/// A pair of the device `serial`, `src` in the one frame and `dst` in the other, where one is due
+	fn take(&mut self, serial: &str, src: V3, dst: V3, now: f64) {
+		if self.last.get(serial).is_some_and(|&(p, t)| len(src - p) <= 0.03 && now - t <= 2.0) {
+			return;
+		}
+		self.src.push(src);
+		self.dst.push(dst);
+		self.t.push(now);
+		self.dev.push(serial.to_string());
+		self.last.insert(serial.to_string(), (src, now));
+	}
+
+	/// The pairs older than `window_s` forgotten (and all but the newest 3000)
+	fn trim(&mut self, now: f64, window_s: f64) {
+		let mut stale = 0;
+		while stale < self.t.len() && (now - self.t[stale] > window_s || self.t.len() - stale > 3000) {
+			stale += 1;
+		}
+		if stale > 0 {
+			self.src.drain(..stale);
+			self.dst.drain(..stale);
+			self.t.drain(..stale);
+			self.dev.drain(..stale);
+		}
+		// a device whose last pair is out of the window gives its next one at once either way
+		self.last.retain(|_, &mut (_, t)| now - t <= window_s);
+	}
+
+	/// The devices the pairs are of
+	fn devices(&self) -> usize {
+		self.dev.iter().collect::<BTreeSet<_>>().len()
+	}
+
+	/// The middle of the pairs' first points
+	fn centre(&self) -> V3 {
+		let mut c = V3::default();
+		for s in &self.src {
+			c += *s;
+		}
+		c * (1.0 / self.src.len().max(1) as f64)
+	}
+
+	/// The rigid transform that takes the pairs' first points onto their second (outliers trimmed), the median
+	/// distance left and the pairs it kept. None while the points lie along one line (still devices side by side, one
+	/// device moved straight): any turn about that line fits them as well, and the fit would give one of them
+	fn fit(&self) -> Option<(Pose, f64, i32)> {
+		if !off_one_line(&self.src) {
+			return None;
+		}
+		fit_rigid_robust(&self.src, &self.dst, 0.03)
+	}
+}
+
+/// How far off their own main line a fit's points have to lie, as a root mean square (m)
+const K_FIT_OFF_LINE_M: f64 = 0.05;
+
+/// Whether the points spread in more than one direction: their scatter's second-largest eigenvalue, which is how far
+/// they lie off their main line (squared, summed), is within a factor of three of the sum of the scatter's principal
+/// 2x2 minors over its trace, and that needs no eigenvalues
+fn off_one_line(points: &[V3]) -> bool {
+	let n = points.len() as f64;
+	if points.is_empty() {
+		return false;
+	}
+	let mut c = V3::default();
+	for p in points {
+		c += *p;
+	}
+	c = c * (1.0 / n);
+	let (mut xx, mut yy, mut zz, mut xy, mut xz, mut yz) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+	for p in points {
+		let d = *p - c;
+		xx += d.x * d.x;
+		yy += d.y * d.y;
+		zz += d.z * d.z;
+		xy += d.x * d.y;
+		xz += d.x * d.z;
+		yz += d.y * d.z;
+	}
+	let trace = xx + yy + zz;
+	let minors = (xx * yy - xy * xy) + (xx * zz - xz * xz) + (yy * zz - yz * yz);
+	trace > 0.0 && minors / trace >= n * K_FIT_OFF_LINE_M * K_FIT_OFF_LINE_M
+}
+
+/// The runtime's device of a serial (the last with it) where it is tracked now
+fn tracked<'a>(rt: &'a Runtime, serial: &str, now: f64) -> Option<&'a crate::runtime::Device> {
+	let o = rt.devices.values().rfind(|o| o.serial == serial)?;
+	(o.have_pose && now - o.last_pose_wall <= 0.1 && o.state == "tracking").then_some(o)
+}
+
 /// The comparison and the overlay's OpenVR side (valve.h's ValveCompare)
 pub struct ValveCompare {
 	pub enabled: bool,
@@ -134,11 +244,16 @@ pub struct ValveCompare {
 	pub status: String,
 	/// by serial (Valve's lighthouse devices only)
 	pub devs: BTreeMap<String, ValveDevice>,
+	/// the headset as OpenVR has it (the raw universe), and in sally's world where `from_raw` is known
 	pub have_hmd: bool,
 	pub hmd_raw: Pose,
 	pub hmd_ours: Pose,
+	/// OpenVR's raw universe to sally's world, once the devices SteamVR shows have given it: for what SteamVR has in
+	/// the raw universe that is not a device of the comparison (the headset, the chaperone's walls)
+	pub from_raw: Option<Pose>,
 	pub fit_ok: bool,
-	/// OpenVR's raw universe to sally's world
+	/// Valve's poses (`ValveDevice::raw`) to sally's world: from OpenVR's raw universe, or in the driver's compare mode
+	/// from the driver space its V lines are in
 	pub fit: Pose,
 	/// the median distance between Valve's (aligned) and ours over the fit's pairs (m)
 	pub fit_median: f64,
@@ -224,7 +339,7 @@ pub struct ValveCompare {
 	/// why the keyboard could not be shown
 	pub kb_error: String,
 	/// SteamVR's chaperone: its walls (each one's four corners) in OpenVR's raw universe, read every WALLS_S, and in
-	/// sally's world through the fit (empty without one)
+	/// sally's world through `from_raw` (empty without it)
 	pub walls_raw: Vec<[V3; 4]>,
 	pub walls: Vec<[V3; 4]>,
 
@@ -246,11 +361,12 @@ pub struct ValveCompare {
 	next_props: f64,
 	last_fit: f64,
 	next_create: f64,
-	samples_src: Vec<V3>,
-	samples_dst: Vec<V3>,
-	samples_t: Vec<f64>,
-	/// the serial each pair is of
-	samples_dev: Vec<String>,
+	/// the comparison's pairs: Valve's pose of a device and the runtime's
+	pairs: Pairs,
+	/// `from_raw`'s pairs: a device where OpenVR shows it (Valve's pose, or the one the sally driver put in its place)
+	/// and the runtime's pose of it; when they were last fitted
+	shown: Pairs,
+	shown_last_fit: f64,
 	by_index: BTreeMap<i32, ValveDevice>,
 	/// while a check records: what SteamVR shows, written down as it is read (check.rs)
 	pub check_log: Option<crate::check::PoseLog>,
@@ -326,8 +442,10 @@ const C_LINE: &str = "C seen %15s fit %d median_mm %lf";
 const F_LINE: &str = "F %d %d %d %lf %lf %lf %lf %lf %lf %lf %d %lf %lf %lf %lf %lf %lf %lf";
 
 /// The sally driver's frame line ("F", sent after each of its fits): the fit SteamVR shows sally's poses through (the
-/// runtime's world in OpenVR's axes, Y up, to the frame's driver space, which the V lines are in) and the frame's
-/// world-from-driver (SteamVR's raw universe from that driver space)
+/// runtime's world in OpenVR's axes, Y up, to the frame's driver space, which the V lines are in). The line ends with
+/// the frame's world-from-driver, Valve's own, which is not taken: it is not all that lies between that driver space
+/// and SteamVR's raw universe (a driver that moves the lighthouse devices, Space Calibrator's, does so after the
+/// sally driver), and what does is measured (`ValveCompare::from_raw`)
 #[derive(Clone, Copy, Debug, Default)]
 pub struct DriverFit {
 	pub t_recv: f64,
@@ -336,7 +454,6 @@ pub struct DriverFit {
 	pub samples: i32,
 	pub refitting: bool,
 	pub t: Pose,
-	pub wfd: Option<Pose>,
 }
 
 /// The runtime's world (Z up) from OpenVR's axes (Y up): (x, y, z) -> (x, -z, y), the driver's turn undone
@@ -361,6 +478,7 @@ impl ValveCompare {
 			have_hmd: false,
 			hmd_raw: Pose::default(),
 			hmd_ours: Pose::default(),
+			from_raw: None,
 			fit_ok: false,
 			fit: Pose::default(),
 			fit_median: 0.0,
@@ -424,10 +542,9 @@ impl ValveCompare {
 			next_props: 0.0,
 			last_fit: 0.0,
 			next_create: 0.0,
-			samples_src: Vec::new(),
-			samples_dst: Vec::new(),
-			samples_t: Vec::new(),
-			samples_dev: Vec::new(),
+			pairs: Pairs::default(),
+			shown: Pairs::default(),
+			shown_last_fit: 0.0,
 			by_index: BTreeMap::new(),
 			check_log: None,
 			last_poll: 0.0,
@@ -484,19 +601,15 @@ impl ValveCompare {
 
 	/// The fit and its pairs forgotten: the next K_FIT_PAIRS align again
 	fn forget_fit(&mut self) {
-		self.samples_src.clear();
-		self.samples_dst.clear();
-		self.samples_t.clear();
-		self.samples_dev.clear();
+		self.pairs.clear();
 		self.fit_ok = false;
 		self.forget_measures();
 	}
 
-	/// What each device measured through the alignment, which a new one makes old: its pairs' places, the rotation
-	/// offset learnt, the last 10 s of distances
+	/// What each device measured through the alignment, which a new one makes old: the rotation offset learnt, the
+	/// last 10 s of distances
 	fn forget_measures(&mut self) {
 		for d in self.devs.values_mut() {
-			d.sampled = false;
 			d.rot_offset_n = 0;
 			d.err_med = -1.0;
 			d.err_p90 = -1.0;
@@ -533,6 +646,9 @@ impl ValveCompare {
 		for d in self.devs.values_mut() {
 			d.valid = false;
 		}
+		// the next SteamVR's raw universe may be another
+		self.shown.clear();
+		self.from_raw = None;
 		self.walls_raw.clear();
 		self.walls.clear();
 		self.next_walls = 0.0;
@@ -910,14 +1026,7 @@ impl ValveCompare {
 						self.driver_refitting = false;
 					}
 				}
-				self.drv_fit = Some(DriverFit {
-					t_recv: now,
-					ok: d(0) != 0,
-					samples: d(1),
-					refitting,
-					t: pose(3),
-					wfd: (d(10) != 0).then(|| pose(11)),
-				});
+				self.drv_fit = Some(DriverFit { t_recv: now, ok: d(0) != 0, samples: d(1), refitting, t: pose(3) });
 			} else if line.first() == Some(&b'O') && line.get(1) == Some(&b' ') {
 				// the output layer's settings: "O <scope> <name> <value>" each, "O end" after the list, "O error <why>"
 				let text = String::from_utf8_lossy(line);
@@ -1125,6 +1234,7 @@ impl ValveCompare {
 			d.valid = false;
 		}
 		let mut lighthouse_devices = 0;
+		let mut shown_now = 0;
 		for bi in self.by_index.values() {
 			let Some(p) = poses.get(bi.index as usize) else { continue };
 			if bi.cls == TrackedDeviceClass_Invalid || p.bDeviceIsConnected == 0 {
@@ -1142,6 +1252,16 @@ impl ValveCompare {
 				continue;
 			}
 			lighthouse_devices += 1;
+			// where SteamVR has the device, whoever's pose that is (Valve's, or the one the sally driver put in its
+			// place): a pair for the raw universe's place in sally's world
+			if ok {
+				if let Some(o) = tracked(rt, &bi.serial, now) {
+					shown_now += 1;
+					let m = &p.mDeviceToAbsoluteTracking.m;
+					let at = V3::new(m[0][3] as f64, m[1][3] as f64, m[2][3] as f64);
+					self.shown.take(&bi.serial, at, o.pos, now);
+				}
+			}
 			let d = self.devs.entry(bi.serial.clone()).or_default();
 			d.index = bi.index;
 			d.cls = bi.cls;
@@ -1216,24 +1336,11 @@ impl ValveCompare {
 			if !v.valid {
 				continue;
 			}
-			// the last of ours with the serial, as the C++'s loop kept it
-			let Some(o) = rt.devices.values().rfind(|od| od.serial == v.serial) else { continue };
-			if !o.have_pose || now - o.last_pose_wall > 0.1 || o.state != "tracking" {
-				continue;
-			}
+			let Some(o) = tracked(rt, &v.serial, now) else { continue };
 			self.compared += 1;
-			// a pair when the device moved 3 cm, and every 2 s while it is still (the driver's rule): a still device is
-			// evidence of the frame too, and without its pairs whatever moves most fills the window
-			if !self.fit_from_driver
-				&& (!v.sampled || len(v.raw.p - v.last_sample) > 0.03 || now - v.last_sample_t > 2.0)
-			{
-				self.samples_src.push(v.raw.p);
-				self.samples_dst.push(o.pos);
-				self.samples_t.push(now);
-				self.samples_dev.push(v.serial.clone());
-				v.last_sample = v.raw.p;
-				v.last_sample_t = now;
-				v.sampled = true;
+			// a pair where one is due (the driver's rule)
+			if !self.fit_from_driver {
+				self.pairs.take(&v.serial, v.raw.p, o.pos, now);
 			}
 			if self.fit_ok {
 				v.ours = compose(&self.fit, &v.raw);
@@ -1296,33 +1403,18 @@ impl ValveCompare {
 		}
 
 		// forget pairs older than the fit window (and keep at most 3000)
-		let mut stale = 0;
-		while stale < self.samples_t.len()
-			&& (now - self.samples_t[stale] > self.fit_window_s || self.samples_t.len() - stale > 3000)
-		{
-			stale += 1;
-		}
-		if stale > 0 {
-			self.samples_src.drain(..stale);
-			self.samples_dst.drain(..stale);
-			self.samples_t.drain(..stale);
-			self.samples_dev.drain(..stale);
-		}
-		let n = self.samples_src.len() as i32;
+		self.pairs.trim(now, self.fit_window_s);
+		let n = self.pairs.len() as i32;
 		let fit_due = !self.fit_from_driver && n as usize >= K_FIT_PAIRS && now - self.last_fit > 2.0;
 		// the devices the pairs are of, for a fit that is due and for the status while there is none (a set of up to
 		// 3000 serials every frame otherwise)
-		let devices = if fit_due || !self.fit_ok { self.samples_dev.iter().collect::<BTreeSet<_>>().len() } else { 0 };
+		let devices = if fit_due || !self.fit_ok { self.pairs.devices() } else { 0 };
 		let need_devices = K_FIT_DEVICES.min((self.compared as usize).max(1));
 		if fit_due && devices >= need_devices {
-			if let Some((f, med, kept)) = fit_rigid_robust(&self.samples_src, &self.samples_dst, 0.03) {
+			if let Some((f, med, kept)) = self.pairs.fit() {
 				if self.fit_ok {
 					// how far the new alignment moves a point in the middle of the play area
-					let mut c = V3::default();
-					for s in &self.samples_src {
-						c += *s;
-					}
-					c = c * (1.0 / n as f64);
+					let c = self.pairs.centre();
 					let moved = len(xform(&f, c) - xform(&self.fit, c));
 					if moved > 0.02 {
 						let mm = (moved * 1000.0 + 0.5) as i32;
@@ -1342,12 +1434,19 @@ impl ValveCompare {
 			}
 			self.last_fit = now;
 		}
-		// OpenVR's raw universe into sally's world; through the driver's fit, out of it into the frame's driver space
-		// first
-		let wfd = driver_fit.and_then(|f| f.wfd).filter(|_| self.fit_from_driver).unwrap_or_default();
-		let ours_from_raw = compose(&self.fit, &inverse(&wfd));
-		if self.have_hmd && self.fit_ok {
-			self.hmd_ours = compose(&ours_from_raw, &self.hmd_raw);
+		// OpenVR's raw universe into sally's world, from where SteamVR has the devices: the same pairs' rule and fit
+		// as the comparison's, whichever poses that one compares
+		self.shown.trim(now, self.fit_window_s);
+		if self.shown.len() >= K_FIT_PAIRS && now - self.shown_last_fit > 2.0 {
+			self.shown_last_fit = now;
+			if self.shown.devices() >= K_FIT_DEVICES.min(shown_now.max(1)) {
+				if let Some((f, _, _)) = self.shown.fit() {
+					self.from_raw = Some(f);
+				}
+			}
+		}
+		if let (true, Some(m)) = (self.have_hmd, self.from_raw) {
+			self.hmd_ours = compose(&m, &self.hmd_raw);
 		}
 		// the chaperone's walls, as the headset
 		if now >= self.next_walls {
@@ -1355,8 +1454,8 @@ impl ValveCompare {
 			self.walls_raw = self.read_walls();
 		}
 		self.walls.clear();
-		if self.fit_ok {
-			self.walls.extend(self.walls_raw.iter().map(|q| q.map(|p| xform(&ours_from_raw, p))));
+		if let Some(m) = self.from_raw {
+			self.walls.extend(self.walls_raw.iter().map(|q| q.map(|p| xform(&m, p))));
 		}
 		self.buzz_poll(now);
 

@@ -93,7 +93,7 @@ the bit. `cargo build --release --target x86_64-pc-windows-gnullvm` gives `sally
 `sally-panel.exe` and `sally-poses.exe` (OpenVR's `openvr_api.dll` beside them),
 `sally-check.exe` and `sally-bench.exe`.
 
-On the Windows PC `sally setup` (from the folder the runtime sits in, `survive\hidtap\` of the project) puts the
+On a Windows PC `sally setup` (from the folder the runtime sits in: `survive\hidtap\` of a release's folder) puts the
 driver on SteamVR's list and writes its settings, SteamVR running or not; from then on starting SteamVR is all a
 session needs. `sally off` turns it off again, and `sally uninstall` takes sally out of SteamVR altogether.
 

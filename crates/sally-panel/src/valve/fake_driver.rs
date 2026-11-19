@@ -17,7 +17,7 @@ use crate::runtime::Runtime;
 
 /// The classes' settings: the name, the defaults (headset, controllers, trackers) and the range, as the driver's
 /// output.rs has them
-pub const SETTINGS: [(&str, [f64; 3], f64, f64); 16] = [
+pub const SETTINGS: [(&str, [f64; 3], f64, f64); 17] = [
 	("recovery_blend_ms", [0.0, 0.0, 0.0], 0.0, 1000.0),
 	("smoothing_ms", [0.0, 0.0, 0.0], 0.0, 1000.0),
 	("prediction_ms", [0.0, 9.0, 9.0], 0.0, 40.0),
@@ -34,6 +34,7 @@ pub const SETTINGS: [(&str, [f64; 3], f64, f64); 16] = [
 	("dash", [0.0, 0.0, 0.0], 0.0, 1.0),
 	("dash_percent", [100.0, 100.0, 100.0], 0.0, 100.0),
 	("dash_back_ms", [400.0, 400.0, 400.0], 50.0, 2000.0),
+	("movement_smoothing", [0.0, 0.0, 0.0], 0.0, 100.0),
 ];
 pub const CLASSES: [&str; 3] = ["headset", "controllers", "trackers"];
 

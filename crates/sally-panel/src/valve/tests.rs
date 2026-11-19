@@ -94,8 +94,13 @@ impl Bench {
 
 	/// Every device at its place on its path at time t, on both sides, ours tracking
 	fn place(&mut self, t: f64) {
+		self.place_at(t, |k| path(k as f64, t));
+	}
+
+	/// Every device where `at` has it (by its number) at time t, on both sides, ours tracking
+	fn place_at(&mut self, t: f64, at: impl Fn(usize) -> Pose) {
 		for (k, (code, serial, class)) in self.devices.iter().enumerate() {
-			let pose = path(k as f64, t);
+			let pose = at(k);
 			let d = self.rt.devices.get_mut(code).unwrap();
 			d.pos = pose.p;
 			d.rot = pose.q;
@@ -122,6 +127,15 @@ impl Bench {
 	/// The comparison's own log lines
 	fn steamvr_events(&self) -> Vec<Event> {
 		self.rt.events.iter().filter(|e| e.who == "SteamVR").cloned().collect()
+	}
+
+	/// Where the third corner of the fake's second wall is in sally's frame: out of its standing universe into the raw
+	/// one, then out of the fake's frame
+	fn a_walls_corner(&self) -> V3 {
+		let s = self.steamvr.lock();
+		let c = s.walls[1].vCorners[2].v;
+		let raw = xform(&inverse(&s.standing_from_raw), V3::new(c[0] as f64, c[1] as f64, c[2] as f64));
+		xform(&inverse(&s.frame), raw)
 	}
 }
 
@@ -211,14 +225,8 @@ fn the_chaperones_walls_are_put_in_sallys_frame_with_the_fit() {
 	assert!(b.vc.walls.is_empty());
 	b.run(30.0);
 	assert!(b.vc.fit_ok);
-	// a wall's corner where the fake has it: its standing universe into the raw one, then out of the fake's frame
-	let (frame, standing_from_raw, quad) = {
-		let s = b.steamvr.lock();
-		(s.frame, s.standing_from_raw, s.walls[1])
-	};
-	let c = quad.vCorners[2].v;
-	let raw = xform(&inverse(&standing_from_raw), V3::new(c[0] as f64, c[1] as f64, c[2] as f64));
-	let truth = xform(&inverse(&frame), raw);
+	// a wall's corner where the fake has it
+	let truth = b.a_walls_corner();
 	assert_eq!(b.vc.walls.len(), 4);
 	assert!(len(b.vc.walls[1][2] - truth) < 0.005, "{:?} against {truth:?}", b.vc.walls[1][2]);
 	// the floor corners at one height in sally's Z up, the top ones 2.4 m over them
@@ -230,6 +238,33 @@ fn the_chaperones_walls_are_put_in_sallys_frame_with_the_fit() {
 	b.vc.next_try = 0.0;
 	b.run(6.0);
 	assert!(b.vc.running && b.vc.walls.is_empty() && b.vc.walls_raw.is_empty());
+}
+
+#[test]
+fn devices_in_a_row_give_no_alignment() {
+	// four trackers left side by side on a shelf, all on: their places lie along one line, any turn about that line
+	// fits them, and the headset and the walls were shown at whichever the fit gave
+	let mut b = Bench::new(&[
+		("KN0", "LHR-T1", TrackedDeviceClass_GenericTracker),
+		("KN1", "LHR-T2", TrackedDeviceClass_GenericTracker),
+		("KN2", "LHR-T3", TrackedDeviceClass_GenericTracker),
+		("KN3", "LHR-T4", TrackedDeviceClass_GenericTracker),
+	]);
+	let shelf = |k: usize| Pose { p: V3::new(-0.6 + 0.3 * k as f64, 0.2 + 0.1 * k as f64, 1.2), q: Q4::default() };
+	while b.t < 70.0 {
+		b.t += DT;
+		let t = b.t;
+		b.place_at(t, shelf);
+		b.vc.poll(t, &mut b.rt);
+	}
+	// pairs enough (a still device gives one every 2 s), and no alignment from them
+	assert!(b.vc.status.starts_with("aligning to Valve's frame (1"), "{}", b.vc.status);
+	assert!(!b.vc.fit_ok && b.vc.walls.is_empty());
+	// picked up and moved, they give one
+	b.run(20.0);
+	assert!(b.vc.fit_ok);
+	let corner = b.a_walls_corner();
+	assert!(len(b.vc.walls[1][2] - corner) < 0.01, "{:?} against {corner:?}", b.vc.walls[1][2]);
 }
 
 #[test]
@@ -348,6 +383,15 @@ fn in_the_drivers_compare_mode_valves_poses_come_from_v_lines() {
 	let port = free_port();
 	b.vc.driver_port = port;
 	b.vc.driver_cmd_port = cmd.local_addr().unwrap().port();
+	// a headset of another tracking system (a standalone one, streamed): SteamVR has it in its raw universe, as it has
+	// the lighthouse devices once whatever moves them into that headset's space has (after the sally driver: nothing
+	// the driver's lines say holds it)
+	let head = Pose { p: V3::new(0.2, -0.4, 1.7), q: qaxis(V3::new(0.0, 0.0, 1.0), 0.3) };
+	{
+		let mut s = b.steamvr.lock();
+		s.set_pose("HMD-1", TrackedDeviceClass_HMD, Some(head));
+		s.device("HMD-1").system = "oculus".into();
+	}
 	// SteamVR shows sally's poses on Valve's entries (here 15 mm of noise in the fake's frame); Valve's own arrive as
 	// V lines, in another frame (Z up to Y up, -45 degrees of yaw, shifted) with 1 mm of noise (test_panel.py's)
 	b.steamvr.lock().noise_m = 0.015;
@@ -393,6 +437,12 @@ fn in_the_drivers_compare_mode_valves_poses_come_from_v_lines() {
 	assert!(b.vc.fit_median < 0.003, "median {}", b.vc.fit_median);
 	let ev = b.steamvr_events();
 	assert!(ev[0].text.starts_with("aligned Valve's frame to ours ("), "{ev:?}");
+	// the headset where it is, before the driver has a fit: by where SteamVR shows the devices, not through the
+	// alignment of the V lines' space (15 mm of noise on its own place)
+	assert!(b.vc.have_hmd && len(b.vc.hmd_ours.p - head.p) < 0.08, "{:?}", b.vc.hmd_ours);
+	// and the chaperone's walls, which have no noise of their own
+	let corner = b.a_walls_corner();
+	assert!(len(b.vc.walls[1][2] - corner) < 0.01, "{:?} against {corner:?}", b.vc.walls[1][2]);
 
 	// the driver's state, and a command to it
 	driver.send_to(b"C seen sally fit 1 median_mm 3.5\n", ("127.0.0.1", port)).unwrap();
@@ -443,6 +493,10 @@ fn in_the_drivers_compare_mode_valves_poses_come_from_v_lines() {
 	// the 5 cm the driver's fit is off this scene shows in each device's comparison
 	let e = b.vc.devs["LHR-T1"].err_mm;
 	assert!(e > 40.0 && e < 60.0, "{e}");
+	// and the headset and the walls are still where they are: neither the driver's fit nor its world-from-driver
+	// places them
+	assert!(len(b.vc.hmd_ours.p - head.p) < 0.08, "{:?}", b.vc.hmd_ours);
+	assert!(len(b.vc.walls[1][2] - corner) < 0.01, "{:?} against {corner:?}", b.vc.walls[1][2]);
 	// re-align: asked of the driver, which says how far it is in its F lines; then done
 	b.vc.refit();
 	let (n, _) = cmd.recv_from(&mut buf).unwrap();

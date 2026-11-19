@@ -855,7 +855,7 @@ impl Panel {
 				}
 			}
 		}
-		if self.vc.have_hmd && self.vc.fit_ok {
+		if self.vc.have_hmd && self.vc.from_raw.is_some() {
 			let hp = &self.vc.hmd_ours;
 			let c: Vec<V3> = (0..8)
 				.map(|i| {

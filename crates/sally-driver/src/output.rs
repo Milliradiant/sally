@@ -8,15 +8,23 @@
 //! - `recovery_blend_ms`: when the light comes back after a dark spell, the jump from where the device was carried in
 //!   the dark to where the light puts it, shown as a glide that settles in this long (ms) instead of in one frame. 0 is
 //!   the jump as it comes. Only the corrections of the light's return are blended ([`Blend::show`]).
-//! - `smoothing_ms`: every other correction of the light (the small ones of each sweep, a station taking over, a
-//!   restart) let in as a glide that settles in this long (ms) while the device is still, and sooner the faster it
-//!   moves or turns ([`Blend::smooth`]). The device's own motion, which is the IMU's, is never held back, so nothing
-//!   lags: a still device is calm and a fast one is where the tracker has it. 0 is every correction as it comes.
+//! - `smoothing_ms`: a device that is held still is shown calm ([`Smooth`]): what it moves by while still (a tremble,
+//!   a pulse, the sensors' noise: up to a millimetre and 3 mrad of it) and the light's corrections are let in as a
+//!   glide that settles in this long (ms), and SteamVR is given no velocity to carry them on with. A device that
+//!   moves, fast or slowly, is shown as the tracker has it:
+//!   its motion passes whole and at once, and only the light's corrections (a station taking over, a restart) still
+//!   glide in, sooner the faster it moves or turns. 0 is the tracker's own pose.
 //! - `prediction_ms`: how old the pose is declared when it is handed over (ms), which is how far ahead of the tracker's
 //!   state SteamVR is shown the device. Over the radio the measured age is the default (9 ms); the headset's is 0
 //!   (measured 4 ms on its cable). More shows the device further ahead, less further behind.
 //! - `velocity_boost`: the velocity SteamVR is given, this many percent over the device's own, for games that score
 //!   on how fast a hand moves. SteamVR's own prediction reaches that much further too. 0 is the device's own.
+//! - `movement_smoothing`: SteamVR's own prediction cut by this many percent, which is what a smoothing add-on does:
+//!   SteamVR shows a device where it will be by the time the frame is seen, on a straight line along the velocity
+//!   and the body rate it is given, and that line carries whatever shakes in them several times over. The velocity
+//!   and the rate are handed over this much smaller, so the device is shown calmer whether it moves or not, and
+//!   trails what it does by as much of SteamVR's look-ahead. 0 is the device's own; at 100 SteamVR is shown the pose
+//!   as it is now and nothing ahead of it.
 //! - `offset_x_mm`, `offset_y_mm`, `offset_z_mm`, `offset_rx_deg`, `offset_ry_deg`, `offset_rz_deg`: where the device
 //!   is shown against where it is, in its own axes (the ones SteamVR draws it in): moved, then turned about its x, its
 //!   y and its z axis. 0 is where it is.
@@ -68,7 +76,7 @@ pub const CLASSES: [&str; 3] = ["headset", "controllers", "trackers"];
 /// and benched at it), 0 on the headset (measured 4 ms on its cable). What the bench found best where a glide is wanted
 /// (150 ms, 100 ms for a controller's return) is in sally_driver.md, "The output layer", as values to set, not as
 /// defaults. `the_defaults_are_the_trackers_own_output` holds this
-pub const SETTINGS: [Setting; 16] = [
+pub const SETTINGS: [Setting; 17] = [
 	Setting { name: "recovery_blend_ms", default: [0.0; 3], min: 0.0, max: 1000.0 },
 	Setting { name: "smoothing_ms", default: [0.0; 3], min: 0.0, max: 1000.0 },
 	Setting { name: "prediction_ms", default: [0.0, 9.0, 9.0], min: 0.0, max: 40.0 },
@@ -85,6 +93,7 @@ pub const SETTINGS: [Setting; 16] = [
 	Setting { name: "dash", default: [0.0; 3], min: 0.0, max: 1.0 },
 	Setting { name: "dash_percent", default: [100.0; 3], min: 0.0, max: 100.0 },
 	Setting { name: "dash_back_ms", default: [400.0; 3], min: 50.0, max: 2000.0 },
+	Setting { name: "movement_smoothing", default: [0.0; 3], min: 0.0, max: 100.0 },
 ];
 /// SETTINGS' indices
 pub const RECOVERY_BLEND_MS: usize = 0;
@@ -99,6 +108,7 @@ pub const RAIL_BOOST: usize = 12;
 pub const DASH: usize = 13;
 pub const DASH_PERCENT: usize = 14;
 pub const DASH_BACK_MS: usize = 15;
+pub const MOVEMENT_SMOOTHING: usize = 16;
 /// The toys' switches: each 0 or 1, off by default, and off again when SteamVR closes (`toys_off`)
 pub const TOY_SWITCHES: [usize; 2] = [RAIL, DASH];
 
@@ -116,10 +126,13 @@ pub fn class_of(kind: Kind) -> usize {
 
 /// What the override does to a device's pose as it hands it to SteamVR (pose_override.rs, `substitute`): what the
 /// toys show in its place (toys.rs: the report's kinematics reshaped), where it is shown against where it is (its
-/// own axes), and the velocity's scale. The fit to Valve's frame and the fallback's checks go by the pose before it
+/// own axes), the velocity's scale, and how much of its own prediction SteamVR is left. The fit to Valve's frame and
+/// the fallback's checks go by the pose before it
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct Shown {
 	pub velocity_scale: f64,
+	/// the movement smoothing: the share of the velocity and the body rate SteamVR is handed to predict on (1: all)
+	pub prediction: f64,
 	pub offset: Option<Pose>,
 	pub reshaped: Option<Kin>,
 	/// dash punch: what the device's punch rail gives the whole body to slide by (body.rs; the runtime's world)
@@ -128,7 +141,7 @@ pub struct Shown {
 
 impl Default for Shown {
 	fn default() -> Shown {
-		Shown { velocity_scale: 1.0, offset: None, reshaped: None, dash: None }
+		Shown { velocity_scale: 1.0, prediction: 1.0, offset: None, reshaped: None, dash: None }
 	}
 }
 
@@ -149,7 +162,13 @@ impl Shown {
 				q: qmul(qmul(about(0, deg[0]), about(1, deg[1])), about(2, deg[2])),
 			}
 		});
-		Shown { velocity_scale: 1.0 + v[VELOCITY_BOOST] * 1e-2, offset, reshaped: None, dash: None }
+		Shown {
+			velocity_scale: 1.0 + v[VELOCITY_BOOST] * 1e-2,
+			prediction: 1.0 - v[MOVEMENT_SMOOTHING] * 1e-2,
+			offset,
+			reshaped: None,
+			dash: None,
+		}
 	}
 }
 
@@ -453,6 +472,33 @@ pub const GLIDE_TRAVEL_M: f64 = 0.05;
 /// "The output layer"): shorter (2 cm, 0.1 rad) gives away the glide in a sway, where the waist's snaps are; longer
 /// (15 cm, 0.75 rad) costs what SteamVR shows ahead in motion and gains nothing
 pub const GLIDE_TURN_RAD: f64 = 0.25;
+/// The smoothing takes a device for still by how it has moved lately: its head's velocity and its rate of turning,
+/// each averaged over this long (s). A tremble goes back and forth within it and cancels; a move does not ...
+pub const STILL_AVERAGE_S: f64 = 0.06;
+/// ... and the device is still while those averages are well under these (m/s, rad/s): from them on its motion is
+/// shown whole. A body part held still sways and trembles at 0.2 to 2 cm/s and turns at 0.01 to 0.1 rad/s ...
+pub const STILL_SPEED: f64 = 0.05;
+pub const STILL_TURN: f64 = 0.3;
+/// ... and while its velocity and its rate are within these of their averages (m/s, rad/s): a move that begins is
+/// away from its average before the average has it (at 2 m/s^2 it is taken for moving in 50 ms), a tremble is not ...
+pub const STILL_JOLT: f64 = 0.08;
+pub const STILL_JOLT_TURN: f64 = 0.5;
+/// ... and once it has moved it stays moving for a while: the measure of its motion (1 at the limits above) falls
+/// with this time constant (s), from STILL_CAP at most, so a hand going back and forth is not still at each end,
+/// and one that has stopped is shown still again 0.15 to 0.4 s later
+pub const STILL_HOLD_S: f64 = 0.1;
+pub const STILL_CAP: f64 = 4.0;
+/// And still is a matter of how far as well as how fast: a tremble stays within this of where the device rests (m,
+/// rad). What a still device moves by is held back only up to here. A device that goes further has moved, however
+/// slowly (a weight shifted, a slow turn: under the speeds above for a second or more): it is shown this far behind
+/// and no further, and is taken for moving. Without it a slow move was shown late by the settle time and then caught
+/// up (0.28: a 10 degree turn in 2 s a tenth of a second late at 300 ms and a quarter to half a second at 1000). From
+/// the bench (sally_driver.md, "The output layer"): half of it shows a third more of a still tracker's jitter in
+/// orientation, twice of it shows a slow turn twice as far behind and no less jitter ...
+pub const STILL_REACH_M: f64 = 0.001;
+pub const STILL_REACH_RAD: f64 = 0.003;
+/// ... and the device counts for moving over the last part of that reach, from this share of it on
+const STILL_REACH_EDGE: f64 = 0.8;
 
 /// What a device's blend carries between reports: the offset between the runtime's pose and the one shown, which the
 /// return's corrections add to and which then settles back to nothing. The offset moves as a critically damped spring,
@@ -515,26 +561,6 @@ impl Blend {
 		self.apply(pos, rot)
 	}
 
-	/// The smoothing (`smoothing_ms`): as `show`, for every correction that is not the light's return's (those are
-	/// the recovery blend's, the jump as it comes without one). `settle_ms` is how long a correction takes to be
-	/// shown while the device is still; `speed` (m/s) and `turn` (rad/s) are the device's own, and the faster it moves
-	/// the sooner the correction is in: within GLIDE_TRAVEL_M of travel or GLIDE_TURN_RAD of turning, when that is
-	/// sooner. What the IMU measured of the motion is in the runtime's pose and passes as it is
-	#[allow(clippy::too_many_arguments)]
-	pub fn smooth(
-		&mut self, pos: &mut [f64; 3], rot: &mut [f64; 4], corr: &[f64; 9], now: f64, settle_ms: f64, speed: f64,
-		turn: f64, gap_s: f64,
-	) -> bool {
-		let moving = if speed.is_finite() && turn.is_finite() {
-			SETTLE_WT * (speed / GLIDE_TRAVEL_M + turn / GLIDE_TURN_RAD)
-		} else {
-			0.0
-		};
-		let rate = (settle_ms > 0.0).then(|| SETTLE_WT / (settle_ms * 1e-3) + moving);
-		self.advance(corr, now, gap_s, rate, !in_return(corr));
-		self.apply(pos, rot)
-	}
-
 	/// One report: the offset settled over the time since the last one at `rate` (1/s; None: no glide, the offset
 	/// dropped), and this report's corrections added to it when they are this glide's (`take`)
 	fn advance(&mut self, corr: &[f64; 9], now: f64, gap_s: f64, rate: Option<f64>, take: bool) {
@@ -567,18 +593,7 @@ impl Blend {
 
 	/// The offset taken out of a pose; whether there is one
 	fn apply(&self, pos: &mut [f64; 3], rot: &mut [f64; 4]) -> bool {
-		let off = self.x.iter().chain(&self.xr).any(|&x| x != 0.0);
-		if off {
-			for i in 0..3 {
-				pos[i] -= self.x[i];
-			}
-			let r = quat_mul(&qexp(&[-self.xr[0], -self.xr[1], -self.xr[2]]), rot);
-			let n = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2] + r[3] * r[3]).sqrt();
-			for i in 0..4 {
-				rot[i] = r[i] / n;
-			}
-		}
-		off
+		unoffset(&self.x, &self.xr, pos, rot)
 	}
 
 	/// The offset now shown (m, rad), for the stats
@@ -586,6 +601,192 @@ impl Blend {
 		let n = |a: &[f64; 3]| (a[0] * a[0] + a[1] * a[1] + a[2] * a[2]).sqrt();
 		(n(&self.x), n(&self.xr))
 	}
+}
+
+// ---------------------------------------------------------------- the smoothing
+
+/// What the smoothing goes by: the pose and the rates the hand-over makes of a report as it came (runtime_device.rs,
+/// `look_ahead`): the head point and the orientation (the runtime's world), the head point's velocity and the rate
+/// of turning (world)
+#[derive(Clone, Copy, Debug)]
+pub struct Own<'a> {
+	pub pos: &'a [f64; 3],
+	pub rot: &'a [f64; 4],
+	pub vel: &'a [f64; 3],
+	pub turn: &'a [f64; 3],
+}
+
+/// The smoothing of a device between its reports (`smoothing_ms`). A pose changes from one report to the next by the
+/// device's own motion (the IMU's) and by the light's corrections; the runtime's sums say which is which. While the
+/// device is held still its own motion is a tremble, a pulse and the sensors' noise, and SteamVR shows a pose
+/// 40 ms on by its velocity, which makes two to five times as much of them. So what a still device moves by is not
+/// shown as it comes: it goes into an offset between the tracker's pose and the one shown, as the corrections do,
+/// and the offset settles back to nothing as a critically damped glide (the shown pose is the tracker's through a
+/// low-pass of two equal poles at 4.744 / the settle time); and the rates handed on are scaled down with it
+/// (`step`'s return), so nothing carries the tremble on. A device that moves is shown as the tracker has it: all
+/// of its motion passes, with its rates, and only the corrections go through the glide, which lets them in sooner
+/// the faster it moves or turns (GLIDE_*). It moves when it is fast enough (STILL_SPEED and the rest) or has gone
+/// further than a tremble does (STILL_REACH_*): what is held back of its own motion never comes to more than that
+/// reach, so a move that begins slowly is shown a millimetre and a sixth of a degree behind at most, not late by
+/// the settle time. Between still and moving the share that passes follows how much it moves, so nothing steps
+/// as a move begins or ends.
+/// The corrections of the light's return are not the smoothing's (they are the recovery blend's, or come as they
+/// are). A headset is never taken for still: what is seen through it has to turn with the head, so its motion always
+/// passes and only its corrections glide
+#[derive(Clone, Copy, Debug, Default, PartialEq)]
+pub struct Smooth {
+	have: bool,
+	/// the driver's clock at the last report
+	t: f64,
+	/// the tracker's pose at the last report (`Own`'s) and the runtime's summed corrections
+	p: [f64; 3],
+	q: [f64; 4],
+	corr: [f64; 3],
+	corr_q: [f64; 4],
+	/// how the device has moved lately: its velocity and its rate averaged over STILL_AVERAGE_S, and the measure of
+	/// its motion (1 and over: moving)
+	v_avg: [f64; 3],
+	w_avg: [f64; 3],
+	moving: f64,
+	/// the offset between the tracker's pose and the one shown, and its rate (as the blend's)
+	x: [f64; 3],
+	v: [f64; 3],
+	xr: [f64; 3],
+	vr: [f64; 3],
+	/// what of the device's own motion is held back while it is still (within STILL_REACH_*), and its rate
+	h: [f64; 3],
+	hv: [f64; 3],
+	hr: [f64; 3],
+	hrv: [f64; 3],
+}
+
+impl Smooth {
+	/// One report: `own` the pose and the rates the hand-over makes of it as it came (None for a report without a
+	/// velocity), `corr` the Q line's last nine fields, `now` the driver's clock, `settle_ms` the device's
+	/// smoothing_ms, `gap_s` how long without a report starts over. `hold` false leaves the device's own motion
+	/// alone however still it is, and only the corrections glide: a headset's, where the picture has to turn with
+	/// the head. Returns the share of the device's own motion that is shown as it comes, which is what its rates are
+	/// handed on scaled by: 1 for a device that moves (and with no smoothing), 0 for one that is still
+	pub fn step(
+		&mut self, own: Option<&Own>, corr: &[f64; 9], now: f64, settle_ms: f64, gap_s: f64, hold: bool,
+	) -> f64 {
+		let Some(own) = own.filter(|o| {
+			settle_ms > 0.0 && corr.iter().chain(o.pos).chain(o.rot).chain(o.vel).chain(o.turn).all(|x| x.is_finite())
+		}) else {
+			*self = Smooth::default();
+			return 1.0;
+		};
+		let cp = [corr[0], corr[1], corr[2]];
+		let cq = [corr[3], corr[4], corr[5], corr[6]];
+		if !(self.have && now >= self.t && now - self.t <= gap_s) {
+			// the first report, or the first after a gap: shown as it is, and taken for moving until it has been still
+			*self = Smooth {
+				have: true,
+				t: now,
+				p: *own.pos,
+				q: *own.rot,
+				corr: cp,
+				corr_q: cq,
+				v_avg: *own.vel,
+				w_avg: *own.turn,
+				moving: STILL_CAP,
+				..Smooth::default()
+			};
+			return 1.0;
+		}
+		let dt = now - self.t;
+		// how much the device moves: its averages against the limits, and how far it is from them
+		let a = 1.0 - (-dt / STILL_AVERAGE_S).exp();
+		let sq = |x: &[f64; 3]| x[0] * x[0] + x[1] * x[1] + x[2] * x[2];
+		let (mut dv, mut dw) = ([0.0; 3], [0.0; 3]);
+		for i in 0..3 {
+			self.v_avg[i] += a * (own.vel[i] - self.v_avg[i]);
+			self.w_avg[i] += a * (own.turn[i] - self.w_avg[i]);
+			dv[i] = own.vel[i] - self.v_avg[i];
+			dw[i] = own.turn[i] - self.w_avg[i];
+		}
+		let moves = sq(&self.v_avg) / (STILL_SPEED * STILL_SPEED)
+			+ sq(&dv) / (STILL_JOLT * STILL_JOLT)
+			+ sq(&self.w_avg) / (STILL_TURN * STILL_TURN)
+			+ sq(&dw) / (STILL_JOLT_TURN * STILL_JOLT_TURN);
+		self.moving = (self.moving * (-dt / STILL_HOLD_S).exp()).max(moves).min(STILL_CAP);
+		let open = if hold { self.moving.min(1.0) } else { 1.0 };
+		// the offset settles: in the settle time while the device is still, sooner the faster it moves or turns
+		let rate = SETTLE_WT
+			* (1.0 / (settle_ms * 1e-3)
+				+ open * (sq(own.vel).sqrt() / GLIDE_TRAVEL_M + sq(own.turn).sqrt() / GLIDE_TURN_RAD));
+		settle(&mut self.x, &mut self.v, rate, dt);
+		settle(&mut self.xr, &mut self.vr, rate, dt);
+		// this report's change of the pose: the corrections' part, kept out of what is shown for the glide to let in
+		// (but a return's) ...
+		let dc = [cp[0] - self.corr[0], cp[1] - self.corr[1], cp[2] - self.corr[2]];
+		let dcr = qlog(&quat_mul(&cq, &quat_conj(&self.corr_q)));
+		let dr = qlog(&quat_mul(own.rot, &quat_conj(&self.q)));
+		let take = if in_return(corr) { 0.0 } else { 1.0 };
+		for i in 0..3 {
+			self.x[i] += take * dc[i];
+			self.xr[i] += take * dcr[i];
+		}
+		// ... and the device's own motion, of which the share that is not shown as it comes is held back: let in over
+		// the settle time, and never more of it than a tremble's reach. A device that goes further than that has
+		// moved, however slowly: it is shown that far behind at most, and is taken for moving from there on
+		let still = SETTLE_WT / (settle_ms * 1e-3);
+		settle(&mut self.h, &mut self.hv, still, dt);
+		settle(&mut self.hr, &mut self.hrv, still, dt);
+		for i in 0..3 {
+			self.h[i] += (1.0 - open) * (own.pos[i] - self.p[i] - dc[i]);
+			self.hr[i] += (1.0 - open) * (dr[i] - dcr[i]);
+		}
+		let mut gone: f64 = 0.0;
+		for (h, hv, reach) in
+			[(&mut self.h, &mut self.hv, STILL_REACH_M), (&mut self.hr, &mut self.hrv, STILL_REACH_RAD)]
+		{
+			let n = sq(h).sqrt();
+			if n > reach {
+				// at the end of its reach: no further, and no rate that takes it there
+				let out = (h[0] * hv[0] + h[1] * hv[1] + h[2] * hv[2]) / (n * n);
+				for i in 0..3 {
+					if out > 0.0 {
+						hv[i] -= out * h[i];
+					}
+					h[i] *= reach / n;
+				}
+			}
+			gone = gone.max((n / reach).min(1.0));
+		}
+		// the last part of the reach counts for moving, smoothly: 0 up to STILL_REACH_EDGE of it, 1 at its end
+		let u = ((gone - STILL_REACH_EDGE) / (1.0 - STILL_REACH_EDGE)).max(0.0);
+		let u = u * u * (3.0 - 2.0 * u);
+		self.moving = self.moving.max(u);
+		let open = open.max(u);
+		(self.t, self.p, self.q, self.corr, self.corr_q) = (now, *own.pos, *own.rot, cp, cq);
+		open
+	}
+
+	/// The offset taken out of a pose (the runtime's, with the recovery blend's glide if there is one); whether there
+	/// is one
+	pub fn apply(&self, pos: &mut [f64; 3], rot: &mut [f64; 4]) -> bool {
+		let x: [f64; 3] = std::array::from_fn(|i| self.x[i] + self.h[i]);
+		let xr: [f64; 3] = std::array::from_fn(|i| self.xr[i] + self.hr[i]);
+		unoffset(&x, &xr, pos, rot)
+	}
+}
+
+/// An offset (the point's, m; the turn's, a rotation vector on the world's side) taken out of a pose; whether there
+/// is one
+fn unoffset(x: &[f64; 3], xr: &[f64; 3], pos: &mut [f64; 3], rot: &mut [f64; 4]) -> bool {
+	let off = x.iter().chain(xr).any(|&x| x != 0.0);
+	if off {
+		for i in 0..3 {
+			pos[i] -= x[i];
+		}
+		let r = quat_mul(&qexp(&[-xr[0], -xr[1], -xr[2]]), rot);
+		let n = (r[0] * r[0] + r[1] * r[1] + r[2] * r[2] + r[3] * r[3]).sqrt();
+		for i in 0..4 {
+			rot[i] = r[i] / n;
+		}
+	}
+	off
 }
 
 // ---------------------------------------------------------------- the punch rail
@@ -831,23 +1032,19 @@ mod tests {
 			let v = o.values(serial.as_bytes(), kind);
 			assert_eq!(Shown::of(&v), Shown::default());
 			for (age, gap) in [(-1.0, 0.0), (0.1, 0.8)] {
-				let (mut blend, mut smooth) = (Blend::default(), Blend::default());
+				let (mut blend, mut smooth) = (Blend::default(), Smooth::default());
 				for k in 0..100 {
 					let c = if k < 50 { 0.0 } else { 0.03 };
 					let (mut p, mut r) = ([c, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0]);
 					let t = k as f64 * 0.004;
 					let a = blend.show(&mut p, &mut r, &corr([c, 0.0, 0.0], age, gap), t, v[RECOVERY_BLEND_MS], 0.1);
-					let b = smooth.smooth(
-						&mut p,
-						&mut r,
-						&corr([c, 0.0, 0.0], age, gap),
-						t,
-						v[SMOOTHING_MS],
-						0.0,
-						0.0,
-						0.1,
+					let own = Own { pos: &[c, 0.0, 1.0], rot: &[1.0, 0.0, 0.0, 0.0], vel: &[0.0; 3], turn: &[0.0; 3] };
+					let open = smooth.step(Some(&own), &corr([c, 0.0, 0.0], age, gap), t, v[SMOOTHING_MS], 0.1, true);
+					let b = smooth.apply(&mut p, &mut r);
+					assert!(
+						!a && !b && open == 1.0 && p == [c, 0.0, 1.0] && r == [1.0, 0.0, 0.0, 0.0],
+						"{kind:?} report {k}"
 					);
-					assert!(!a && !b && p == [c, 0.0, 1.0] && r == [1.0, 0.0, 0.0, 0.0], "{kind:?} report {k}");
 				}
 			}
 			let k = Kin {
@@ -989,6 +1186,7 @@ mod tests {
 		o.set(b"headset", b"prediction_ms", b"4").unwrap();
 		o.set(b"controllers", b"velocity_boost", b"30").unwrap();
 		o.set(b"trackers", b"smoothing_ms", b"200").unwrap();
+		o.set(b"trackers", b"movement_smoothing", b"40").unwrap();
 		o.set(b"LHR-FOOT", b"offset_y_mm", b"-25").unwrap();
 		o.set(b"LHR-FOOT", b"smoothing_ms", b"0").unwrap();
 		let head = o.values(b"LHR-HMD", Kind::Headset);
@@ -998,12 +1196,20 @@ mod tests {
 		let foot = o.values(b"LHR-FOOT", Kind::Tracker);
 		assert_eq!((foot[SMOOTHING_MS], foot[OFFSET_MM + 1], foot[PREDICTION_MS]), (0.0, -25.0, 9.0));
 		assert_eq!(o.values(b"LHR-WAIST", Kind::Tracker)[SMOOTHING_MS], 200.0);
-		for (name, bad) in [("prediction_ms", "41"), ("velocity_boost", "-1"), ("offset_rx_deg", "181")] {
+		let bad = [
+			("prediction_ms", "41"),
+			("velocity_boost", "-1"),
+			("offset_rx_deg", "181"),
+			("movement_smoothing", "101"),
+		];
+		for (name, bad) in bad {
 			assert_eq!(o.set(b"trackers", name.as_bytes(), bad.as_bytes()), Err("out of range"), "{name}");
 		}
-		// what the override is handed: nothing to do at the defaults, the boost as a scale, the offset as a pose
+		// what the override is handed: nothing to do at the defaults, the boost as a scale, the movement smoothing as
+		// the share of its prediction SteamVR is left, the offset as a pose
 		assert_eq!(Shown::of(&head), Shown::default());
-		assert_eq!(Shown::of(&hand).velocity_scale, 1.3);
+		assert_eq!((Shown::of(&hand).velocity_scale, Shown::of(&hand).prediction), (1.3, 1.0));
+		assert_eq!(Shown::of(&foot).prediction, 0.6);
 		let off = Shown::of(&foot).offset.unwrap();
 		assert_eq!((off.p.x, off.p.y, off.p.z), (0.0, -0.025, 0.0));
 		assert_eq!((off.q.w, off.q.x, off.q.y, off.q.z), (1.0, 0.0, 0.0, 0.0));
@@ -1013,37 +1219,136 @@ mod tests {
 		assert!((q.w - 0.5f64.sqrt()).abs() < 1e-12 && (q.y - 0.5f64.sqrt()).abs() < 1e-12 && q.x == 0.0 && q.z == 0.0);
 	}
 
-	/// a still device's corrections come in as a glide and its return's do not (those are the recovery blend's); with
-	/// no smoothing every correction passes as it comes
+	/// A device through the smoothing: `n` reports 4 ms apart, its head at `at(t)` along x (m; its velocity the
+	/// path's own), the corrections' sum `c(t)` along x, which is part of where the head is. Per report: where the
+	/// tracker has the head, where it is shown, and the share of its motion that passes
+	fn smoothed(
+		ms: f64, n: usize, ret: (f64, f64), at: impl Fn(f64) -> f64, c: impl Fn(f64) -> f64,
+	) -> Vec<(f64, f64, f64)> {
+		smoothed_as(true, ms, n, ret, at, c)
+	}
+
+	/// ... `hold` false as a headset
+	fn smoothed_as(
+		hold: bool, ms: f64, n: usize, ret: (f64, f64), at: impl Fn(f64) -> f64, c: impl Fn(f64) -> f64,
+	) -> Vec<(f64, f64, f64)> {
+		let mut s = Smooth::default();
+		(0..n)
+			.map(|k| {
+				let t = k as f64 * 0.004;
+				let x = at(t) + c(t);
+				let vel = [(at(t + 0.002) - at(t - 0.002)) / 0.004, 0.0, 0.0];
+				let (mut p, mut r) = ([x, 0.0, 1.0], [1.0, 0.0, 0.0, 0.0]);
+				let own = Own { pos: &[x, 0.0, 1.0], rot: &[1.0, 0.0, 0.0, 0.0], vel: &vel, turn: &[0.0; 3] };
+				let open = s.step(Some(&own), &corr([c(t), 0.0, 0.0], ret.0, ret.1), t, ms, 0.1, hold);
+				s.apply(&mut p, &mut r);
+				(x, p[0], open)
+			})
+			.collect()
+	}
+
+	/// ... and one that turns about z by `at(t)` (rad; its rate the path's own) where it is: the tracker's angle, the
+	/// one shown, the share that passes
+	fn turned(ms: f64, n: usize, at: impl Fn(f64) -> f64) -> Vec<(f64, f64, f64)> {
+		let mut s = Smooth::default();
+		(0..n)
+			.map(|k| {
+				let t = k as f64 * 0.004;
+				let a = at(t);
+				let rot = [(a / 2.0).cos(), 0.0, 0.0, (a / 2.0).sin()];
+				let turn = [0.0, 0.0, (at(t + 0.002) - at(t - 0.002)) / 0.004];
+				let (mut p, mut r) = ([0.0, 0.0, 1.0], rot);
+				let own = Own { pos: &[0.0, 0.0, 1.0], rot: &rot, vel: &[0.0; 3], turn: &turn };
+				let open = s.step(Some(&own), &corr([0.0; 3], -1.0, 0.0), t, ms, 0.1, true);
+				s.apply(&mut p, &mut r);
+				(a, 2.0 * r[3].atan2(r[0]), open)
+			})
+			.collect()
+	}
+
+	/// A device held still is shown calm: what it trembles by is not shown, and its rates are not handed on; a
+	/// correction comes in as a glide, a return's as it is. With no smoothing all of it passes as it comes
 	#[test]
-	fn a_still_devices_corrections_glide() {
-		let rot0 = [1.0, 0.0, 0.0, 0.0];
-		let run = |ms: f64, speed: f64, age: f64| {
-			let mut b = Blend::default();
-			let mut xs = Vec::new();
-			for k in 0..200 {
-				// a station takes over at report 50: the estimate steps 4 mm along x
-				let c = if k < 50 { 0.0 } else { 0.004 };
-				let (mut p, mut r) = ([c, 0.0, 1.0], rot0);
-				b.smooth(&mut p, &mut r, &corr([c, 0.0, 0.0], age, 0.5), k as f64 * 0.004, ms, speed, 0.0, 0.1);
-				xs.push(p[0]);
-			}
-			xs
-		};
-		// still, 200 ms: the step is not shown at once, 95 % of it after 200 ms, all of it in the end, never past it
-		let xs = run(200.0, 0.0, -1.0);
-		assert!(xs[50] < 1e-9 && xs[51] < 0.01 * 0.004, "{} {}", xs[50], xs[51]);
-		assert!(xs[100] > 0.95 * 0.004 - 1e-5 && xs[100] < 0.004, "{}", xs[100]);
-		assert!((xs[199] - 0.004).abs() < 1e-6 && xs.iter().all(|&x| x <= 0.004 + 1e-12));
-		// off: as it comes
-		assert_eq!(run(0.0, 0.0, -1.0)[50], 0.004);
+	fn a_still_device_is_shown_calm() {
+		let none = |_: f64| 0.0;
+		let after = |from: f64, x: &[(f64, f64, f64)]| x[(from / 0.004) as usize..].to_vec();
+		// a hand held still trembles 0.3 mm either way at 8 Hz (15 mm/s at its fastest): at 300 ms under a tenth of
+		// that is shown, and next to nothing of its velocity is handed on
+		let tremble = |t: f64| 0.0003 * (2.0 * std::f64::consts::PI * 8.0 * t).sin();
+		let x = after(1.0, &smoothed(300.0, 750, (-1.0, 0.0), tremble, none));
+		let swing = |i: usize| x.iter().map(|r| [r.0, r.1, r.2][i]).fold(0.0f64, |a, v| a.max(v.abs()));
+		assert!(swing(0) > 0.00029 && swing(1) < 0.1 * swing(0) && swing(2) < 0.15, "{} {}", swing(1), swing(2));
+		// off: as it comes, to the bit
+		assert!(smoothed(0.0, 750, (-1.0, 0.0), tremble, none).iter().all(|r| r.0 == r.1 && r.2 == 1.0));
+		// a station takes over 2 s in, the estimate steps 4 mm: not shown at once, 95 % of it after the 300 ms, all
+		// of it in the end, never past it
+		let step = |t: f64| if t < 2.0 { 0.0 } else { 0.004 };
+		let x = after(2.0, &smoothed(300.0, 1000, (-1.0, 0.0), none, step));
+		assert!(x[0].1 < 0.01 * 0.004 && x[75].1 > 0.95 * 0.004 - 1e-5 && x[75].1 < 0.004, "{} {}", x[0].1, x[75].1);
+		assert!((x[499].1 - 0.004).abs() < 1e-6 && x.iter().all(|r| r.1 <= 0.004 + 1e-12));
 		// inside a return's window the corrections are not the smoothing's
-		assert_eq!(run(200.0, 0.0, 0.1)[50], 0.004);
-		// moving at 1 m/s: in within GLIDE_TRAVEL_M of travel (50 ms), where still it had shown a third
-		let fast = run(200.0, 1.0, -1.0);
-		let at = 50 + (GLIDE_TRAVEL_M / 1.0 / 0.004) as usize;
-		assert!(fast[at] > 0.95 * 0.004 - 1e-5, "{}", fast[at]);
-		assert!(xs[at] < 0.35 * 0.004, "{}", xs[at]);
+		assert_eq!(after(2.0, &smoothed(300.0, 1000, (0.1, 0.5), none, step))[0].1, 0.004);
+		// a headset's own motion is shown whole, the tremble too (the picture turns with the head): only the
+		// corrections glide
+		assert!(smoothed_as(false, 300.0, 750, (-1.0, 0.0), tremble, none).iter().all(|r| r.0 == r.1 && r.2 == 1.0));
+		let x = after(2.0, &smoothed_as(false, 300.0, 1000, (-1.0, 0.0), none, step));
+		assert!(x[0].1 < 0.01 * 0.004 && x[75].1 > 0.95 * 0.004 - 1e-5 && x[0].2 == 1.0);
+	}
+
+	/// A device that moves is shown where the tracker has it: its motion passes whole, a correction is in within
+	/// GLIDE_TRAVEL_M of travel, a move out of stillness leaves nothing behind, and a hand going back and forth is
+	/// not held at either end
+	#[test]
+	fn a_moving_device_is_not_held_back() {
+		let none = |_: f64| 0.0;
+		// at 1 m/s: every report shown as it is, to the bit
+		let x = smoothed(300.0, 500, (-1.0, 0.0), |t| t, none);
+		assert!(x.iter().all(|r| r.0 == r.1 && r.2 == 1.0));
+		// a 4 mm correction at 1 m/s: in after 5 cm of travel (50 ms), where a still device has shown a fifth of it
+		let step = |t: f64| if t < 1.0 { 0.0 } else { 0.004 };
+		let at = 250 + (GLIDE_TRAVEL_M / 1.0 / 0.004) as usize;
+		let moving = smoothed(300.0, 500, (-1.0, 0.0), |t| t, step);
+		let still = smoothed(300.0, 500, (-1.0, 0.0), none, step);
+		assert!(moving[at].0 - moving[at].1 < 0.05 * 0.004 && still[at].1 < 0.2 * 0.004, "{}", still[at].1);
+		// still for 2 s, then off at 2 m/s^2 up to 1 m/s: the hand is taken for moving 50 ms into the move, is never
+		// shown more than 2 mm behind, and half a second in is where the tracker has it
+		let go = |t: f64| {
+			let m = (t - 2.0).max(0.0);
+			if m < 0.5 {
+				m * m
+			} else {
+				0.25 + (m - 0.5)
+			}
+		};
+		let x = smoothed(300.0, 750, (-1.0, 0.0), go, none);
+		assert!(x[499].2 < 0.01 && x[513].2 == 1.0, "{} {}", x[499].2, x[513].2);
+		let behind = x.iter().map(|r| r.0 - r.1).fold(0.0f64, f64::max);
+		assert!(behind > 0.0002 && behind <= STILL_REACH_M + 1e-12 && (x[625].0 - x[625].1).abs() < 1e-5, "{behind}");
+		// a move that begins and ends gently, under the speeds that tell a move for most or all of its way (still for
+		// 2 s, then 2 cm in a second, 5 cm in two, 20 cm in two; a turn of 5 degrees in a second, 10 and 45 in two):
+		// never shown further behind than a tremble's reach, at the longest settle time as at 300 ms, where it would
+		// be late by the settle time were its own motion held back for as long as it is slow
+		let gently = |d: f64, s: f64| {
+			move |t: f64| {
+				let u = ((t - 2.0) / s).clamp(0.0, 1.0);
+				d * u * u * u * (10.0 - 15.0 * u + 6.0 * u * u)
+			}
+		};
+		let far = |x: &[(f64, f64, f64)]| x.iter().map(|r| (r.0 - r.1).abs()).fold(0.0f64, f64::max);
+		for ms in [300.0, 1000.0] {
+			for (d, s) in [(0.02, 1.0), (0.05, 2.0), (0.2, 2.0)] {
+				let x = smoothed(ms, 1250, (-1.0, 0.0), gently(d, s), none);
+				assert!(far(&x) <= STILL_REACH_M + 1e-12, "{ms} ms, {d} m in {s} s: {}", far(&x));
+			}
+			for (d, s) in [(5.0f64, 1.0), (10.0, 2.0), (45.0, 2.0)] {
+				let x = turned(ms, 1250, gently(d.to_radians(), s));
+				assert!(far(&x) <= STILL_REACH_RAD + 1e-12, "{ms} ms, {d} degrees in {s} s: {}", far(&x));
+			}
+		}
+		// a hand going 5 cm either way at 2 Hz (0.6 m/s at its fastest) passes whole: it is not still at its ends
+		let wave = |t: f64| 0.05 * (2.0 * std::f64::consts::PI * 2.0 * (t - 0.0625)).sin();
+		let x = smoothed(300.0, 1000, (-1.0, 0.0), wave, none);
+		assert!(x[250..].iter().all(|r| r.2 == 1.0 && (r.0 - r.1).abs() < 1e-6), "{:?}", x[300]);
 	}
 
 	/// A hand's path for the rail's tests: `n` reports 4 ms apart, the velocity `v(t)` integrated from the origin;

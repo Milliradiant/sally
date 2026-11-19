@@ -15,7 +15,7 @@ use sally_math::printf::BArg;
 
 use crate::helpers::{cross, log, norm, now_seconds, quat_conj, quat_mul, quat_rotate, sin_cos, std_max};
 use crate::openvr::{DriverPose_t, HmdQuaternion_t, TrackingResult_Running_OK, TrackingResult_Running_OutOfRange};
-use crate::output::{self, Blend, Shown};
+use crate::output::{self, Blend, Own, Shown, Smooth};
 use crate::pose_override::G_OVERRIDE;
 use crate::settings::{g_opt, Options};
 use crate::toys::{carried, Kin, Toys};
@@ -71,12 +71,12 @@ pub struct DeviceState {
 	pub glides: Glides,
 }
 
-/// The output layer's state of a device between its reports: the recovery blend, the smoothing's glide that every
-/// other correction is let in by, and the toys (toys.rs: the punch rail among them)
+/// The output layer's state of a device between its reports: the recovery blend, the smoothing (a still device
+/// shown calm, every other correction let in as a glide), and the toys (toys.rs: the punch rail among them)
 #[derive(Clone, Copy, Debug, Default, PartialEq)]
 pub struct Glides {
 	pub blend: Blend,
-	pub smooth: Blend,
+	pub smooth: Smooth,
 	pub toys: Toys,
 }
 
@@ -255,26 +255,32 @@ impl RuntimeDevice {
 	}
 }
 
-/// What a report hands the override: the output layer's glides (output.rs: the light's return shown as a glide, every
-/// other correction let in by the smoothing's; the rest of the report as it came), then the hand-over, the pose
-/// declared the device's prediction_ms old; and with it (`Handed::shown`) what the override does as it hands the pose
-/// to SteamVR: what the toys show in its place (toys.rs), the offset, the velocity's scale. `out` the device's output
-/// settings, `now` the driver's clock, `glides` and `o` the device's own between reports. (The bench runs a replay's
-/// driver stream through this: `sally-bench output`)
+/// What a report hands the override: the output layer's glides (output.rs: the light's return shown as a glide; the
+/// smoothing, a still device shown calm and every other correction let in as a glide; the rest of the report as it
+/// came), then the hand-over, the pose declared the device's prediction_ms old; and with it (`Handed::shown`) what the
+/// override does as it hands the pose to SteamVR: what the toys show in its place (toys.rs), the offset, the
+/// velocity's scale. `out` the device's output settings, `now` the driver's clock, `glides` and `o` the device's own
+/// between reports. (The bench runs a replay's driver stream through this: `sally-bench output`)
 #[allow(clippy::too_many_arguments)]
 pub fn report_pose(
 	opt: &Options, kind: Kind, lever: Option<&[f64; 3]>, r: &Report, out: &output::Values, now: f64,
 	glides: &mut Glides, o: &mut DriverPose_t,
 ) -> Handed {
 	let (mut pos, mut rot) = (*r.pos, *r.rot);
+	let mut open = 1.0;
 	if let Some(c) = r.corr {
 		let gap = opt.fallback_after_ms * 1e-3;
 		glides.blend.show(&mut pos, &mut rot, c, now, out[output::RECOVERY_BLEND_MS], gap);
-		let (speed, turn) = if r.has_vel { (norm(r.vel), norm(r.angvel)) } else { (0.0, 0.0) };
-		glides.smooth.smooth(&mut pos, &mut rot, c, now, out[output::SMOOTHING_MS], speed, turn, gap);
+		// the smoothing goes by what the hand-over makes of the report as it came: the pose it would hand on and the
+		// rates SteamVR would carry it by
+		let smoothing = out[output::SMOOTHING_MS];
+		let own = (r.has_vel && smoothing > 0.0).then(|| look_ahead(opt, kind, lever, r, out[output::PREDICTION_MS]));
+		let own = own.as_ref().map(|a| Own { pos: &a.pos, rot: &a.rot, vel: &a.vel, turn: &a.turn });
+		open = glides.smooth.step(own.as_ref(), c, now, smoothing, gap, kind != Kind::Headset);
+		glides.smooth.apply(&mut pos, &mut rot);
 	}
 	let r = &Report { pos: &pos, rot: &rot, ..*r };
-	let h = hand_over(opt, kind, lever, r, out[output::PREDICTION_MS], o);
+	let h = hand_over(opt, kind, lever, r, out[output::PREDICTION_MS], open, o);
 	// what the override does with the pose: the device's offset and velocity scale, and what the toys show in its
 	// place, which go by the pose as it is handed over, carried to now as the override carries it (driver.carry)
 	let raw = Kin::of(o);
@@ -283,13 +289,24 @@ pub fn report_pose(
 	Handed { shown: Shown { reshaped, dash: glides.toys.dash, ..Shown::of(out) }, ..h }
 }
 
-/// Update's pose math: the pose a report hands the override, written into the device's pose `o` (pose_, whose
-/// world-from-driver, driver-from-head and the two flags it never writes stay as the constructor set them), with
-/// `lever` the device's IMU -> origin offset (device frame) once its DEV line gave one, `prediction_ms` the age the
-/// pose is declared (the output layer's, per device)
-pub fn hand_over(
-	opt: &Options, kind: Kind, lever: Option<&[f64; 3]>, r: &Report, prediction_ms: f64, o: &mut DriverPose_t,
-) -> Handed {
+/// What the hand-over makes of a report, in the runtime's world (Z up): the head's pose at the end of the look-ahead,
+/// its velocity and acceleration there (`vel`, `accel`: 0 for a report without a velocity), the rate of turning at
+/// the end of the lead and the angular acceleration it was carried by (`turn`, `al`: world), how long the look-ahead
+/// was (`lead`, s) and the lever's part of the velocity (`corr`, for the stats)
+pub struct Ahead {
+	pub pos: [f64; 3],
+	pub rot: [f64; 4],
+	pub vel: [f64; 3],
+	pub accel: [f64; 3],
+	pub turn: [f64; 3],
+	pub al: [f64; 3],
+	pub lead: f64,
+	pub corr: f64,
+}
+
+/// The hand-over's pose math on a report: `lever` the device's IMU -> origin offset (device frame) once its DEV line
+/// gave one, `prediction_ms` the age the pose is declared (the angular acceleration's clamp goes by it)
+pub fn look_ahead(opt: &Options, kind: Kind, lever: Option<&[f64; 3]>, r: &Report, prediction_ms: f64) -> Ahead {
 	// ---- the angular acceleration: the rate changes over the hand-over too, so the orientation is turned with it and
 	// the rate handed on is the one at the end. Controllers only (not the headset either): a held controller's angular
 	// accelerations are the wrist's, which last (the stop of a punch: tens of ms); a strapped tracker's are mostly
@@ -357,9 +374,6 @@ pub fn hand_over(
 		}
 	}
 
-	// ---- pose age: the declared age, less what the look-ahead measured
-	let age = std_max(0.0, prediction_ms * 1e-3 - lead);
-
 	// ---- lever arm: pose origin velocity = v_imu + w x r, r = R_head2world * (IMU -> origin in the device frame) and
 	// its acceleration a_imu + w x (w x r) (the angular acceleration's term, alpha x r, comes folded into a_imu, the
 	// velocity change and the displacement from the runtime)
@@ -387,14 +401,42 @@ pub fn hand_over(
 		}
 	}
 
-	// ---- angular velocity: world -> device frame; the rate at the end of the lead (with the angular acceleration),
-	// and the angular acceleration in the device frame for the carry
-	let mut w_out = [0.0f64; 3];
+	// ---- the rate at the end of the lead (with the angular acceleration)
+	let mut turn = [0.0f64; 3];
 	for i in 0..3 {
-		w_out[i] = w[i] + al[i] * lead;
+		turn[i] = w[i] + al[i] * lead;
 	}
+	Ahead { pos, rot, vel, accel, turn, al, lead, corr }
+}
+
+/// Update's pose math: the pose a report hands the override, written into the device's pose `o` (pose_, whose
+/// world-from-driver, driver-from-head and the two flags it never writes stay as the constructor set them), with
+/// `lever` the device's IMU -> origin offset (device frame) once its DEV line gave one, `prediction_ms` the age the
+/// pose is declared (the output layer's, per device), and `open` the share of the device's own motion the smoothing
+/// shows as it comes (output.rs, `Smooth::step`; 1 without it): the rates SteamVR and the carry take the pose on by
+/// (the velocity, the acceleration, the rate of turning and its change) are handed on scaled by it, so a device shown
+/// still is not carried on by its tremble
+pub fn hand_over(
+	opt: &Options, kind: Kind, lever: Option<&[f64; 3]>, r: &Report, prediction_ms: f64, open: f64,
+	o: &mut DriverPose_t,
+) -> Handed {
+	let Ahead { pos, rot, mut vel, mut accel, mut turn, mut al, lead, corr } =
+		look_ahead(opt, kind, lever, r, prediction_ms);
+	if open < 1.0 {
+		for i in 0..3 {
+			vel[i] *= open;
+			accel[i] *= open;
+			turn[i] *= open;
+			al[i] *= open;
+		}
+	}
+
+	// ---- pose age: the declared age, less what the look-ahead measured
+	let age = std_max(0.0, prediction_ms * 1e-3 - lead);
+
+	// ---- angular velocity: world -> device frame, and the angular acceleration in the device frame for the carry
 	let qinv = quat_conj(&rot);
-	let w_body = quat_rotate(&qinv, &w_out);
+	let w_body = quat_rotate(&qinv, &turn);
 	let al_body = quat_rotate(&qinv, &al);
 
 	// ---- Z-up -> Y-up
