@@ -10,3 +10,5 @@ publish.workspace = true
 miniz_oxide = "0.9"
 sally-hid = { path = "../sally-hid" }
 sally-lighthouse = { path = "../sally-lighthouse" }
+# the zip's checksum, and the stand-in OOTX packets'
+sally-math = { path = "../sally-math" }

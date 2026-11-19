@@ -474,6 +474,11 @@ fn pack_installer(
 		.push(File { path: "sally.ico".into(), bytes: read(&root.join("crates").join(INSTALLER).join("sally.ico"))? });
 	packed.push(File { path: "LICENSE.txt".into(), bytes: read(&root.join("LICENSE"))? });
 	packed.push(File { path: "THIRD-PARTY-NOTICES.txt".into(), bytes: notices.as_bytes().to_vec() });
+	// the uninstaller deletes what it knows as sally's and nothing else: a file it would leave is not packed
+	let known = |f: &&File| sally_setup::folder::puts(f.path.split('/').next().unwrap_or(""));
+	if let Some(f) = packed.iter().find(|f| !known(f)) {
+		return Err(format!("{}: not among the installer's names (sally_setup::folder)", f.path));
+	}
 	let mut out = read(stub)?;
 	out.extend(pack(&packed)?);
 	std::fs::write(to, &out).map_err(|e| format!("cannot write {}: {e}", to.display()))?;

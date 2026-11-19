@@ -10,7 +10,7 @@ use crate::libc::c_strtod;
 /// of size - 1 bytes. A text-mode read on Windows: CR LF becomes LF and a Ctrl-Z ends the text
 pub fn fgets_lines(bytes: &[u8], size: usize) -> Vec<Vec<u8>> {
 	assert!(size >= 2);
-	let text: Vec<u8> = if cfg!(windows) { text_mode(bytes) } else { bytes.to_vec() };
+	let text: Vec<u8> = if cfg!(windows) { crate::textmode::read(bytes) } else { bytes.to_vec() };
 	let mut out = Vec::new();
 	let mut i = 0;
 	while i < text.len() {
@@ -23,21 +23,6 @@ pub fn fgets_lines(bytes: &[u8], size: usize) -> Vec<Vec<u8>> {
 		}
 		out.push(text[i..end].to_vec());
 		i = end;
-	}
-	out
-}
-
-/// A text-mode read on Windows (the ucrt's): CR LF becomes LF, and a Ctrl-Z (0x1A) ends the text
-fn text_mode(bytes: &[u8]) -> Vec<u8> {
-	let mut out = Vec::with_capacity(bytes.len());
-	let mut i = 0;
-	while i < bytes.len() {
-		match bytes[i] {
-			0x1A => break,
-			b'\r' if bytes.get(i + 1) == Some(&b'\n') => {}
-			c => out.push(c),
-		}
-		i += 1;
 	}
 	out
 }

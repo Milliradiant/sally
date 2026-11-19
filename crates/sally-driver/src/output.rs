@@ -45,7 +45,7 @@ use sally_math::printf::{bsprintf, BArg};
 
 use crate::body::Dash;
 use crate::cstdio::CFile;
-use crate::helpers::{log, quat_conj, quat_mul, sin_cos, trim, K_SEP};
+use crate::helpers::{log, now_seconds, quat_conj, quat_mul, sin_cos, trim, write_whole, K_SEP};
 use crate::runtime_device::Kind;
 use crate::toys::Kin;
 
@@ -321,9 +321,16 @@ struct Store {
 	output: Output,
 	/// sally_output.txt, once the driver knows its folder
 	path: Option<Vec<u8>>,
+	/// when a setting was last set from the panel and the file has not been written since (`save_due`)
+	changed: Option<f64>,
 }
 
-static G_OUTPUT: LazyLock<Mutex<Store>> = LazyLock::new(|| Mutex::new(Store { output: Output::default(), path: None }));
+static G_OUTPUT: LazyLock<Mutex<Store>> =
+	LazyLock::new(|| Mutex::new(Store { output: Output::default(), path: None, changed: None }));
+
+/// A setting set from the panel is in the file this long after the last one set (s): a slider being dragged sets
+/// its value at every frame of the panel's, and the file is written once, when it comes to rest
+const SAVE_AFTER_S: f64 = 0.5;
 
 fn store() -> MutexGuard<'static, Store> {
 	G_OUTPUT.lock().unwrap_or_else(|e| e.into_inner())
@@ -375,15 +382,21 @@ pub fn read_output(dir: &[u8]) {
 }
 
 /// The settings written to sally_output.txt, once the driver knows its folder
-fn write_file(s: &Store) {
+fn write_file(s: &mut Store) {
+	s.changed = None;
 	if let Some(path) = &s.path {
-		match CFile::open(path, c"wb") {
-			Some(mut f) => {
-				f.write(&s.output.text());
-				f.close();
-			}
-			None => log("sally: cannot write %s\n", &[BArg::S(path)]),
+		if !write_whole(path, &s.output.text()) {
+			log("sally: cannot write %s\n", &[BArg::S(path)]);
 		}
+	}
+}
+
+/// What the panel set since the file was last written, written once nothing has been set for SAVE_AFTER_S (the
+/// provider's RunFrame), or at once (`now` None: its Cleanup)
+pub fn save_due(now: Option<f64>) {
+	let mut s = store();
+	if s.changed.is_some_and(|at| now.is_none_or(|now| now - at >= SAVE_AFTER_S)) {
+		write_file(&mut s);
 	}
 }
 
@@ -399,12 +412,12 @@ pub fn toys_off(when: &str) {
 			were_on.join(&b' ')
 		};
 		log("sally: the toys off as %s (%s)\n", &[BArg::S(when.as_bytes()), BArg::S(&list)]);
-		write_file(&s);
+		write_file(&mut s);
 	}
 }
 
-/// The `output` command: `output` alone lists the settings, `output <scope> <name> <value>` sets one first (and
-/// writes the file); the reply's lines either way, after an `O error <why>` line when the set was refused
+/// The `output` command: `output` alone lists the settings, `output <scope> <name> <value>` sets one first (the file
+/// is written by `save_due`); the reply's lines either way, after an `O error <why>` line when the set was refused
 pub fn command(args: &[&[u8]]) -> Vec<Vec<u8>> {
 	let mut s = store();
 	let mut reply = Vec::new();
@@ -412,7 +425,7 @@ pub fn command(args: &[&[u8]]) -> Vec<Vec<u8>> {
 		match s.output.set(args[0], args[1], args[2]) {
 			Ok(()) => {
 				log("sally: output %s.%s = %s\n", &[BArg::S(args[0]), BArg::S(args[1]), BArg::S(args[2])]);
-				write_file(&s);
+				s.changed = Some(now_seconds());
 			}
 			Err(why) => reply.push(bsprintf("O error %s\n", &[BArg::S(why.as_bytes())])),
 		}
@@ -1206,7 +1219,12 @@ mod tests {
 		assert!(text.contains("trackers.smoothing_ms=150\n") && !text.contains("LHR-WAIST"), "{text}");
 		// a line of a toy this driver does not have (a file from before 0.15) is passed over, and not written again
 		assert!(!text.contains("jelly") && !text.contains("hip_gain"), "{text}");
+		// a setting set from the panel is in the file once nothing more has been set for a moment (a slider being
+		// dragged sets one at every frame), not at each
 		command(&[b"trackers", b"dash", b"1"]);
+		save_due(Some(now_seconds()));
+		assert!(!std::fs::read_to_string(&file).unwrap().contains("trackers.dash=1\n"));
+		save_due(Some(now_seconds() + SAVE_AFTER_S));
 		assert!(std::fs::read_to_string(&file).unwrap().contains("trackers.dash=1\n"));
 		toys_off("SteamVR closes");
 		assert_eq!(g_output().class[2][DASH], 0.0);

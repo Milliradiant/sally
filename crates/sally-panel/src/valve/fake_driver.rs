@@ -1,7 +1,8 @@
 //! A stand-in for the sally driver's side of the panel (docs/sally_driver.md), for the tests and the headless
 //! renderer: it sends the panel what the driver sends while SteamVR shows sally's tracking (the V lines with Valve's
 //! pose of each device, the C line, the F line with its fit) and answers the panel's commands as the driver does:
-//! `seen sally|valve`, `refit`, `output` and `output <scope> <name> <value|->`.
+//! `seen sally|valve`, `refit`, `output` and `output <scope> <name> <value|->`, and the panel's choices it keeps
+//! (`headset sally|valve`, `keep <n>`, `pose_log on|off`).
 //!
 //! Valve's poses are the runtime's own, in the driver's space (OpenVR's axes, Y up) with a few millimetres of noise, and
 //! the fit is the identity: the panel compares through the driver's alignment and finds the two close.
@@ -43,6 +44,11 @@ pub struct FakeDriver {
 	to: SocketAddrV4,
 	/// what SteamVR is shown: "sally" or "valve"
 	pub seen: String,
+	/// the panel's choices: whose pose a lighthouse headset gets, how many sessions' files stay, whether the pose log
+	/// is written
+	pub headset_sally: bool,
+	pub keep_sessions: i32,
+	pub pose_log: bool,
 	/// the output layer's values by (scope, name): every class's, and the devices' own
 	pub output: BTreeMap<(String, String), f64>,
 	/// every command the panel sent, in order
@@ -74,6 +80,9 @@ impl FakeDriver {
 			sock,
 			to: SocketAddrV4::new(Ipv4Addr::LOCALHOST, panel_port),
 			seen: "sally".into(),
+			headset_sally: true,
+			keep_sessions: 2,
+			pose_log: false,
 			output,
 			commands: Vec::new(),
 			refit: None,
@@ -94,7 +103,14 @@ impl FakeDriver {
 	}
 
 	fn status(&self) {
-		self.send(&format!("C seen {} fit 1 median_mm 0.8", self.seen));
+		self.send(&format!(
+			"C seen {} fit 1 median_mm 0.8 pairs 150 hooks 3 valve_devices 0 sally_devices 0 headset {} \
+			 lighthouse_headset 0 keep_sessions {} pose_log {}",
+			self.seen,
+			if self.headset_sally { "sally" } else { "valve" },
+			self.keep_sessions,
+			if self.pose_log { "on" } else { "off" },
+		));
 	}
 
 	/// Once a loop: the panel's commands answered, and the driver's lines for this frame
@@ -107,6 +123,9 @@ impl FakeDriver {
 			match f.as_slice() {
 				["seen", who @ ("sally" | "valve")] => self.seen = who.to_string(),
 				["refit"] => self.refit = Some(0),
+				["headset", who @ ("sally" | "valve")] => self.headset_sally = *who == "sally",
+				["keep", n] => self.keep_sessions = n.parse::<i32>().unwrap_or(0).max(0),
+				["pose_log", to @ ("on" | "off")] => self.pose_log = *to == "on",
 				["output"] => self.send_output(),
 				["output", scope, name, value] => {
 					let known = SETTINGS.iter().find(|s| s.0 == *name);

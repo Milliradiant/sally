@@ -71,6 +71,9 @@ pub struct Options {
 	pub keep_sessions: i32,
 	/// per frame what we sent, what SteamVR predicts from it, and Valve's own pose (csv; {time} = session start)
 	pub pose_log: Vec<u8>,
+	/// whether that file is written, unless the panel's Pose log says otherwise (user.rs); on where the
+	/// settings do not say, so a file that only names the pose log writes it as it always did
+	pub pose_log_on: bool,
 	// the runtime process (0.7): started by the driver when SteamVR starts, unless one already answers
 	/// the runtime, sally.exe (its first argument, `run`, is the first of runtime_args); empty = the driver never starts
 	/// a runtime
@@ -117,6 +120,7 @@ impl Default for Options {
 			fallback_force_ms: 2000.0,
 			keep_sessions: 0,
 			pose_log: Vec::new(),
+			pose_log_on: true,
 			runtime_exe: Vec::new(),
 			runtime_cwd: Vec::new(),
 			runtime_log: Vec::new(),
@@ -181,6 +185,7 @@ pub fn parse_option(o: &mut Options, s: &[u8]) {
 		b"fallback_force_ms" => o.fallback_force_ms = c_atof(v),
 		b"keep_sessions" => o.keep_sessions = c_atoi(v),
 		b"pose_log" => o.pose_log = v.to_vec(),
+		b"pose_log_on" => o.pose_log_on = parse_bool(v),
 		b"panel_exe" => o.panel_exe = v.to_vec(),
 		b"runtime_exe" => o.runtime_exe = v.to_vec(),
 		b"runtime_cwd" => o.runtime_cwd = v.to_vec(),

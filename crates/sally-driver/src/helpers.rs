@@ -127,6 +127,20 @@ pub fn lines(buf: &[u8]) -> impl Iterator<Item = &[u8]> {
 
 pub const K_SEP: u8 = if cfg!(windows) { b'\\' } else { b'/' };
 
+/// A file the driver keeps (what the panel set, the sessions' starts) written whole: beside it first (`<path>.tmp`)
+/// and then put in its place, so that a write cut short (SteamVR killed, the PC switched off) leaves the file as it
+/// was and not empty or half of it. Where it cannot be put in its place (another program holds the file open), it is
+/// written into it as it is. Whether it was written. `path` is UTF-8, as every path the driver is given
+pub fn write_whole(path: &[u8], text: &[u8]) -> bool {
+	let Ok(path) = std::str::from_utf8(c_str(path)) else { return false };
+	let beside = format!("{path}.tmp");
+	if std::fs::write(&beside, text).and_then(|()| std::fs::rename(&beside, path)).is_ok() {
+		return true;
+	}
+	let _ = std::fs::remove_file(&beside);
+	std::fs::write(path, text).is_ok()
+}
+
 pub fn is_absolute(p: &[u8]) -> bool {
 	!p.is_empty() && (p[0] == b'/' || p[0] == b'\\' || (p.len() > 1 && p[1] == b':'))
 }

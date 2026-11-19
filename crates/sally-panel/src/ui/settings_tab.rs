@@ -1,5 +1,6 @@
 //! The Settings tab: the devices' names and where each is worn, the SteamVR overlay, what the driver does that is the
-//! user's to choose (whose tracking a lighthouse headset gets, how many sessions' recordings stay), and the advanced
+//! user's to choose (whose tracking a lighthouse headset gets, how many sessions' recordings stay, whether a session
+//! keeps a pose log), and the advanced
 //! things: the station map's lock and the comparison with Valve's driver.
 
 use egui::{Align2, Id, Pos2, Rect, ScrollArea, Sense, Stroke, UiBuilder, Vec2};
@@ -17,7 +18,7 @@ impl Panel {
 		let c2 = (w * 0.42).clamp(400.0, 680.0);
 		let c1 = w - c2 - GAP;
 		let overlay_h = 150.0;
-		let choices_h = 152.0;
+		let choices_h = 202.0;
 		let x2 = r.min.x + c1 + GAP;
 		self.worn_card(ui, Rect::from_min_max(r.min, Pos2::new(r.min.x + c1, r.max.y)));
 		self.overlay_card(ui, Rect::from_min_max(Pos2::new(x2, r.min.y), Pos2::new(r.max.x, r.min.y + overlay_h)));
@@ -53,7 +54,7 @@ impl Panel {
 	}
 
 	/// What the driver does that is the user's to choose, kept by the driver between sessions: whose tracking a
-	/// lighthouse headset gets, how many sessions' recordings and logs stay
+	/// lighthouse headset gets, how many sessions' recordings and logs stay, whether a session keeps a pose log
 	fn choices_card(&mut self, ui: &mut egui::Ui, r: Rect) {
 		let t = tk();
 		let inner = self.card(ui, r, "Headset and recordings");
@@ -107,6 +108,22 @@ impl Panel {
 				}
 			}
 			None => Self::segmented_off(&p, sp, &items),
+		}
+		y += 50.0;
+
+		// the pose log
+		kit::text(&p, Pos2::new(inner.min.x + 2.0, y + 11.0), Align2::LEFT_CENTER, "Pose log", body(), t.text);
+		let clip = Rect::from_min_max(Pos2::new(inner.min.x + 2.0, y + 20.0), Pos2::new(inner.max.x - 52.0, y + 40.0));
+		kit::text_in(&p, clip, "Valve's tracking kept for Replay: about 100 MB an hour", label(), t.muted);
+		let row = Rect::from_min_max(Pos2::new(inner.min.x, y), Pos2::new(inner.max.x - 52.0, y + 44.0));
+		ui.interact(row, Id::unique("pose-log-tip"), Sense::hover()).on_hover_text(
+			"Each session also keeps what Valve's driver tracked and what SteamVR was given, so Replay can show them \
+			 beside sally's. It is kept and deleted with the sessions, and starts the moment this is switched on",
+		);
+		let on = self.vc.drv_pose_log.filter(|_| heard);
+		let at = Pos2::new(inner.max.x - 42.0, y + 8.0);
+		if kit::switch(ui, Id::unique("pose-log"), at, on == Some(true), on.is_some()) {
+			self.vc.driver_cmd(if on == Some(true) { "pose_log off" } else { "pose_log on" });
 		}
 	}
 

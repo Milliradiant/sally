@@ -21,8 +21,12 @@ driver.valve_settle_s=2
 driver.valve_agree_m=0.3
 # the rest of the pose's age carried with the measured acceleration
 driver.carry=1
-# per-frame csv of what was sent and what SteamVR predicts from it ({time} = session start); leave out to skip
-#driver.pose_log=<sally>\logs\sally_poses_{time}.csv
+# per-frame csv of what was sent, what SteamVR predicts from it and Valve's own pose ({time} = session start), which
+# the panel's Replay compares: packed where the name ends in .csvz (`sally unpack` gives the csv), as text where it
+# ends in .csv. pose_log_on says whether a session writes it, and the panel's choice (Settings, Pose log) stands over
+# that. Leave pose_log out and there is none to switch on
+#driver.pose_log=<sally>\logs\sally_poses_{time}.csvz
+#driver.pose_log_on=0
 # the newest this many of each session file are kept (the recording, the two logs), the older ones deleted as
 # SteamVR starts; 0 keeps them all. The panel's choice (Settings, Sessions kept) stands over this one
 driver.keep_sessions=10

@@ -237,8 +237,7 @@ pub fn tap_span(path: &Path) -> Option<(f64, f64)> {
 
 /// A pose log's first row's time
 fn poselog_start(path: &Path) -> Option<f64> {
-	let f = File::open(path).ok()?;
-	let mut r = BufReader::new(f);
+	let mut r = sally_pack::table::open(path).ok()?;
 	let mut line = String::new();
 	r.read_line(&mut line).ok()?;
 	line.clear();
@@ -258,7 +257,7 @@ pub fn sessions(paths: &Paths) -> Vec<Session> {
 			if stamp.len() == 15 && stamp.as_bytes()[8] == b'_' {
 				taps.push((stamp.to_string(), e.path()));
 			}
-		} else if name.starts_with("sally_poses_") && name.ends_with(".csv") {
+		} else if name.starts_with("sally_poses_") && sally_pack::table::stem(&name).is_some() {
 			plogs.push(e.path());
 		}
 	}
@@ -1336,7 +1335,10 @@ pub fn load(dir: &Path, s: &Session, progress: Option<Progress>) -> Result<Data,
 			Err(e) => data.notes.push(e),
 		}
 	} else {
-		data.notes.push("no pose log for this session: Valve's poses and what SteamVR got are not shown".into());
+		data.notes.push(
+			"no pose log for this session (Settings, Pose log): Valve's poses and what SteamVR got are not shown"
+				.into(),
+		);
 	}
 	// with nothing to measure the head offset by, the model's kind gives it; no distances, no summary
 	for d in devs.values_mut() {
@@ -1493,8 +1495,7 @@ pub struct Row {
 
 /// The pose log's rows in [t0, t1] (the PC's clock), on the run's time
 pub fn read_poselog(path: &Path, t0: f64, t1: f64) -> Result<Vec<Row>, String> {
-	let f = File::open(path).map_err(|e| format!("cannot read the pose log: {e}"))?;
-	let mut r = BufReader::with_capacity(1 << 20, f);
+	let mut r = sally_pack::table::open(path).map_err(|e| format!("cannot read the pose log: {e}"))?;
 	let mut head = String::new();
 	r.read_line(&mut head).map_err(|e| e.to_string())?;
 	let cols: Vec<&str> = head.trim().split(',').collect();
@@ -1846,6 +1847,65 @@ mod tests {
 		};
 		assert_eq!(head(&found[1]), head(&found[2]));
 		assert_eq!(head(&found[1]), [("4BCAD73D0E-6YX_config.json".to_string(), "LHR-00000001".to_string())]);
+		let _ = std::fs::remove_dir_all(&dir);
+	}
+
+	#[test]
+	fn a_packed_pose_log_is_a_sessions_as_a_text_one_is() {
+		let dir = std::env::temp_dir().join(format!("sally_panel_pose_logs_{}", std::process::id()));
+		let _ = std::fs::remove_dir_all(&dir);
+		let logs = dir.join("logs");
+		std::fs::create_dir_all(&logs).unwrap();
+		// two sessions a hundred seconds apart with the same motion: the first's pose log as text, the second's packed
+		let mut texts = Vec::new();
+		for (stamp, start, packed) in [("20261101_100000", 0.0, false), ("20261102_100000", 100.0, true)] {
+			let tap: String = (0..3000u64)
+				.map(|n| {
+					let us = ((5.0 + start) * 1e6) as u64 + n * 2000;
+					format!("R {us} 4BCAD73D0E-6YX 2102 -1 -1 I 23{n:0116x}\r\n")
+				})
+				.collect();
+			let mut log = "t,id,serial,sx,sy,sz,sqw,sqx,sqy,sqz,vx,vy,vz,vqw,vqx,vqy,vqz,vvalid\n".to_string();
+			for n in 0..500 {
+				let (t, x) = (start + 6.0 + n as f64 * 0.011, (n as f64 * 0.01).sin());
+				log += &format!(
+					"{t:.6},{},LHR-0000000{},{x:.5},1.00000,{:.5},0.500000,0.500000,0.500000,0.500000,{:.5},1.00200,\
+					 0.30000,1.000000,0.000000,0.000000,0.000000,{}\n",
+					n % 2 + 1,
+					n % 2 + 1,
+					-x,
+					x + 0.001,
+					(n % 7 != 0) as u8
+				);
+			}
+			std::fs::write(logs.join(format!("sallytap_{stamp}.hidtap")), &tap).unwrap();
+			if packed {
+				let to = File::create(logs.join(format!("sally_poses_{stamp}.csvz"))).unwrap();
+				let mut w = sally_pack::table::PackWriter::new(to).unwrap();
+				w.write(log.as_bytes()).unwrap();
+				w.finish().unwrap();
+			} else {
+				std::fs::write(logs.join(format!("sally_poses_{stamp}.csv")), &log).unwrap();
+			}
+			texts.push(log);
+		}
+		// each session has its pose log, whichever form it is in, and the rows read from the two are the same
+		let paths = Paths { logs: logs.clone(), replays: dir.join("replays"), ..Paths::default() };
+		let found = sessions(&paths);
+		let logs_found: Vec<String> = found
+			.iter()
+			.map(|s| s.poselog.as_ref().unwrap().file_name().unwrap().to_string_lossy().into_owned())
+			.collect();
+		assert_eq!(logs_found, ["sally_poses_20261102_100000.csvz", "sally_poses_20261101_100000.csv"]);
+		let rows = |s: &Session, start: f64| {
+			let rows = read_poselog(s.poselog.as_ref().unwrap(), start + 6.5, start + 9.0).unwrap();
+			rows.iter()
+				.map(|r| format!("{:.6} {} {:?} {:?} {}", r.t, r.serial, r.sent, r.valve, r.valid))
+				.collect::<Vec<_>>()
+		};
+		assert!(rows(&found[0], 100.0).len() > 200);
+		assert_eq!(rows(&found[0], 100.0), rows(&found[1], 0.0));
+		assert!(std::fs::metadata(found[0].poselog.as_ref().unwrap()).unwrap().len() * 8 < texts[1].len() as u64);
 		let _ = std::fs::remove_dir_all(&dir);
 	}
 

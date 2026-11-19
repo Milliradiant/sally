@@ -42,6 +42,7 @@ pub mod net;
 pub mod openvr;
 pub mod output;
 pub mod panel;
+pub mod pose_file;
 pub mod pose_override;
 pub mod provider;
 pub mod runtime_device;

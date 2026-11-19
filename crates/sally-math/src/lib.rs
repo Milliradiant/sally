@@ -2,17 +2,21 @@
 //! floating-point operations in the same order), the C library's fmax / fmin / pow / erfcf and strtod / strtof / atoi
 //! where their exact behaviour shows in a result (`libc`), printf (`printf`) and sscanf with fgets (`scanf`); and the
 //! vectors, quaternions and rigid fit of the driver and the panel (`math3d`), with the selection they pick a percentile
-//! with (`nth_element`).
+//! with (`nth_element`). And what more than one crate needs one copy of: the C library's text mode on Windows
+//! (`textmode`), CRC-32 (`crc`) and MD5 (`md5`).
 //!
 //! Every expression keeps the C's evaluation order: `a * b * c` is `(a * b) * c`, C's integer literals are the same
 //! doubles here (`2 * x` is `2.0 * x`), and nothing is simplified, even where the algebra allows it (no fused
 //! multiply-add, no reassociation: Rust does neither on its own, and the C build has no FMA on its baseline x86-64).
 
+pub mod crc;
 pub mod libc;
 pub mod math3d;
+pub mod md5;
 pub mod nth_element;
 pub mod printf;
 pub mod scanf;
+pub mod textmode;
 
 pub use libc::{c_acos, c_atof, c_atoi, c_cos, c_erfcf, c_exp, c_fmax, c_fmin, c_pow, c_sin, c_strtod, c_strtof};
 

@@ -11,7 +11,7 @@
 //!
 //! Nothing here has to be right: every byte is coded whatever it holds, and a wrong guess only costs bits.
 
-use super::coder::{Io, Number, Prob, Symbol};
+use sally_pack::coder::{Io, Number, Prob, Symbol};
 
 /// The channels a channel byte can name, and one more for entries that come before any
 const CHANNELS: usize = 17;

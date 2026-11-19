@@ -1,5 +1,6 @@
 //! The runtime process the driver starts (RuntimeProcess, 0.7): started when SteamVR starts unless one already
-//! answers, started again when it exits, sent "quit" and then killed when SteamVR exits.
+//! answers, started again when it exits, sent "quit" and then killed when SteamVR exits; told which process it is
+//! started for, so that it ends by itself when SteamVR exits any other way.
 //!
 //! On Windows it is CreateProcessW with CREATE_NO_WINDOW, its stdout and stderr the log file, which is the only handle
 //! it inherits (PROC_THREAD_ATTRIBUTE_HANDLE_LIST); on Linux posix_spawn, the log opened on fd 1 and duplicated to 2,
@@ -30,7 +31,9 @@ impl RuntimeProcess {
 
 	/// Start(dir): runtime_exe in runtime_cwd (each relative to the driver's folder) with the runtime's arguments,
 	/// {time} = this start (a restart after a crash writes new files instead of emptying the ones that explain it: the
-	/// recording is opened with "w" and the log with CREATE_ALWAYS), and --runtime-port added if they lack it
+	/// recording is opened with "w" and the log with CREATE_ALWAYS), and --runtime-port added if they lack it. With
+	/// runtime_stop the runtime is also told whose it is (--stop-with, this process: vrserver), so that it ends when
+	/// SteamVR goes without a Cleanup (a crash, a kill) and is not left reading the dongles and recording
 	pub fn start(&mut self, dir: &[u8]) -> bool {
 		let o = g_opt();
 		let joined = |rel: &[u8]| -> Vec<u8> {
@@ -62,6 +65,10 @@ impl RuntimeProcess {
 		if !has_port {
 			argv.push(b"--runtime-port".to_vec());
 			argv.push(o.runtime_port.to_string().into_bytes());
+		}
+		if o.runtime_stop && !argv.iter().any(|a| a == b"--stop-with") {
+			argv.push(b"--stop-with".to_vec());
+			argv.push(std::process::id().to_string().into_bytes());
 		}
 		log(
 			"sally: starting the runtime %s in %s (%d arguments, console output %s)\n",

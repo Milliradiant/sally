@@ -54,6 +54,7 @@ const LIVE_ONLY: &[&str] = &[
 	"--device-learned-file",
 	"--playback-factor",
 	"--stop-after",
+	"--stop-with",
 ];
 
 /// A new room's first calibration, after this much of its first session (s), then after twice as long, and so on
@@ -751,7 +752,7 @@ impl Auto {
 		if !unknown.is_empty() && self.unknown_since.is_none() {
 			self.unknown_since = Some(now);
 			self.next_try = now + NEW_ROOM_FIRST;
-			let ids: Vec<String> = unknown.iter().map(|i| format!("{i:08x}")).collect();
+			let ids: Vec<String> = unknown.iter().map(|i| format!("LHB-{i:08X}")).collect();
 			self.note(
 				false,
 				format!(

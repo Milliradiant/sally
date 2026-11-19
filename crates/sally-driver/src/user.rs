@@ -3,6 +3,7 @@
 //! - `headset=sally|valve`: whose pose a lighthouse headset gets while SteamVR shows sally's tracking. sally's unless
 //!   Valve's is chosen (`driver.hmd=0` keeps the headset on Valve's whatever is chosen here)
 //! - `keep_sessions=<n>`: how many sessions' recordings and logs stay, over `driver.keep_sessions` (0 keeps them all)
+//! - `pose_log=on|off`: whether the pose log (`driver.pose_log`) is written, over `driver.pose_log_on`
 
 use std::sync::{LazyLock, Mutex, MutexGuard};
 
@@ -10,17 +11,18 @@ use sally_math::c_atoi;
 use sally_math::printf::{bsprintf, BArg};
 
 use crate::cstdio::CFile;
-use crate::helpers::{log, trim, K_SEP};
+use crate::helpers::{log, trim, write_whole, K_SEP};
 
 #[derive(Clone, Copy, Debug, PartialEq)]
 pub struct User {
 	pub headset_sally: bool,
 	pub keep_sessions: Option<i32>,
+	pub pose_log: Option<bool>,
 }
 
 impl Default for User {
 	fn default() -> User {
-		User { headset_sally: true, keep_sessions: None }
+		User { headset_sally: true, keep_sessions: None, pose_log: None }
 	}
 }
 
@@ -33,6 +35,7 @@ impl User {
 		match k {
 			b"headset" => self.headset_sally = v != b"valve",
 			b"keep_sessions" => self.keep_sessions = Some(c_atoi(v).max(0)),
+			b"pose_log" => self.pose_log = Some(v == b"on"),
 			_ => {}
 		}
 	}
@@ -41,6 +44,9 @@ impl User {
 		let mut out = bsprintf("headset=%s\r\n", &[BArg::S(if self.headset_sally { b"sally" } else { b"valve" })]);
 		if let Some(n) = self.keep_sessions {
 			out.extend(bsprintf("keep_sessions=%d\r\n", &[BArg::I(n as i64)]));
+		}
+		if let Some(on) = self.pose_log {
+			out.extend(bsprintf("pose_log=%s\r\n", &[BArg::S(if on { b"on" } else { b"off" })]));
 		}
 		out
 	}
@@ -52,8 +58,9 @@ struct Store {
 	path: Option<Vec<u8>>,
 }
 
-static G_USER: LazyLock<Mutex<Store>> =
-	LazyLock::new(|| Mutex::new(Store { user: User { headset_sally: true, keep_sessions: None }, path: None }));
+static G_USER: LazyLock<Mutex<Store>> = LazyLock::new(|| {
+	Mutex::new(Store { user: User { headset_sally: true, keep_sessions: None, pose_log: None }, path: None })
+});
 
 fn store() -> MutexGuard<'static, Store> {
 	G_USER.lock().unwrap_or_else(|e| e.into_inner())
@@ -88,12 +95,8 @@ pub fn set(change: impl FnOnce(&mut User)) {
 	let mut s = store();
 	change(&mut s.user);
 	if let Some(path) = &s.path {
-		match CFile::open(path, c"wb") {
-			Some(mut f) => {
-				f.write(&s.user.text());
-				f.close();
-			}
-			None => log("sally: cannot write %s\n", &[BArg::S(path)]),
+		if !write_whole(path, &s.user.text()) {
+			log("sally: cannot write %s\n", &[BArg::S(path)]);
 		}
 	}
 }
@@ -105,12 +108,12 @@ mod tests {
 	#[test]
 	fn the_choices_read_back_as_written() {
 		let mut u = User::default();
-		assert!(u.headset_sally && u.keep_sessions.is_none());
+		assert!(u.headset_sally && u.keep_sessions.is_none() && u.pose_log.is_none());
 		assert_eq!(u.text(), b"headset=sally\r\n");
-		for l in [&b"headset = valve\r\n"[..], b"keep_sessions=3\n", b"# a comment", b"other=1"] {
+		for l in [&b"headset = valve\r\n"[..], b"keep_sessions=3\n", b"pose_log = on", b"# a comment", b"other=1"] {
 			u.parse_line(l);
 		}
-		assert_eq!(u, User { headset_sally: false, keep_sessions: Some(3) });
+		assert_eq!(u, User { headset_sally: false, keep_sessions: Some(3), pose_log: Some(true) });
 		let mut back = User::default();
 		for l in u.text().split(|&c| c == b'\n') {
 			back.parse_line(l);
@@ -118,5 +121,8 @@ mod tests {
 		assert_eq!(back, u);
 		u.parse_line(b"keep_sessions=-2");
 		assert_eq!(u.keep_sessions, Some(0));
+		u.parse_line(b"pose_log=off");
+		assert_eq!(u.pose_log, Some(false));
+		assert!(u.text().ends_with(b"pose_log=off\r\n"));
 	}
 }

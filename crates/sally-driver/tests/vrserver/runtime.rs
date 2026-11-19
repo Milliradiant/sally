@@ -1,7 +1,8 @@
 //! The scripted runtime: what `sally run` sends the driver over the runtime protocol (docs/sally_runtime_protocol.md),
 //! scripted from the scene instead of read from the dongles. The test binary is this runtime when started with
 //! `--scripted-runtime <session folder> <the session's clock origin, steady_clock ns>`, by the test or by the driver
-//! from sally_settings.txt's runtime arguments (the driver adds `--runtime-port <port>`, which both have).
+//! from sally_settings.txt's runtime arguments (the driver adds `--runtime-port <port>`, which both have, and
+//! `--stop-with <its process>`, which the console then names).
 //!
 //! It answers hello, devices, sub, unsub, ping and quit as the runtime does, and sends each device's Q line every 4 ms
 //! to the driver stream's subscribers: the state 9 ms old (the age the driver declares, extra_latency_ms), the
@@ -71,6 +72,10 @@ pub fn main(args: &[String]) -> ! {
 		.expect("the runtime port");
 	note(&mark, "serving", now());
 	println!("scripted runtime {pid} on 127.0.0.1:{port}{}", if restart { " (a restart)" } else { "" });
+	// whose it is, as the driver says it to a runtime it starts (--stop-with)
+	if let Some(owner) = args.iter().position(|a| a == "--stop-with").and_then(|i| args.get(i + 1)) {
+		println!("started for {owner}");
+	}
 	let started = now();
 	// the codenames this run hands out (a restart: the other way round)
 	let codename = |i: usize| format!("KN{}", if restart { DEVICES.len() - 1 - i } else { i });

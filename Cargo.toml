@@ -4,7 +4,7 @@ members = ["crates/*"]
 
 [workspace.package]
 # sally's one version: the runtime, the driver, the panel and the tools all report it
-version = "0.23.0"
+version = "0.26.0"
 edition = "2021"
 license = "MIT"
 publish = false

@@ -36,11 +36,11 @@ use sally_math::math3d::{compose, cross, inverse, len, norm, qangle, qconj, qmul
 use sally_math::printf::{bsprintf, BArg};
 
 use crate::body::{Body, Dash};
-use crate::cstdio::CFile;
 use crate::helpers::{expand_time, log, now_seconds, sin_cos, std_max, std_min, time_stamp, wall_seconds};
 use crate::net::{self, SockAddrIn, SOCKADDR_IN_LEN, SOCK_BAD};
 use crate::openvr::*;
 use crate::output::Shown;
+use crate::pose_file::PoseFile;
 use crate::settings::{g_opt, Options};
 use crate::toys::Kin;
 
@@ -376,7 +376,7 @@ const K_HEAD_FIX_M: f64 = 0.005;
 struct Frame {
 	last_fit: f64,
 	last_log: f64,
-	plog: Option<CFile>,
+	plog: Option<PoseFile>,
 	plog_failed: bool,
 	plog_flush: f64,
 }
@@ -395,6 +395,8 @@ pub struct PoseOverride {
 	seen: AtomicI32,
 	/// a lighthouse headset gets sally's pose (the panel's Headset tracking; with driver.hmd)
 	headset: AtomicBool,
+	/// the pose log is written (the panel's Pose log, over driver.pose_log_on; with a file named, driver.pose_log)
+	pose_log_on: AtomicBool,
 	hooked: AtomicI32,
 	fit_ok: AtomicBool,
 	orig: [AtomicUsize; K_VERSIONS],
@@ -454,6 +456,7 @@ impl PoseOverride {
 			inflight: AtomicI32::new(0),
 			seen: AtomicI32::new(0),
 			headset: AtomicBool::new(true),
+			pose_log_on: AtomicBool::new(true),
 			hooked: AtomicI32::new(0),
 			fit_ok: AtomicBool::new(false),
 			orig: [AtomicUsize::new(0), AtomicUsize::new(0), AtomicUsize::new(0)],
@@ -534,7 +537,9 @@ impl PoseOverride {
 		let o = g_opt();
 		self.active.store(true, SeqCst);
 		self.seen.store(if o.seen == b"valve" { 1 } else { 0 }, SeqCst);
-		self.headset.store(crate::user::get().headset_sally, SeqCst);
+		let user = crate::user::get();
+		self.headset.store(user.headset_sally, SeqCst);
+		self.pose_log_on.store(user.pose_log.unwrap_or(o.pose_log_on), SeqCst);
 		// outputs: Valve's poses + status to the panels
 		self.out.store(net::socket_udp(), SeqCst);
 		let ports: Vec<u8> = o.valve_udp.iter().map(|&c| if c == b',' || c == b';' { b' ' } else { c }).collect();
@@ -614,6 +619,10 @@ impl PoseOverride {
 		}
 		self.out.store(SOCK_BAD, SeqCst);
 		self.cmd.store(SOCK_BAD, SeqCst);
+		// the pose log's last rows: a packed one holds them until its next block
+		if let Some(plog) = self.frame().plog.as_mut() {
+			plog.flush();
+		}
 	}
 
 	/// OnPose: the hook, on whichever thread the reporting driver uses
@@ -897,7 +906,17 @@ impl PoseOverride {
 						Some(off) => compose(&d.head_f, off),
 						None => d.head_f,
 					};
-					let vv = qrot(d.to_frame.q, V3::new(p.vecVelocity[0], p.vecVelocity[1], p.vecVelocity[2]));
+					// Valve's velocity is its driver pose's origin's (the IMU's), sally's the shown point's: Valve's is
+					// carried to that point by the turn of the arm between the two (v + w x r, its body rate in the driver
+					// pose's own axes), as `valve_record` carries sally's the other way. A pose of Valve's without a
+					// velocity keeps none
+					let mut vv = qrot(d.to_frame.q, vel);
+					let origin = compose(&d.to_frame, &dp);
+					let rate = V3::new(p.vecAngularVelocity[0], p.vecAngularVelocity[1], p.vecAngularVelocity[2]);
+					let turn = cross(qrot(origin.q, rate), vh.p - origin.p);
+					if p.vecVelocity != [0.0; 3] && turn.x.is_finite() && turn.y.is_finite() && turn.z.is_finite() {
+						vv += turn;
+					}
 					for i in 0..3 {
 						out.vecPosition[i] = a * out.vecPosition[i] + (1.0 - a) * vh.p.get(i);
 						out.vecVelocity[i] = a * out.vecVelocity[i] + (1.0 - a) * vv.get(i);
@@ -1228,7 +1247,7 @@ impl PoseOverride {
 		let mut poses = [TrackedDevicePose_t::default(); k_unMaxTrackedDeviceCount as usize];
 		let mut ahead = [TrackedDevicePose_t::default(); k_unMaxTrackedDeviceCount as usize];
 		get_raw_tracked_device_poses(0.0, &mut poses);
-		let plog = !o.pose_log.is_empty();
+		let plog = !o.pose_log.is_empty() && self.pose_log_on.load(SeqCst);
 		if plog {
 			get_raw_tracked_device_poses(K_POSE_LOG_AHEAD as f32, &mut ahead);
 		}
@@ -1297,6 +1316,20 @@ impl PoseOverride {
 		// formatted and written outside the lock: Valve's pose threads wait for it (the flush is file I/O)
 		if plog {
 			self.pose_log(&o, now, &rows, &poses, &ahead);
+		} else if !o.pose_log.is_empty() {
+			self.pose_log_rest();
+		}
+	}
+
+	/// The pose log switched off while a session's file is open: what it holds goes out, so the file ends on a whole
+	/// row; switched on again in the session, the rows go on in the same file
+	fn pose_log_rest(&self) {
+		let mut f = self.frame();
+		if f.plog_flush != 0.0 {
+			f.plog_flush = 0.0;
+			if let Some(plog) = f.plog.as_mut() {
+				plog.flush();
+			}
 		}
 	}
 
@@ -1309,7 +1342,7 @@ impl PoseOverride {
 		let mut f = self.frame();
 		if f.plog.is_none() && !f.plog_failed {
 			let path = expand_time(o.pose_log.clone(), time_stamp);
-			f.plog = CFile::open(&path, c"wb");
+			f.plog = PoseFile::open(&path);
 			let Some(plog) = f.plog.as_mut() else {
 				f.plog_failed = true;
 				log("sally: pose log: cannot write %s\n", &[BArg::S(&path)]);
@@ -1426,7 +1459,7 @@ impl PoseOverride {
 					],
 				));
 			}
-			plog.putc(b'\n');
+			plog.write(b"\n");
 		}
 		if now - f.plog_flush > 1.0 {
 			f.plog_flush = now;
@@ -1672,6 +1705,14 @@ impl PoseOverride {
 					crate::user::set(|u| u.headset_sally = sally);
 					log("sally: the headset now gets %s's pose\n", &[BArg::S(if sally { b"sally" } else { b"Valve" })]);
 				}
+			} else if c == b"pose_log on" || c == b"pose_log off" {
+				// whether the pose log is written (the panel's Pose log): from this frame on, and kept for the sessions
+				// to come
+				let on = c == b"pose_log on";
+				if self.pose_log_on.swap(on, SeqCst) != on {
+					crate::user::set(|u| u.pose_log = Some(on));
+					log("sally: the pose log is %s\n", &[BArg::S(if on { b"on" } else { b"off" })]);
+				}
 			} else if f.len() == 2 && f[0] == b"keep" {
 				// how many sessions' recordings and logs stay (the panel's Recordings), from SteamVR's next start
 				let n = sally_math::c_atoi(f[1]).max(0);
@@ -1695,14 +1736,19 @@ impl PoseOverride {
 		let valve = st.devs.values().filter(|d| d.target && now - d.last_call < 1.0).count() as i32;
 		let ours = st.sally.values().filter(|s| s.have && !s.lost).count() as i32;
 		// the panel's choices as they stand: whose pose a lighthouse headset gets (and whether there is one), how many
-		// sessions' files stay
+		// sessions' files stay, whether the pose log is written (none: the settings name no file for it)
 		let o = g_opt();
 		let headset = o.hmd && self.headset.load(SeqCst);
 		let lighthouse_headset = st.devs.values().any(|d| d.target && d.hmd);
 		let keep = crate::user::get().keep_sessions.unwrap_or(o.keep_sessions);
+		let pose_log: &[u8] = match (o.pose_log.is_empty(), self.pose_log_on.load(SeqCst)) {
+			(true, _) => b"none",
+			(false, true) => b"on",
+			(false, false) => b"off",
+		};
 		let mut line = bsprintf(
 			"C seen %s fit %d median_mm %.1f pairs %d hooks %d valve_devices %d sally_devices %d headset %s \
-			 lighthouse_headset %d keep_sessions %d\n",
+			 lighthouse_headset %d keep_sessions %d pose_log %s\n",
 			&[
 				BArg::S(if self.seen() == 0 { b"sally" } else { b"valve" }),
 				BArg::I(self.fit_ok() as i64),
@@ -1714,6 +1760,7 @@ impl PoseOverride {
 				BArg::S(if headset { b"sally" } else { b"valve" }),
 				BArg::I(lighthouse_headset as i64),
 				BArg::I(keep as i64),
+				BArg::S(pose_log),
 			],
 		);
 		line.truncate(255);
@@ -2838,6 +2885,37 @@ mod tests {
 		po.lock().devs.get_mut(&3).unwrap().blend = 0.0;
 		let (_, replace, _, record) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.008).unwrap();
 		assert!(!replace && record.is_none());
+	}
+
+	/// A switch between the two is shown as the device moves: half way through the blend, with sally's pose and Valve's
+	/// of the same turning device, SteamVR gets that head, turning and moving as both say. Valve's velocity is its
+	/// IMU's, 159 mm from a controller's head: mixed in as the head's, the head was shown up to 0.2 m/s off its own
+	#[test]
+	fn mid_blend_the_head_moves_as_both_poses_say() {
+		let now = 100.0;
+		let dfh = controller_dfh();
+		let head = head_record();
+		// Valve's pose of it: the same head on Valve's record
+		let mut p = head;
+		valve_record(&mut p, &dfh);
+		let po = bench(3, DONGLE, now);
+		po.lock().sally.get_mut(SERIAL).unwrap().pose = head;
+		po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now).unwrap();
+		{
+			let mut st = po.lock();
+			st.sally.get_mut(SERIAL).unwrap().t_recv = now + 0.004;
+			let d = st.devs.get_mut(&3).unwrap();
+			(d.blend, d.blend_t) = (0.5, now + 0.004);
+		}
+		let (mut out, replace, _, record) = po.on_pose_locked(0, std::ptr::null_mut(), 3, &p, now + 0.004).unwrap();
+		assert!(replace && po.lock().devs[&3].blend == 0.5);
+		valve_record(&mut out, &record.unwrap());
+		assert!(near(&head_of(&out), &head_of(&head), 1e-12, 1e-12));
+		let qd = Q4::new(out.qRotation.w, out.qRotation.x, out.qRotation.y, out.qRotation.z);
+		let w = V3::new(out.vecAngularVelocity[0], out.vecAngularVelocity[1], out.vecAngularVelocity[2]);
+		let head_v =
+			V3::new(out.vecVelocity[0], out.vecVelocity[1], out.vecVelocity[2]) + cross(qrot(qd, w), qrot(qd, dfh.p));
+		assert!(len(head_v - V3::new(0.4, -0.2, 0.7)) < 1e-12, "{head_v:?}");
 	}
 
 	#[test]

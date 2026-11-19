@@ -5,10 +5,12 @@
 *.rec
 *.rec.gz
 *.hidtap
+*.hidtapz
 *.pcap
 *.pcap.gz
 *.log
 *.csv
+*.csvz
 
 # editors
 .idea

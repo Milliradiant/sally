@@ -15,9 +15,9 @@
 
 use std::collections::HashMap;
 
-use super::coder::{Io, Number, Prob, Symbol};
 use super::imu::{Imu, ImuModels};
 use super::light::{apart, Light, LightModels};
+use sally_pack::coder::{Io, Number, Prob, Symbol};
 
 /// The longest report a line may carry (`line::MAX_REPORT`)
 pub const MAX_REPORT: usize = 1024;

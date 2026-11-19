@@ -21,15 +21,6 @@ use crate::relocate::pose_gap;
 use crate::text::{cut, info, warn};
 use sally_math::scanf::{c_str, fgets_lines, sscanf, Value};
 
-/// A text file's bytes as fprintf to a file opened with "w" writes them: LF becomes CR LF on Windows (text mode)
-pub fn text_mode_out(t: &str) -> String {
-	if cfg!(windows) {
-		t.replace('\n', "\r\n")
-	} else {
-		t.to_string()
-	}
-}
-
 /// The doubles of a sscanf result from `from` on
 fn doubles<const N: usize>(v: &[Value], from: usize) -> [f64; N] {
 	let mut out = [0.0; N];
@@ -294,7 +285,7 @@ impl MapSolve {
 		}
 		let written = {
 			use std::io::Write;
-			f.write_all(text_mode_out(&t).as_bytes()).and_then(|()| f.sync_all())
+			f.write_all(&sally_math::textmode::file(t.as_bytes())).and_then(|()| f.sync_all())
 		};
 		drop(f);
 		if written.is_err() {

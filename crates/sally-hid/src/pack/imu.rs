@@ -3,7 +3,7 @@
 //! device is still, more as it moves. The filter is integers only, so the packer and the unpacker compute the same
 //! prediction on any machine.
 
-use super::coder::{Io, Number};
+use sally_pack::coder::{Io, Number};
 
 /// How many past changes the filter weighs
 const ORDER: usize = 4;

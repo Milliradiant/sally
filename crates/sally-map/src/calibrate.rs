@@ -1125,7 +1125,7 @@ pub fn calibrate(
 			.map(|b| format!("ch {} {}", b.channel, links[a.lh * MS_MAXLH + b.lh]))
 			.collect();
 		lines.push(format!(
-			"ch {} ({:08x}): at {:+.3} {:+.3} {:+.3} m, {} hits, residual median {:.3} mrad; snapshots shared with {}",
+			"ch {} (LHB-{:08X}): at {:+.3} {:+.3} {:+.3} m, {} hits, residual median {:.3} mrad; snapshots shared with {}",
 			a.channel,
 			a.id,
 			a.pose.pos[0],

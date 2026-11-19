@@ -22,7 +22,7 @@ use std::collections::{BTreeSet, HashMap};
 use sally_lighthouse::gen2;
 use sally_lighthouse::ootx::{OotxDecoder, OotxEvent};
 
-use crate::zip::crc32;
+use sally_math::crc::crc32;
 
 /// The bit of a sync's entry that is the station's data bit, and the byte and mask it is in the entry's four
 pub const DATA_BIT_BYTE: usize = 3;

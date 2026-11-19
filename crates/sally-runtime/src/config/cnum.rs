@@ -218,57 +218,7 @@ pub(crate) fn pad(out: &mut Vec<u8>, text: &[u8], width: usize) {
 mod tests {
 	use super::*;
 
-	fn d(s: &str) -> (u64, usize) {
-		let (v, n) = strtod(s.as_bytes());
-		(v.to_bits(), n)
-	}
-
-	fn f(s: &str) -> (u32, usize) {
-		let (v, n) = strtof(s.as_bytes());
-		(v.to_bits(), n)
-	}
-
 	// Every expected value below is glibc 2.39's, printed by a C program calling these functions on these strings
-	#[test]
-	fn strtod_reads_what_glibc_reads() {
-		assert_eq!(d("  -1.5e3x"), ((-1500.0f64).to_bits(), 8));
-		assert_eq!(d("0x"), (0, 1));
-		assert_eq!(d("-0x"), ((-0.0f64).to_bits(), 2));
-		assert_eq!(d("0x1p3"), (8.0f64.to_bits(), 5));
-		assert_eq!(d("0x1p"), (1.0f64.to_bits(), 3));
-		assert_eq!(d("0x.8"), (0.5f64.to_bits(), 4));
-		assert_eq!(d("0x.p1"), (0, 1));
-		assert_eq!(d("1e"), (1.0f64.to_bits(), 1));
-		assert_eq!(d("1e+"), (1.0f64.to_bits(), 1));
-		assert_eq!(d(".5"), (0.5f64.to_bits(), 2));
-		assert_eq!(d("."), (0, 0));
-		assert_eq!(d("-"), (0, 0));
-		assert_eq!(d("+inf"), (f64::INFINITY.to_bits(), 4));
-		assert_eq!(d("-Infinity!"), (f64::NEG_INFINITY.to_bits(), 9));
-		assert_eq!(d("infinit"), (f64::INFINITY.to_bits(), 3));
-		assert_eq!(d("nan"), (0x7ff8_0000_0000_0000, 3));
-		assert_eq!(d("-nan"), (0xfff8_0000_0000_0000, 4));
-		assert_eq!(d("nan(0x123)"), (0x7ff8_0000_0000_0123, 10));
-		assert_eq!(d("nan(abc)"), (0x7ff8_0000_0000_0000, 8));
-		assert_eq!(d("nan(12"), (0x7ff8_0000_0000_0000, 3));
-		assert_eq!(d("1e99999"), (f64::INFINITY.to_bits(), 7));
-		assert_eq!(d("4.9e-324"), (1, 8));
-		assert_eq!(d("2.4703282292062328e-324"), (1, 23));
-		assert_eq!(d("2.4703282292062327e-324"), (0, 23));
-		assert_eq!(d("0x1.00000000000008p0"), (1.0f64.to_bits(), 20));
-		assert_eq!(d("0x1.000000000000080001p0"), (0x3ff0_0000_0000_0001, 24));
-	}
-
-	#[test]
-	fn strtof_rounds_once_from_the_text() {
-		// 1 + 2^-24 + 2^-60: halfway between two floats only after rounding to a double first
-		assert_eq!(f("1.000000059604644861"), (0x3f80_0001, 20));
-		assert_eq!(f("2.341761589050"), (0x4015_df6c, 14));
-		assert_eq!(f("-nan(0x7fffff)"), (0xffff_ffff, 14));
-		assert_eq!(f("3.4028236e38"), (0x7f80_0000, 12));
-		assert_eq!(to_double(f32::from_bits(0xffff_ffff)).to_bits(), 0xffff_ffff_e000_0000);
-	}
-
 	#[test]
 	fn integers_read_what_glibc_reads() {
 		assert_eq!(strtoul(b" +12", 10), (12, 4));
@@ -295,6 +245,7 @@ mod tests {
 
 	#[test]
 	fn casts_follow_the_x86_instructions() {
+		assert_eq!(to_double(f32::from_bits(0xffff_ffff)).to_bits(), 0xffff_ffff_e000_0000);
 		assert_eq!(uint32_from_roundf(-1.0), 0xffff_ffff);
 		assert_eq!(uint32_from_roundf(2.5), 3);
 		assert_eq!(uint32_from_roundf(4294967296.0), 0);

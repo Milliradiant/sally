@@ -24,13 +24,7 @@ impl<W: Write> TextOut<W> {
 		if !self.crlf {
 			return self.out.write_all(text.as_bytes());
 		}
-		let mut rest = text.as_bytes();
-		while let Some(at) = rest.iter().position(|&c| c == b'\n') {
-			self.out.write_all(&rest[..at])?;
-			self.out.write_all(b"\r\n")?;
-			rest = &rest[at + 1..];
-		}
-		self.out.write_all(rest)
+		self.out.write_all(&sally_math::textmode::write(text.as_bytes()))
 	}
 
 	pub fn flush(&mut self) -> std::io::Result<()> {
@@ -56,19 +50,4 @@ pub fn err(text: &str) {
 	let mut o = TextOut::new(std::io::stderr().lock());
 	let _ = o.put(text);
 	let _ = o.flush();
-}
-
-#[cfg(test)]
-mod tests {
-	use super::*;
-
-	#[test]
-	fn the_text_mode_writes_newlines_as_cr_lf() {
-		let mut t = TextOut::with_crlf(Vec::new(), true);
-		t.put("a\nb\r\n\nc").unwrap();
-		assert_eq!(t.into_inner().unwrap(), b"a\r\nb\r\r\n\r\nc");
-		let mut t = TextOut::with_crlf(Vec::new(), false);
-		t.put("a\nb").unwrap();
-		assert_eq!(t.into_inner().unwrap(), b"a\nb");
-	}
 }

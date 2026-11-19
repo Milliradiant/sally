@@ -11,6 +11,7 @@
 //!   world-from-driver moved), and from R + 3.5 goes quiet on a third for 3 s
 //! - R + 8 "seen valve", R + 9 a command the driver does not know, R + 9.5 "refit" (the panel's re-align), R + 10.5
 //!   "seen sally"
+//! - R + 10.8 "pose_log off", R + 12.3 "pose_log on" (the panel's Pose log)
 //! - R + 12: Valve's world moves: every device's world-from-driver, their poses in its driver space as they were
 //! - R + 13: the runtime killed; it comes back (started again by the test, or by the driver), taking 3 s to come up,
 //!   with two devices' configs on each other's dongles until the driver's `pair` puts them right
@@ -20,6 +21,7 @@
 //! the session time it came at, for the checks.
 
 use std::ffi::{c_char, c_int, c_void, CStr, CString};
+use std::io::Read;
 use std::net::UdpSocket;
 use std::path::{Path, PathBuf};
 use std::process::{Child, Command, Stdio};
@@ -62,6 +64,9 @@ pub struct Schedule {
 	pub unknown_command: f64,
 	pub refit: f64,
 	pub seen_sally: f64,
+	/// the pose log switched off, and on again
+	pub pose_log_off: f64,
+	pub pose_log_on: f64,
 	/// Valve's world moves (world_from_driver_moved from then on)
 	pub world_move: f64,
 	pub kill: f64,
@@ -85,6 +90,8 @@ impl Schedule {
 			unknown_command: r + 9.0,
 			refit: r + 9.5,
 			seen_sally: r + 10.5,
+			pose_log_off: r + 10.8,
+			pose_log_on: r + 12.3,
 			world_move: r + 12.0,
 			kill: r + 13.0,
 			booted_until: r + 2.0,
@@ -166,6 +173,9 @@ pub struct Record {
 	/// it
 	pub output_reply: Vec<String>,
 	pub output_file: String,
+	/// the pose log's switch: (command, reply), and sally_user.txt after them
+	pub pose_log_replies: Vec<(String, String)>,
+	pub user_file: String,
 	pub schedule: Option<Schedule>,
 	/// when the runtime that came back after the kill was up
 	pub back: Option<f64>,
@@ -178,7 +188,10 @@ pub struct Record {
 	pub other_hook: Option<usize>,
 	/// a pose through the hooks after Cleanup: (sent, what vrserver got)
 	pub after_cleanup: Option<(DriverPose_t, Option<DriverPose_t>)>,
+	/// the pose log as its text (the file read back, packed in the session whose settings name it so), and the
+	/// file's size
 	pub pose_log: Option<String>,
+	pub pose_log_bytes: u64,
 	/// runtimes still running after the session
 	pub left_over: Vec<u32>,
 }
@@ -529,7 +542,11 @@ pub fn run(config: Config) -> Record {
 		"driver.lost_timeout_ms=150".into(),
 		format!("driver.valve_udp={panel_port}"),
 		format!("driver.cmd_port={cmd_port}"),
-		format!("driver.pose_log={}", dir.join("poses_{time}.csv").display()),
+		// packed, as the live settings have it, in the session with them; as text in the other
+		format!(
+			"driver.pose_log={}",
+			dir.join(if config.driver_starts_runtime { "poses_{time}.csvz" } else { "poses_{time}.csv" }).display()
+		),
 	];
 	if config.carry {
 		settings.push("driver.carry=1".into());
@@ -581,6 +598,7 @@ pub fn run(config: Config) -> Record {
 	client.set_read_timeout(Some(Duration::from_secs(1))).unwrap();
 	let mut replies = Vec::new();
 	let mut output_reply = Vec::new();
+	let mut pose_log_replies = Vec::new();
 	let mut back = None;
 	std::thread::scope(|s| {
 		s.spawn(|| {
@@ -613,6 +631,10 @@ pub fn run(config: Config) -> Record {
 			// a toy switched on (the headset's, which the toys leave alone: the poses stay as they are), to be off
 			// again after Cleanup
 			command_lines(&client, cmd_port, "output headset rail 1");
+			for (t, c) in [(plan.pose_log_off, "pose_log off"), (plan.pose_log_on, "pose_log on")] {
+				sleep_until(&now, t);
+				pose_log_replies.push((c.to_string(), command(&client, cmd_port, c)));
+			}
 			sleep_until(&now, plan.kill);
 			match child.as_mut() {
 				Some((c, _)) => {
@@ -654,11 +676,13 @@ pub fn run(config: Config) -> Record {
 	// the pose log is the C library's stream, never closed: what it holds goes out as at the process's exit
 	// SAFETY: fflush(NULL) flushes every output stream
 	unsafe { fflush(std::ptr::null_mut()) };
-	let pose_log = std::fs::read_dir(&dir)
-		.unwrap()
-		.flatten()
-		.find(|e| e.file_name().to_string_lossy().starts_with("poses_"))
-		.and_then(|e| std::fs::read_to_string(e.path()).ok());
+	let pose_file =
+		std::fs::read_dir(&dir).unwrap().flatten().find(|e| e.file_name().to_string_lossy().starts_with("poses_"));
+	let pose_log_bytes = pose_file.as_ref().and_then(|e| e.metadata().ok()).map_or(0, |m| m.len());
+	let pose_log = pose_file.and_then(|e| {
+		let mut text = String::new();
+		sally_pack::table::open(&e.path()).and_then(|mut log| log.read_to_string(&mut text)).ok().map(|_| text)
+	});
 	// the runtime started by hand stays until it has read what Cleanup sent it (it unsubscribes), then goes
 	if let Some((mut c, console)) = child {
 		wait_for(2.0, || std::fs::read_to_string(&console).is_ok_and(|t| t.contains("got unsub")));
@@ -692,6 +716,8 @@ pub fn run(config: Config) -> Record {
 		replies,
 		output_reply,
 		output_file: std::fs::read_to_string(drv.join("bin/linux64/sally_output.txt")).unwrap_or_default(),
+		pose_log_replies,
+		user_file: std::fs::read_to_string(drv.join("bin/linux64/sally_user.txt")).unwrap_or_default(),
 		schedule: schedule.into_inner().unwrap(),
 		back,
 		end,
@@ -701,6 +727,7 @@ pub fn run(config: Config) -> Record {
 		other_hook,
 		after_cleanup,
 		pose_log,
+		pose_log_bytes,
 		left_over,
 	}
 }

@@ -9,6 +9,7 @@ publish.workspace = true
 [dependencies]
 miniz_oxide = "0.9"
 sally-hid = { path = "../sally-hid" }
+sally-pack = { path = "../sally-pack" }
 sally-lighthouse = { path = "../sally-lighthouse" }
 sally-map = { path = "../sally-map" }
 sally-math = { path = "../sally-math" }

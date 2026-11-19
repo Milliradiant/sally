@@ -165,12 +165,14 @@ pub struct ValveCompare {
 	pub hook_fit_mm: f64,
 	/// the rest of the driver's status (its C line), as it last said: how many of SteamVR's pose interfaces it could
 	/// take (0: SteamVR is shown Valve's tracking whatever is chosen), the devices sally has a pose for, whose pose a
-	/// lighthouse headset gets and whether there is one, how many sessions' files stay
+	/// lighthouse headset gets and whether there is one, how many sessions' files stay, whether the pose log is
+	/// written (None: the driver does not say, or its settings name no file for one)
 	pub drv_hooks: Option<i32>,
 	pub drv_sally_devices: i32,
 	pub drv_headset_sally: Option<bool>,
 	pub drv_lighthouse_headset: bool,
 	pub drv_keep_sessions: Option<i32>,
+	pub drv_pose_log: Option<bool>,
 	/// the driver's last F line: its fit and frame
 	pub drv_fit: Option<DriverFit>,
 	/// the comparison goes through the driver's fit (`fit` is the driver's, turned into the panel's terms): in the
@@ -379,6 +381,7 @@ impl ValveCompare {
 			drv_headset_sally: None,
 			drv_lighthouse_headset: false,
 			drv_keep_sessions: None,
+			drv_pose_log: None,
 			drv_fit: None,
 			fit_from_driver: false,
 			driver_refitting: false,
@@ -950,6 +953,11 @@ impl ValveCompare {
 				self.drv_headset_sally = word("headset").map(|v| v == "sally");
 				self.drv_lighthouse_headset = number("lighthouse_headset") == Some(1);
 				self.drv_keep_sessions = number("keep_sessions");
+				self.drv_pose_log = match word("pose_log") {
+					Some("on") => Some(true),
+					Some("off") => Some(false),
+					_ => None,
+				};
 			}
 		}
 		// a serial unheard for K_DRIVER_FORGET_S goes (its pose is stale after 0.1 s already)

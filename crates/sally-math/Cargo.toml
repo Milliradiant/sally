@@ -1,6 +1,6 @@
 [package]
 name = "sally-math"
-description = "The linear algebra sally computes with (linmath, as the C had it) and the C library's math where its exact behaviour matters"
+description = "The linear algebra sally computes with (linmath, as the C had it), the C library's math, text and text mode where their exact behaviour matters, and the checksums more than one crate needs (CRC-32, MD5)"
 version.workspace = true
 edition.workspace = true
 license.workspace = true

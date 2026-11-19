@@ -149,7 +149,7 @@ impl StationCorrections {
 		if !fcal_same(&cur, &fref) {
 			warn(
 				host,
-				"station-fcal: LH %d (%08x): its factory calibration is not the one the correction was solved against; \
+				"station-fcal: LH %d (LHB-%08X): its factory calibration is not the one the correction was solved against; \
 				 left uncorrected",
 				&[Arg::I(l as i64), Arg::U(id as u64)],
 			);
@@ -162,7 +162,7 @@ impl StationCorrections {
 		let state = if self.fc_state[l] != 0 { "re-applied after an OOTX packet" } else { "corrected" };
 		info(
 			host,
-			"station-fcal: LH %d (ch %d, %08x) %s: tilt %+.2f/%+.2f curve %+.2f/%+.2f gibmag %+.2f/%+.2f phase %+.2f/%+.2f mrad",
+			"station-fcal: LH %d (ch %d, LHB-%08X) %s: tilt %+.2f/%+.2f curve %+.2f/%+.2f gibmag %+.2f/%+.2f phase %+.2f/%+.2f mrad",
 			&[
 				Arg::I(l as i64),
 				Arg::I(mode as i64),

@@ -57,7 +57,7 @@ All of sally is Rust, one crate each under `crates/`:
 
 | program | crate | what |
 |---|---|---|
-| `sally` | `sally` (with `sally-runtime`, `sally-track`, `sally-hid`, `sally-lighthouse`, `sally-map`, `sally-math`, `sally-json`, `sally-os`) | the runtime (`sally run`, which the SteamVR driver starts), `replay`, `calibrate`, `ctl` (the runtime's protocol), `setup` / `off` / `stop` / `copy-log` (SteamVR set up for sally and back), `convert` (USBPcap captures and openhouse recordings to tap recordings), `probe` (the dongles checked, their configs fetched) |
+| `sally` | `sally` (with `sally-runtime`, `sally-track`, `sally-hid`, `sally-pack`, `sally-lighthouse`, `sally-map`, `sally-math`, `sally-json`, `sally-os`) | the runtime (`sally run`, which the SteamVR driver starts), `replay`, `calibrate`, `ctl` (the runtime's protocol), `setup` / `off` / `stop` / `copy-log` (SteamVR set up for sally and back), `convert` (USBPcap captures and openhouse recordings to tap recordings), `probe` (the dongles checked, their configs fetched) |
 | `driver_sally.dll` | `sally-driver` | the SteamVR driver: sally's poses in place of Valve's, Valve's as the fallback |
 | `sally-panel`, `sally-poses` | `sally-panel` | the panel and its SteamVR overlay; every SteamVR device's pose to a CSV |
 | `sally-check` | `sally-check` | the check (what a session's devices sent, read per device for where trouble comes from) and the share (a session as one file to send, with stand-ins for every serial): a library the panel's Check tab runs; the program checks a session that came back |
@@ -114,6 +114,12 @@ ones, a sensor's light a rotation after its last) and writes only what could not
 range coder. A recording is written packed when the file it is given (`--hidtap-record`) ends in `.hidtapz`, which is
 the name `sally setup` gives a session's, in blocks of half a second, so one being written, or one whose writer was
 stopped, reads up to its last whole block. Whether a recording is packed is read off its first bytes, not its name.
+A packed recording may come from somebody else (a check's share holds one), so what it can ask of the reader is
+bounded (0.26.0): a block is unpacked to 80 MB of text at most and names a device in at most 255 bytes, and a block
+made up to hold more is an error where it stands, the blocks before it read. The writer ends a block at 16 MB of
+text; a recording's own blocks are 8192 lines of a few hundred bytes. (The coder learns as it goes, so text that
+repeats packs to next to nothing: a file of 646 KB that unpacked to 360 MB in one block was made with the packer
+itself.)
 
 **Without what nothing reads** (`crates/sally-hid/src/strip.rs`). A radio dongle's report is one or two packets in
 slots of 29 bytes; after a packet the dongle puts four bytes of its own, which follow from nothing, and the rest of
@@ -132,8 +138,8 @@ level. About one packet in 20,000 is such; the runtime stops the reading there, 
 to then, and says how many there were when the session ends. 1 only counts them, 0 reads on as libsurvive does.
 
 ```
-sally pack [--strip] [--to <folder>] [--replace] [--force] <recording>...    x.hidtap -> x.hidtapz
-sally unpack [--to <folder>] [--replace] [--force] <recording>...            x.hidtapz -> x.hidtap
+sally pack [--strip] [--to <folder>] [--replace] [--force] <file>...    x.hidtap -> x.hidtapz, x.csv -> x.csvz
+sally unpack [--to <folder>] [--replace] [--force] <file>...            x.hidtapz -> x.hidtap, x.csvz -> x.csv
 ```
 
 The new file goes beside the old one or into `--to`'s folder, and is read back and compared before it counts.
@@ -141,6 +147,29 @@ The new file goes beside the old one or into `--to`'s folder, and is read back a
 recording or a packed one (with `--replace`, in its place). The packed format is at its second version (the zeros
 after a packet said in a bit); the first is still read, and a build from before the second reads the first alone.
 A build from before the packed form reads text alone: `sally unpack` gives it that.
+
+## Pose logs
+
+With the panel's Pose log switched on, the driver writes a row a frame for each device it has a pose for: what it
+sent SteamVR, what SteamVR made of it now and 40 ms ahead, and Valve's own pose of the device at the same instant,
+some ninety numbers. The panel's Replay tab shows Valve's tracking and what SteamVR got from it. As text (a csv) that
+is 750 bytes a row, about 2 GB an hour with a full set of trackers.
+
+**Packed** (`crates/sally-pack/src/table.rs`, where the format is written down), the same log is about an
+eighteenth of that, some 100 MB an hour, and unpacks to the text's own bytes: nothing is left out or rounded. A
+number written with a fixed count of decimals is a whole number of its last digit, and the packer writes how far it
+is from the best of four guesses: the device's last value, that value carried on by its last step, the value in the
+line before (a frame's time is the same for each of its devices), and what the row's own numbers make it, where the
+column names say they belong together (the last number of a unit quaternion or of a rotation matrix's row, and a
+rotation matrix's third row, which is the cross product of its first two). Which guess is used is not written:
+both sides keep count of how each has done for that column of that device. It goes through the same coder as a
+recording (`crates/sally-pack/src/coder.rs`), in blocks of a second, so a log being written, or one whose writer
+was stopped, reads up to its last whole block. The driver writes the log packed when the file it is given
+(`driver.pose_log`) ends in `.csvz`, which is the name `sally setup` gives a session's; the panel reads either
+form, known by the file's first bytes, and `sally unpack` gives the csv. Unlike a packed recording's, a packed pose
+log's block has no bound on what it unpacks to: a pose log is written and read on the one PC, and none comes from
+somebody else (a check's share holds what SteamVR showed as plain text). One that does would need the recording's
+bounds first.
 
 ## Upstream
 

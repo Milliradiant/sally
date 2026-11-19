@@ -8,22 +8,7 @@ use std::fs;
 use std::io::{self, Write};
 use std::path::Path;
 
-/// CRC-32 (IEEE), as zip has it
-pub(crate) fn crc32(data: &[u8]) -> u32 {
-	static TABLE: std::sync::OnceLock<[u32; 256]> = std::sync::OnceLock::new();
-	let t = TABLE.get_or_init(|| {
-		let mut t = [0u32; 256];
-		for (i, e) in t.iter_mut().enumerate() {
-			let mut c = i as u32;
-			for _ in 0..8 {
-				c = if c & 1 != 0 { 0xEDB8_8320 ^ (c >> 1) } else { c >> 1 };
-			}
-			*e = c;
-		}
-		t
-	});
-	!data.iter().fold(!0u32, |c, &b| t[((c ^ b as u32) & 0xFF) as usize] ^ (c >> 8))
-}
+use sally_math::crc::crc32;
 
 /// The DOS date and time of a zip entry, from the system clock (UTC: zip has no time zone)
 fn dos_time() -> (u16, u16) {
@@ -180,11 +165,6 @@ fn unzip_within(zip: &Path, dir: &Path, max_file: usize, max_total: usize) -> io
 #[cfg(test)]
 mod tests {
 	use super::*;
-
-	#[test]
-	fn crc_is_zips() {
-		assert_eq!(crc32(b"123456789"), 0xCBF4_3926);
-	}
 
 	#[test]
 	fn a_folder_zips_and_unzips() {

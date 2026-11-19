@@ -31,7 +31,8 @@ use crate::valve::ValveDevice;
 
 /// The longest check (s): it stops by itself then
 pub const MAX_S: f64 = 600.0;
-/// A session's recording counts as being written when its last report is no older than this (us)
+/// Without the runtime's word a session's recording counts as being written when its last report is no older than
+/// this (us)
 const LIVE_US: u64 = 10_000_000;
 /// How long after Stop the recording is read: the runtime writes it in blocks of half a second
 const SETTLE: std::time::Duration = std::time::Duration::from_millis(1500);
@@ -117,8 +118,10 @@ pub enum Check {
 	Done(Result<Shared, String>),
 }
 
-/// The session being recorded: the newest recording in the logs folder whose last report is from just now
-fn live_session(logs: &Path) -> Option<PathBuf> {
+/// The session being recorded: the newest recording in the logs folder, when the runtime says it is recording
+/// (`recording`) or the file's last report is from just now. With no device sending, the recording stands still (a
+/// session's may have no report at all), and only the runtime's word says it is the one being written
+fn live_session(logs: &Path, recording: bool) -> Option<PathBuf> {
 	let now = sally_os::absolute_time_us();
 	let mut taps: Vec<PathBuf> = std::fs::read_dir(logs)
 		.ok()?
@@ -132,6 +135,9 @@ fn live_session(logs: &Path) -> Option<PathBuf> {
 		.collect();
 	taps.sort();
 	let newest = taps.pop()?;
+	if recording {
+		return Some(newest);
+	}
 	let (_, last) = crate::replay::tap_span(&newest)?;
 	let last_us = (last * 1e6) as u64;
 	(last_us <= now.saturating_add(LIVE_US) && now.saturating_sub(last_us) <= LIVE_US).then_some(newest)
@@ -172,10 +178,15 @@ impl Check {
 		}
 	}
 
-	/// Start: Err says why there is nothing to check (no session being recorded)
-	pub fn start(paths: &Paths, devices: Vec<SteamDevice>, now: f64) -> Result<(Recording, PoseLog), String> {
-		let session = live_session(&paths.logs)
-			.ok_or("sally is not recording a session right now. It records while SteamVR runs with sally.")?;
+	/// Start: Err says why there is nothing to check (no session being recorded). `recording`: the runtime answers and
+	/// says it is a live one with a recording
+	pub fn start(
+		paths: &Paths, devices: Vec<SteamDevice>, recording: bool, now: f64,
+	) -> Result<(Recording, PoseLog), String> {
+		let session = live_session(&paths.logs, recording).ok_or_else(|| match recording {
+			true => format!("sally's recording of this session is not in {}.", paths.logs.display()),
+			false => "sally is not recording a session right now. It records while SteamVR runs with sally.".into(),
+		})?;
 		std::fs::create_dir_all(&paths.checks).map_err(|e| format!("cannot make {}: {e}", paths.checks.display()))?;
 		// what a check that was cut short left behind (the panel closed while it was being made)
 		for e in std::fs::read_dir(&paths.checks).into_iter().flatten().flatten() {
@@ -295,6 +306,32 @@ mod tests {
 			all,
 			[d("LHR-1", "TrackerRole_Chest", "D1"), d("LHR-2", "TrackerRole_Waist", "D2"), d("LHR-3", "", "D3")]
 		);
+	}
+
+	/// A check starts on a session no device is sending in: the runtime's word makes the newest recording the
+	/// session's, where the recording alone (no report, or none for a while) does not
+	#[test]
+	fn a_session_no_device_sends_in_is_the_runtimes_to_name() {
+		let dir = std::env::temp_dir().join(format!("sally-panel-check-{}", std::process::id()));
+		let _ = std::fs::remove_dir_all(&dir);
+		std::fs::create_dir_all(&dir).unwrap();
+		assert_eq!(live_session(&dir, true), None);
+		// an older session with reports, and the one being written: its header alone
+		let old = sally_os::absolute_time_us() - 60_000_000;
+		std::fs::write(dir.join("sallytap_20261118_120000.hidtap"), format!("R {old} 0 2 00\nR {} 0 2 00\n", old + 9))
+			.unwrap();
+		let live = dir.join("sallytap_20261118_130000.hidtapz");
+		std::fs::write(&live, sally_hid::pack::Packer::new().header()).unwrap();
+		std::fs::write(dir.join("sallytap_20261118_130000_solver.txt"), "").unwrap();
+		assert_eq!(live_session(&dir, false), None);
+		assert_eq!(live_session(&dir, true), Some(live.clone()));
+		// a report from just now says so by itself
+		std::fs::remove_file(&live).unwrap();
+		let now = sally_os::absolute_time_us();
+		std::fs::write(dir.join("sallytap_20261118_130000.hidtap"), format!("R {now} 0 2 00\nR {now} 0 2 00\n"))
+			.unwrap();
+		assert_eq!(live_session(&dir, false), Some(dir.join("sallytap_20261118_130000.hidtap")));
+		let _ = std::fs::remove_dir_all(&dir);
 	}
 
 	#[test]

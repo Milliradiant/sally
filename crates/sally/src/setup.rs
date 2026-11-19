@@ -74,8 +74,9 @@ struct Layout {
 	panel: &'static str,
 	/// copies of SteamVR's settings from before setup changed them
 	backups: &'static str,
-	/// whether each session writes a pose log (every pose the driver saw and sent: large, for looking into the
-	/// tracking)
+	/// whether each session writes a pose log unless the panel's Pose log says otherwise (`driver.pose_log_on`; every
+	/// pose the driver saw and sent, which the panel's Replay shows Valve's tracking from: packed, about 100 MB an
+	/// hour of a full set of trackers)
 	pose_log: bool,
 	/// how many of each session file a new install keeps (`driver.keep_sessions`; the driver deletes the older ones
 	/// as SteamVR starts): a session leaves a recording and the runtime's log in logs\, and nothing else ever removes
@@ -213,9 +214,15 @@ fn driver_settings(home: &Home, stamp: &str, kept: &[String], keep_sessions: i32
 	let mut lines: Vec<String> =
 		vec![format!("# written by sally setup {stamp}; setting sally up again writes it again")];
 	lines.extend(DRIVER_OPTIONS.iter().map(|s| s.to_string()));
-	if l.pose_log {
-		lines.push(format!("driver.pose_log={}", home.text("logs\\sally_poses_{time}.csv")));
-	}
+	lines.push(
+		"# the pose log (what was sent, what SteamVR got and Valve's own pose, per frame: the panel's Replay".into(),
+	);
+	lines.push(
+		"# compares them; packed, as its name's end says: `sally unpack` gives the csv) and whether a session".into(),
+	);
+	lines.push("# writes it. The panel's choice (Settings, Pose log) stands over the second".into());
+	lines.push(format!("driver.pose_log={}", home.text("logs\\sally_poses_{time}.csvz")));
+	lines.push(format!("driver.pose_log_on={}", l.pose_log as i32));
 	lines.push(
 		"# the newest this many of each session file in logs\\ are kept (the recording, the runtime's log, the".into(),
 	);
@@ -268,7 +275,15 @@ fn written_options() -> Vec<&'static str> {
 		.filter_map(|l| l.strip_prefix("driver."))
 		.map(|l| l.split('=').next().unwrap_or(l).trim())
 		.collect();
-	names.extend(["pose_log", "keep_sessions", "panel_exe", "runtime_exe", "runtime_cwd", "runtime_log"]);
+	names.extend([
+		"pose_log",
+		"pose_log_on",
+		"keep_sessions",
+		"panel_exe",
+		"runtime_exe",
+		"runtime_cwd",
+		"runtime_log",
+	]);
 	// an option setup once wrote, replaced by the output layer's prediction_ms: not kept from an older settings file
 	names.push("extra_latency_ms");
 	names
@@ -1231,7 +1246,7 @@ mod tests {
 		let home = Home { root: PathBuf::from(r"C:\P"), at: &PROJECT };
 		assert_eq!(keep_sessions(None, PROJECT.keep_sessions), PROJECT.keep_sessions);
 		assert_eq!(keep_sessions(None, INSTALLED.keep_sessions), INSTALLED.keep_sessions);
-		let before = "driver.hmd=1\r\ndriver.pose_log=C:\\P\\logs\\sally_poses_{time}.csv\r\nrun\r\n";
+		let before = "driver.hmd=1\r\ndriver.pose_log=C:\\P\\logs\\sally_poses_{time}.csvz\r\nrun\r\n";
 		assert_eq!(keep_sessions(Some(before), 10), 0);
 		assert_eq!(keep_sessions(Some(""), 10), 0);
 		for (text, n) in [
@@ -1273,13 +1288,14 @@ mod tests {
 		let home = Home { root: PathBuf::from(r"C:\P"), at: &PROJECT };
 		let s = driver_settings(&home, "20261109_150000", &[], PROJECT.keep_sessions);
 		assert!(s.contains("driver.runtime_exe=C:\\P\\survive\\hidtap\\sally.exe\r\n"));
+		assert!(s.contains("driver.pose_log=C:\\P\\logs\\sally_poses_{time}.csvz\r\ndriver.pose_log_on=1\r\n"));
 		assert!(s.contains("# its arguments, one a line\r\nrun\r\n--hidtap\r\n1\r\n"));
 		assert!(s.ends_with("--light-facing-deg\r\n115\r\n"));
 		for gone in ["--core2", "--pose-udp", "--kalman-acc-cal-file", "--threaded-posers", "--gss-threaded"] {
 			assert!(!s.contains(&format!("{gone}\r\n")), "{gone}");
 		}
 	}
-	/// The installer's folder: everything beside sally.exe, no pose log, the panel started by the driver
+	/// The installer's folder: everything beside sally.exe, the pose log named and off, the panel started by the driver
 	#[test]
 	fn the_installed_settings_name_the_installers_folder() {
 		let home = Home { root: PathBuf::from(r"C:\Users\u\AppData\Local\sally"), at: &INSTALLED };
@@ -1292,11 +1308,12 @@ mod tests {
 			format!("--configfile\r\n{root}\\data\\driver_config.json"),
 			format!("--hidtap-record\r\n{root}\\logs\\sallytap_{{time}}.hidtapz"),
 			"driver.keep_sessions=2".to_string(),
+			format!("driver.pose_log={root}\\logs\\sally_poses_{{time}}.csvz"),
+			"driver.pose_log_on=0".to_string(),
 			"--hidtap-config-fetch\r\n0".to_string(),
 		] {
 			assert!(s.contains(&format!("{line}\r\n")), "{line}");
 		}
-		assert!(!s.contains("driver.pose_log"));
 		assert_eq!(home.path(""), PathBuf::from(root));
 		// the panel's line is setup's own: a second setup does not keep a copy of it
 		assert!(kept_options(&s).is_empty());

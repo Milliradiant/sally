@@ -54,6 +54,9 @@ Everything is in the panel, under **Settings**.
 - **Sessions kept**: sally records what your trackers send during each session, about 120 MB an hour. It uses the
   recordings to keep its picture of your room right, and a check (below) is made from the one being recorded. Only
   the last few sessions are kept, and you choose how many. The panel shows how much space they take.
+- **Pose log**: off unless you switch it on. With it on, a session also keeps what SteamVR's own tracking made of
+  your devices, so the **Replay** tab can show the two side by side. It takes about 100 MB an hour with a full set
+  of trackers, and it is kept and deleted with the sessions above.
 - **Devices**: give your trackers names and say where you wear them.
 
 ## If something is wrong

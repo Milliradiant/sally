@@ -16,8 +16,8 @@ use sally_lighthouse::ootx::{LighthouseInfoV15, OotxDecoder, OotxEvent, OotxPack
 use sally_lighthouse::steamvr;
 use sally_lighthouse::NUM_GEN2_LIGHTHOUSES;
 use sally_math::{
-	apply_pose_to_point, dist3d, dot3d, norm3d, normalize3d, pose_slerp, quatiszero, quatrotatevector, sub3d, Pose,
-	LINMATHPI,
+	apply_pose_to_point, dist3d, dot3d, norm3d, normalize3d, pose_slerp, quatiszero, quatrotatevector, sub3d, textmode,
+	Pose, LINMATHPI,
 };
 
 use crate::config::{
@@ -369,7 +369,7 @@ impl Runtime {
 	/// reads in text mode: on Windows a CR LF is read as LF, and a Ctrl-Z ends the text
 	pub fn load_config_file(&mut self, obj: ObjectId, filename: &str) -> bool {
 		let Ok(bytes) = std::fs::read(filename) else { return false };
-		let bytes = if cfg!(windows) { text_mode(&bytes) } else { bytes };
+		let bytes = if cfg!(windows) { textmode::read(&bytes) } else { bytes };
 		if !bytes.is_empty() {
 			self.config(obj, Some(bytes));
 		}
@@ -394,7 +394,7 @@ impl Runtime {
 			let conf = so.conf.clone().unwrap_or_default();
 			for name in [so.serial_number.clone(), so.codename.clone()] {
 				let raw_fname = format!("{name}_config.json");
-				let _ = write_whole(std::path::Path::new(&raw_fname), &text_file(&conf));
+				let _ = write_whole(std::path::Path::new(&raw_fname), &textmode::file(&conf));
 				self.info(&format!("Wrote out {} bytes to {}", conf.len(), raw_fname));
 			}
 		}
@@ -1026,7 +1026,7 @@ impl Runtime {
 			// opened with "w" in the C, so on Windows its 0x0A bytes go out as CR LF too
 			let filename = format!("LH{:02}_{:08x}.ootx", v15.mode_current & 0x7F, v15.id);
 			let n = (packet.length as usize).min(packet.data.len());
-			let _ = std::fs::write(filename, text_file(&packet.data[..n]));
+			let _ = std::fs::write(filename, textmode::file(&packet.data[..n]));
 		}
 		let b = &mut self.bsd[id];
 		b.ootx_checked = true;
@@ -1036,7 +1036,8 @@ impl Runtime {
 		let do_save = b.base_station_id != v15.id || !b.ootx_set || up_changed;
 		b.ootx_set = true;
 		if do_save {
-			let msg = format!("Got OOTX packet {} {:08x}", self.bsd[id].mode, v15.id);
+			// sally: a station is named as SteamVR names it, by its serial (a check's share finds a serial by that shape)
+			let msg = format!("Got OOTX packet {} LHB-{:08X}", self.bsd[id].mode, v15.id);
 			self.info(&msg);
 			let b = &mut self.bsd[id];
 			b.base_station_id = v15.id;
@@ -1054,7 +1055,7 @@ impl Runtime {
 			// Although we know this already....
 			b.mode = v15.mode_current & 0x7F;
 			if same_station && b.position_set && self.config.configi("lock-lighthouses", SC_GET, 0) != 0 {
-				self.info(&format!("Keeping known position for LH {} ({:08x})", id, v15.id));
+				self.info(&format!("Keeping known position for LH {} (LHB-{:08X})", id, v15.id));
 			} else {
 				self.reset_lighthouse_position(id);
 			}
@@ -1382,7 +1383,7 @@ fn device_config(serial: &str, steamvr: &steamvr::Paths, options: &ConfigOptions
 	let own = std::path::PathBuf::from(format!("{serial}_config.json"));
 	for path in std::iter::once(own).chain(steamvr.device_config_path(serial)) {
 		let Ok(bytes) = std::fs::read(&path) else { continue };
-		let bytes = if cfg!(windows) { text_mode(&bytes) } else { bytes };
+		let bytes = if cfg!(windows) { textmode::read(&bytes) } else { bytes };
 		let Ok(cfg) = DeviceConfig::parse(&bytes, "", options) else { continue };
 		// one whose sensors do not read (SV_GENERAL_ERROR: the run would end at the next poll, and, written into the
 		// dongle's cache, every run after it at its first) is no device's config either
@@ -1395,42 +1396,6 @@ fn device_config(serial: &str, steamvr: &steamvr::Paths, options: &ConfigOptions
 		}
 	}
 	None
-}
-
-/// What fwrite puts in a file the C opened with "w": the bytes as they are, but on Windows through the text mode
-fn text_file(bytes: &[u8]) -> Vec<u8> {
-	if cfg!(windows) {
-		text_mode_out(bytes)
-	} else {
-		bytes.to_vec()
-	}
-}
-
-/// A text-mode write on Windows: each LF goes out as CR LF (a CR already before it stays)
-fn text_mode_out(bytes: &[u8]) -> Vec<u8> {
-	let mut out = Vec::with_capacity(bytes.len() + bytes.len() / 16);
-	for &c in bytes {
-		if c == b'\n' {
-			out.push(b'\r');
-		}
-		out.push(c);
-	}
-	out
-}
-
-/// A text-mode read on Windows: CR LF becomes LF, and a Ctrl-Z (0x1A) ends the text
-fn text_mode(bytes: &[u8]) -> Vec<u8> {
-	let mut out = Vec::with_capacity(bytes.len());
-	let mut i = 0;
-	while i < bytes.len() {
-		match bytes[i] {
-			0x1A => break,
-			b'\r' if bytes.get(i + 1) == Some(&b'\n') => {}
-			c => out.push(c),
-		}
-		i += 1;
-	}
-	out
 }
 
 #[cfg(test)]
@@ -1469,20 +1434,6 @@ mod tests {
 		rt.info("the first line");
 		let t = rt.run_time();
 		assert!((1e-3..0.02).contains(&t), "{t}");
-	}
-
-	/// fwrite to a file opened with "w" on Windows: each LF goes out as CR LF, a CR already before it kept. A config
-	/// read from a cache file (text mode: CR LF in, LF kept) and serialized again (serialize-device-config) keeps the
-	/// file's CR LF, and an LF-only one gets them, as the C's KN<n>_config.json and LHR-<serial>_config.json have
-	#[test]
-	fn the_text_mode_writes_lf_as_cr_lf() {
-		assert_eq!(text_mode_out(b"{\n\t\"a\": 1\r\n}\n"), b"{\r\n\t\"a\": 1\r\r\n}\r\n".to_vec());
-		let crlf = b"{\r\n\t\"a\": 1\r\n}\r\n";
-		assert_eq!(text_mode_out(&text_mode(crlf)), crlf.to_vec());
-		let lf = b"{\n\t\"a\": 1\n}\n";
-		assert_eq!(text_mode_out(lf), crlf.to_vec());
-		assert_eq!(text_mode(&text_mode_out(lf)), lf.to_vec());
-		assert_eq!(text_file(lf), if cfg!(windows) { crlf.to_vec() } else { lf.to_vec() });
 	}
 
 	/// survive_install_run_time_fn: a playback's time is the run clock while it is installed, and frozen at the last

@@ -30,7 +30,9 @@ impl Panel {
 	fn check_start(&mut self) {
 		let paths = self.replay_paths().clone();
 		let devices = self.vc.steam_devices();
-		self.ck = match Check::start(&paths, devices, self.now) {
+		// the runtime's word that it is recording: a live one with a recording keeps the room's calibration up
+		let recording = self.rt.connected(self.now) && self.rt.calib.available == Some(true);
+		self.ck = match Check::start(&paths, devices, recording, self.now) {
 			Ok((rec, log)) => {
 				self.vc.check_log = Some(log);
 				Check::Recording(rec)

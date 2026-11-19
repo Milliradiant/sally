@@ -729,6 +729,12 @@ pub fn run(r: &Record) -> Checks {
 	// the runtime: started, restarted, stopped
 	if r.config.driver_starts_runtime {
 		c.check(has("starting the runtime"), "driver started the runtime".into());
+		let owned = format!("started for {}\n", std::process::id());
+		c.check(
+			!r.consoles.is_empty() && r.consoles.iter().all(|t| t.contains(&owned)),
+			"each runtime the driver started was told whose it is (--stop-with, vrserver's process), to end with it"
+				.into(),
+		);
 		c.check(
 			has("the runtime exited (code -9), starting it again"),
 			"driver restarted the runtime after the kill".into(),
@@ -785,9 +791,43 @@ pub fn run(r: &Record) -> Checks {
 			.sum();
 		(1.0 - q).abs() < 1e-3
 	});
+	// as text the file is its rows; packed (the session with the live settings) a fraction of them, and the rows up to
+	// Cleanup are in it
+	let packed = r.config.driver_starts_runtime;
+	let size_ok = if packed { r.pose_log_bytes * 5 < text.len() as u64 } else { r.pose_log_bytes == text.len() as u64 };
+	let last = rows.last().and_then(|f| col("t").and_then(|i| f.get(i))).and_then(|x| x.parse::<f64>().ok());
+	let first = rows.first().and_then(|f| col("t").and_then(|i| f.get(i))).and_then(|x| x.parse::<f64>().ok());
+	let whole_session = first.zip(last).is_some_and(|(a, b)| b - a > r.end - sch.ready - 2.0);
 	c.check(
-		rows.len() > 100 && whole && unit,
-		format!("pose log written ({} rows, rotations and SteamVR matrices in every row)", rows.len()),
+		rows.len() > 100 && whole && unit && size_ok && whole_session,
+		format!(
+			"pose log written{} ({} rows up to the end, rotations and SteamVR matrices in every row, {} bytes for {} of \
+			 text)",
+			if packed { ", packed" } else { "" },
+			rows.len(),
+			r.pose_log_bytes,
+			text.len()
+		),
+	);
+
+	// the pose log's switch: no rows while it is off, the same file on again, the choice kept and said
+	let times: Vec<f64> =
+		rows.iter().filter_map(|f| col("t").and_then(|i| f.get(i)).and_then(|x| x.parse().ok())).collect();
+	let off_for = sch.pose_log_on - sch.pose_log_off;
+	let gap = times.windows(2).map(|w| w[1] - w[0]).find(|g| (g - off_for).abs() < 0.25);
+	let said = r.pose_log_replies.len() == 2
+		&& r.pose_log_replies[0].1.ends_with(" pose_log off")
+		&& r.pose_log_replies[1].1.ends_with(" pose_log on");
+	c.check(
+		gap.is_some()
+			&& said && r.user_file.contains("pose_log=on")
+			&& has("the pose log is off")
+			&& has("the pose log is on"),
+		format!(
+			"\"pose_log off\" then \"pose_log on\": no rows for {} s of the {off_for:.1} s between them, the rows on in \
+			 the same file, the status and the log say each, sally_user.txt keeps the last",
+			gap.map_or("-".to_string(), |g| format!("{g:.2}")),
+		),
 	);
 	c
 }

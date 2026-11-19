@@ -36,7 +36,6 @@ use std::time::Instant;
 use sally_map::calibrate::Scored;
 use sally_map::calibrate::{self, Device, Hit, Imu, Moment, Options, StationIn, StillFinder};
 use sally_map::fcal_solve::{fcal_moved, fcal_terms};
-use sally_map::map_file::text_mode_out;
 use sally_runtime::config::{Config, LighthouseRecord, SC_GET, SC_OVERRIDE, SC_SETCONFIG};
 use sally_runtime::runtime::Observer;
 use sally_runtime::{ObjectId, Runtime};
@@ -510,8 +509,11 @@ fn finish(rt: &mut Runtime, pool: &mut Pool, opt: &Options, job: &Job) -> i32 {
 		let dir = std::path::Path::new(cand).parent().map(|d| d.to_path_buf()).unwrap_or_default();
 		let cfc = read_corrections(&dir.join("station_fcal.txt").to_string_lossy());
 		let set = scored_from(&pool.stations, &placed, &cfc);
-		let missing: Vec<String> =
-			seen_placed.iter().filter(|id| !set.iter().any(|s| s.id == **id)).map(|id| format!("{id:08x}")).collect();
+		let missing: Vec<String> = seen_placed
+			.iter()
+			.filter(|id| !set.iter().any(|s| s.id == **id))
+			.map(|id| format!("LHB-{id:08X}"))
+			.collect();
 		let (verdict, why) = if room.is_empty() {
 			("unscored", "the room's calibration places none of the recordings' stations".to_string())
 		} else if !missing.is_empty() {
@@ -607,7 +609,7 @@ fn finish(rt: &mut Runtime, pool: &mut Pool, opt: &Options, job: &Job) -> i32 {
 				written.push(p);
 			}
 			None => rt.warn(&format!(
-				"calibrate: the station {:08x} (ch {}) is not in the last recording: not written",
+				"calibrate: the station LHB-{:08X} (ch {}) is not in the last recording: not written",
 				p.id, p.channel
 			)),
 		}
@@ -622,7 +624,7 @@ fn finish(rt: &mut Runtime, pool: &mut Pool, opt: &Options, job: &Job) -> i32 {
 				rt.bsd[l].position_set = true;
 				kept.push(id);
 				rt.info(&format!(
-					"calibrate: the station {id:08x} (ch {}) is not in the recordings: kept where the room's calibration has it",
+					"calibrate: the station LHB-{id:08X} (ch {}) is not in the recordings: kept where the room's calibration has it",
 					rt.bsd[l].mode
 				));
 			}
@@ -754,7 +756,7 @@ fn write_corrections(path: &str, stations: &[(u32, [f64; 10], [f64; 10])], snaps
 		t.push('\n');
 	}
 	let tmp = format!("{path}.tmp");
-	std::fs::write(&tmp, text_mode_out(&t))?;
+	std::fs::write(&tmp, sally_math::textmode::file(t.as_bytes()))?;
 	std::fs::rename(&tmp, path)
 }
 

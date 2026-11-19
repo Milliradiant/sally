@@ -43,6 +43,27 @@ struct Process {
 	proc: RuntimeProcess,
 	last_start: f64,
 	init_t: f64,
+	/// the starts in a row that did not hold: the runtime gone again within RUN_HELD_S, or not started at all
+	short_runs: u32,
+	/// ours has exited and is to be started again once its wait has passed
+	down: bool,
+}
+
+/// How long Init waits for a runtime that is already up to answer (one started by hand): two hellos' worth. A runtime
+/// answers within a poll, 10 ms
+const PROBE_S: f64 = 0.3;
+/// A runtime that has exited is started again this long after its last start at the earliest (s)
+const RESTART_WAIT_S: f64 = 5.0;
+/// and, when the starts before it did not hold either, twice as long each time, up to this
+const RESTART_WAIT_MAX_S: f64 = 300.0;
+/// A start has held when the runtime ran this long (s): the next exit is started again at once
+const RUN_HELD_S: f64 = 60.0;
+
+/// How long after its last start the runtime may be started again: RESTART_WAIT_S, doubled for every start in a row
+/// before it that did not hold, up to RESTART_WAIT_MAX_S. A runtime that cannot come up (its port taken, its program
+/// damaged) is so not started, with a new log and recording each time, every 5 s for as long as SteamVR runs
+fn restart_wait(short_runs: u32) -> f64 {
+	(RESTART_WAIT_S * 2f64.powi(short_runs.saturating_sub(1).min(16) as i32)).min(RESTART_WAIT_MAX_S)
 }
 
 pub struct Provider {
@@ -76,7 +97,13 @@ impl Provider {
 	const fn new() -> Provider {
 		Provider {
 			dir: Mutex::new(Vec::new()),
-			process: Mutex::new(Process { proc: RuntimeProcess::NONE, last_start: 0.0, init_t: 0.0 }),
+			process: Mutex::new(Process {
+				proc: RuntimeProcess::NONE,
+				last_start: 0.0,
+				init_t: 0.0,
+				short_runs: 0,
+				down: false,
+			}),
 			sock: AtomicI64::new(SOCK_BAD),
 			runtime: Mutex::new(SockAddrIn { sin_family: 0, sin_port: 0, sin_addr: 0, sin_zero: [0; 8] }),
 			running: AtomicBool::new(false),
@@ -137,10 +164,11 @@ impl Provider {
 		set_g_opt(o);
 		crate::output::read_output(&dir);
 		let o = g_opt();
+		// this session noted, and the files of all but the newest few before it deleted
+		let gone = crate::sessions::start(&o, &dir, &crate::helpers::time_stamp());
 		if o.keep_sessions > 0 {
-			let gone = crate::sessions::prune_settings(&o);
 			log(
-				"sally: the newest %d of each session file kept, %d older deleted\n",
+				"sally: the files of the newest %d sessions kept, %d older files deleted\n",
 				&[BArg::I(o.keep_sessions as i64), BArg::I(gone as i64)],
 			);
 		}
@@ -175,14 +203,12 @@ impl Provider {
 			],
 		);
 
-		// a runtime that already answers (started by hand, or left over from a crashed SteamVR) is used as it is;
-		// otherwise the driver starts one. Until it answers, SteamVR shows Valve's tracking.
+		// a runtime that already answers (one started by hand) is used as it is; otherwise the driver starts one.
+		// SteamVR's start does not wait for it to come up: the receive thread asks it every second and takes its
+		// answer, and until then SteamVR shows Valve's tracking
 		if !o.runtime_exe.is_empty() {
-			if !self.handshake(1.0) && self.start_runtime() {
-				self.handshake(5.0);
-			}
-			if !self.hello_ok.load(SeqCst) {
-				log("sally: no runtime answering yet; Valve's tracking until one does\n", &[]);
+			if !self.handshake(PROBE_S) && !self.start_runtime() {
+				log("sally: no runtime; Valve's tracking until one answers\n", &[]);
 			}
 		} else {
 			log("sally: driver.runtime_exe not set: the runtime is started separately\n", &[]);
@@ -199,8 +225,9 @@ impl Provider {
 		if let Some(t) = locked(&self.thread).take() {
 			let _ = t.join();
 		}
-		// a toy is for the session it was switched on in (output.rs)
+		// a toy is for the session it was switched on in (output.rs); what else the panel set is in the file
 		crate::output::toys_off("SteamVR closes");
+		crate::output::save_due(None);
 		{
 			let mut p = locked(&self.process);
 			if p.proc.started() && g_opt().runtime_stop {
@@ -226,6 +253,7 @@ impl Provider {
 	pub fn run_frame(&self) {
 		let now = now_seconds();
 		G_OVERRIDE.tick(now);
+		crate::output::save_due(Some(now));
 		// the devices' list let go before the checks: a check that finds a device lost pushes its pose into vrserver
 		let devices: Vec<Arc<RuntimeDevice>> = locked(&self.lock).devices.values().cloned().collect();
 		for d in devices {
@@ -261,7 +289,7 @@ impl Provider {
 		let mut last = 0.0;
 		let mut buf = vec![0u8; 65536];
 		while now_seconds() < end {
-			if now_seconds() - last > 0.25 {
+			if now_seconds() - last > 0.1 {
 				self.send(b"#h hello");
 				last = now_seconds();
 			}
@@ -280,10 +308,16 @@ impl Provider {
 		false
 	}
 
+	/// The runtime started (a start that fails counts as one that did not hold: restart_wait)
 	fn start_runtime_locked(&self, p: &mut Process) -> bool {
 		p.last_start = now_seconds();
+		p.down = false;
 		let dir = locked(&self.dir).clone();
-		p.proc.start(&dir)
+		let started = p.proc.start(&dir);
+		if !started {
+			p.short_runs = p.short_runs.saturating_add(1);
+		}
+		started
 	}
 
 	fn start_runtime(&self) -> bool {
@@ -291,13 +325,13 @@ impl Provider {
 		self.start_runtime_locked(&mut p)
 	}
 
-	/// ManageRuntimeProcess(now): our runtime exited: start it again (at most every 5 s). A runtime someone else
-	/// started is left alone; if none has been heard for 10 s and we have none, start ours (the driver keeps one
-	/// running).
+	/// ManageRuntimeProcess(now): our runtime exited: start it again, restart_wait after its last start at the
+	/// earliest (at once after a run that held). A runtime someone else started is left alone; if none has been
+	/// heard for 10 s and we have none, start ours (the driver keeps one running).
 	fn manage_runtime_process(&self, now: f64) {
 		let o = g_opt();
 		let mut p = locked(&self.process);
-		if o.runtime_exe.is_empty() || !o.runtime_restart || now - p.last_start < 5.0 {
+		if o.runtime_exe.is_empty() || !o.runtime_restart {
 			return;
 		}
 		let mut code = 0;
@@ -305,8 +339,28 @@ impl Provider {
 			if p.proc.alive(&mut code) {
 				return;
 			}
-			log("sally: the runtime exited (code %d), starting it again\n", &[BArg::I(code as i64)]);
+			let ran = now - p.last_start;
+			p.short_runs = if ran < RUN_HELD_S { p.short_runs.saturating_add(1) } else { 0 };
 			self.hello_ok.store(false, SeqCst);
+			let wait = restart_wait(p.short_runs) - ran;
+			if wait <= 0.0 {
+				log("sally: the runtime exited (code %d), starting it again\n", &[BArg::I(code as i64)]);
+				self.start_runtime_locked(&mut p);
+			} else {
+				p.down = true;
+				log(
+					"sally: the runtime exited (code %d) %.0f s after its start (%d starts in a row that did not hold): \
+					 starting it again in %.0f s\n",
+					&[BArg::I(code as i64), BArg::F(ran), BArg::I(p.short_runs as i64), BArg::F(wait)],
+				);
+			}
+			return;
+		}
+		if now - p.last_start < restart_wait(p.short_runs) {
+			return;
+		}
+		if p.down {
+			log("sally: starting the runtime again\n", &[]);
 			self.start_runtime_locked(&mut p);
 		} else if now - self.last_heard() > 10.0 && now - p.init_t > 10.0 {
 			let silent = if self.last_heard() > 0.0 { now - self.last_heard() } else { now - p.init_t };

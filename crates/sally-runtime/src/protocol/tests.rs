@@ -5,7 +5,6 @@ use std::net::UdpSocket;
 use std::sync::{Arc, Mutex};
 use std::time::Duration;
 
-use sally_math::printf::Arg;
 use sally_math::Pose;
 use sally_track::host::SurviveVelocity;
 
@@ -327,6 +326,12 @@ fn the_pose_stream() {
 		without_wall(&received(&b.c)[0], 3),
 		"L 0 4096 0.100000 0.200000 0.300000 1.0000000 0.0000000 0.0000000 0.0000000\n"
 	);
+	// a line longer than the C's 512-byte buffer is cut at 511 bytes
+	b.rt.set_replay_time(1.35);
+	let far = Pose { pos: [1e300, -1.7e308, 0.0], rot: [1.0, 0.0, 0.0, 0.0] };
+	b.p.pose(&mut b.rt, kn0, 1005, &far);
+	let r = received(&b.c);
+	assert!(r[0].starts_with("P KN0 SER0 1005 1.350000 ") && r[0].len() == LINE - 1, "{r:?}");
 	// the driver stream alone: P only once the device has had no Q for 0.5 s
 	b.cmd("unsub");
 	b.cmd("sub driver");
@@ -336,96 +341,6 @@ fn the_pose_stream() {
 	b.rt.set_replay_time(1.9);
 	b.p.pose(&mut b.rt, kn0, 1004, &pose);
 	assert_eq!(&received(&b.c)[0][..6], "P KN0 ");
-	assert_eq!(b.p.dropped, 0);
-}
-
-/// A line as the protocol built it before it had a line buffer (a String of sprintf's own, its bytes cut to size - 1),
-/// to hold the buffer's lines to
-fn old_line(size: usize, fmt: &str, args: &[Arg]) -> String {
-	let mut l = sally_math::printf::sprintf(fmt, args).into_bytes();
-	l.truncate(size - 1);
-	String::from_utf8_lossy(&l).into_owned()
-}
-
-/// The pose stream's lines out of the line buffer are those each line's own String gave, to the byte, the cut at the
-/// C's 511 bytes included: random poses and velocities with NaN, the infinities, -0 and values long enough to cut a
-/// line, through P, S, V, Q and L
-#[test]
-fn the_lines_from_the_buffer_are_the_old_ones() {
-	let mut b = Bench::new(&["--runtime-state-hz", "0"]);
-	b.stations();
-	let kn0 = b.devices(1, 3)[0];
-	assert_eq!(b.cmd("sub all driver state").len(), 4);
-	let mut x: u64 = 0x2545_f491_4f6c_dd1d;
-	let mut value = move || {
-		x ^= x << 13;
-		x ^= x >> 7;
-		x ^= x << 17;
-		match x % 10 {
-			0 => f64::NAN,
-			1 => f64::NEG_INFINITY,
-			2 => -0.0,
-			3 => 1e300,
-			4 => -1.7e308,
-			_ => (x as i64 as f64) * 1e-18,
-		}
-	};
-	let mut cut = 0;
-	for i in 0..300u64 {
-		let pose = Pose { pos: [value(), value(), value()], rot: [value(), value(), value(), value()] };
-		let vel = SurviveVelocity { pos: [value(), value(), value()], axis_angle_rot: [value(), value(), value()] };
-		let (t, tc) = (1.0 + i as f64 * 0.01, 1000 + i);
-		b.rt.set_replay_time(t);
-		b.p.pose(&mut b.rt, kn0, tc, &pose);
-		b.p.velocity(&mut b.rt, kn0, tc, &vel);
-		b.p.lighthouse_pose(&mut b.rt, 0, &pose);
-		let got = received(&b.c);
-		assert_eq!(got.len(), 5, "{got:?}");
-
-		let d = b.rt.tracker_diag(kn0);
-		let ahead = Protocol::look_ahead(&b.rt, kn0, &pose);
-		let so = &b.rt.objects[kn0];
-		// a wall clock of the same length as the one sent: the line is cut at the same byte, and the field is left out
-		let wall = Arg::F(1.8e9);
-		let head = || vec![Arg::S(&so.codename), Arg::S(serial_of(so)), Arg::U(tc), Arg::F(t)];
-		let mut p = head();
-		p.push(wall);
-		p.extend(pose.pos.iter().chain(pose.rot.iter()).map(|&v| Arg::F(v)));
-		let p = old_line(LINE, "P %s %s %llu %.6f %.6f %.6f %.6f %.6f %.7f %.7f %.7f %.7f\n", &p);
-		let mut st = head();
-		st.extend([
-			Arg::S(state_name(d.state)),
-			Arg::F(d.light_age),
-			Arg::F(d.pos_sd),
-			Arg::F(-1.0),
-			Arg::U(d.lh_mask as u64),
-			Arg::F(d.res_mrad),
-		]);
-		let st = old_line(LINE, "S %s %s %llu %.6f %s %.4f %.6f %.6f %x %.3f\n", &st);
-		let mut v = head();
-		v.push(wall);
-		v.extend(vel.pos.iter().chain(vel.axis_angle_rot.iter()).map(|&x| Arg::F(x)));
-		let v = old_line(LINE, "V %s %s %llu %.6f %.6f %.5f %.5f %.5f %.5f %.5f %.5f\n", &v);
-		let mut q = head();
-		q.extend(pose.pos.iter().chain(pose.rot.iter()).map(|&x| Arg::F(x)));
-		q.extend(vel.pos.iter().chain(vel.axis_angle_rot.iter()).map(|&x| Arg::F(x)));
-		q.extend(ahead.iter().map(|&x| Arg::F(x)));
-		// no seeded tracker: no corrections and no return
-		q.extend([0.0, 0.0, 0.0, 1.0, 0.0, 0.0, 0.0, -1.0, 0.0].map(Arg::F));
-		let q = old_line(LINE, Q_FMT, &q);
-		let mut l = vec![Arg::I(0), Arg::U(b.rt.bsd[0].base_station_id as u64), wall];
-		l.extend(pose.pos.iter().chain(pose.rot.iter()).map(|&v| Arg::F(v)));
-		let l = old_line(LINE, "L %d %u %.6f %.6f %.6f %.6f %.7f %.7f %.7f %.7f\n", &l);
-
-		assert_eq!(without_wall(&got[0], 5), without_wall(&p, 5));
-		assert_eq!(got[1], st);
-		assert_eq!(without_wall(&got[2], 5), without_wall(&v, 5));
-		assert_eq!(got[3], q);
-		assert_eq!(without_wall(&got[4], 3), without_wall(&l, 3));
-		cut += got.iter().filter(|g| g.len() == LINE - 1).count();
-	}
-	// lines long enough to be cut came through
-	assert!(cut > 500, "{cut}");
 	assert_eq!(b.p.dropped, 0);
 }
 

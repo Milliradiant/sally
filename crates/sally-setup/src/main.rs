@@ -10,7 +10,11 @@
 //!
 //! It leaves itself there without its files as uninstall.exe, which Windows' list of apps runs with `--uninstall`:
 //! after one question `sally uninstall` takes sally out of SteamVR, then the entry in Windows' list, the Start menu's
-//! and the folder go. Started by hand without `--uninstall`, that copy asks the same question.
+//! and sally's folder go. Started by hand without `--uninstall`, that copy asks the same question.
+//!
+//! The folder is sally's own: the installer puts sally only into a folder that is not there yet, is empty or has
+//! sally in it, and it deletes there only what is sally's (`sally_setup::folder`). Anything else in the folder stays,
+//! and the folder with it.
 //!
 //!   sally-setup [--to <folder>] [--quiet]      install (`--quiet`: no questions and no windows, for a script)
 //!   uninstall --uninstall [--quiet]
@@ -20,7 +24,7 @@
 use std::path::{Path, PathBuf};
 use std::process::Command;
 
-use sally_setup::payload;
+use sally_setup::{folder, payload};
 
 const VERSION: &str = env!("CARGO_PKG_VERSION");
 /// This program without its files, in sally's folder
@@ -41,8 +45,14 @@ fn main() {
 	}
 	let ui = Ui { quiet };
 	let done = match Installer::open() {
-		Ok(i) if uninstall || i.files.is_none() => i.uninstall(&ui),
-		Ok(i) => i.install(&ui, to),
+		Ok(i) if uninstall => i.uninstall(&ui),
+		Ok(i) if i.files.is_some() => i.install(&ui, to),
+		// nothing to install in it: the copy an install leaves in sally's folder, started by hand; or an installer
+		// that did not arrive whole
+		Ok(i) if i.is_uninstaller() => i.uninstall(&ui),
+		Ok(_) => Err("This installer is not whole: its download was cut short, or the file is damaged.\n\nDownload \
+		              it again."
+			.into()),
 		Err(e) => Err(e),
 	};
 	if let Err(e) = done {
@@ -107,9 +117,22 @@ impl Installer {
 		Ok(Installer { exe, bytes, files })
 	}
 
+	/// Whether this program is the copy an install leaves in sally's folder (by its name)
+	fn is_uninstaller(&self) -> bool {
+		self.exe.file_name().is_some_and(|n| n.eq_ignore_ascii_case(UNINSTALLER))
+	}
+
 	fn install(&self, ui: &Ui, to: Option<PathBuf>) -> Result<(), String> {
 		let Some((program, len)) = self.files else { return Err("there is nothing to install in this program".into()) };
 		let root = match to {
+			// a folder of the user's choosing has to be sally's own: an uninstall deletes what is sally's in it
+			Some(t) if !own(&t) => {
+				return Err(format!(
+					"{}\nhas other files in it. sally needs a folder of its own: give one that is empty or not there \
+					 yet.\n\nNothing was installed.",
+					t.display()
+				))
+			}
 			Some(t) => t,
 			None => default_root().ok_or("cannot find your own program folder (%LOCALAPPDATA%)")?,
 		};
@@ -135,9 +158,12 @@ impl Installer {
 		}
 		let files = payload::unpack(&self.bytes[program..program + len])?;
 		std::fs::create_dir_all(&root).map_err(|e| format!("cannot make {}: {e}", root.display()))?;
-		sweep(&root, 0);
-		for f in &files {
-			put(&f.path.split('/').fold(root.clone(), |p, part| p.join(part)), &f.bytes)?;
+		let place = |path: &str| path.split('/').fold(root.clone(), |p, part| p.join(part));
+		let mut places: Vec<PathBuf> = files.iter().map(|f| place(&f.path)).collect();
+		places.push(root.join(UNINSTALLER));
+		sweep(&places);
+		for (f, to) in files.iter().zip(&places) {
+			put(to, &f.bytes)?;
 		}
 		put(&root.join(UNINSTALLER), &self.bytes[..program])?;
 		// (the panel is started here, not by the setup: a child of the setup would hold the setup's output open)
@@ -192,12 +218,31 @@ impl Installer {
 			}
 		}
 		sys::unregister();
-		// all of the folder but this program, which Windows holds while it runs: that, and the folder, go after it
-		remove_but(&root, &self.exe);
-		ui.tell("sally is removed.");
-		remove_later(&root);
+		// what is sally's in the folder but this program, which Windows holds while it runs
+		let (ours, others) = sallys_in(&root, &self.exe);
+		remove(&ours);
+		ui.tell(&match others {
+			0 => "sally is removed.".to_string(),
+			_ => format!(
+				"sally is removed.\n\nIts folder has files in it that are not sally's. They were left where they \
+				 are:\n{}",
+				root.display()
+			),
+		});
+		// this program goes once it has ended, with what could not be deleted just now (a program of sally's that
+		// has not quite ended), and then the folder if nothing else is in it
+		let mut later: Vec<PathBuf> = ours.into_iter().filter(|p| p.symlink_metadata().is_ok()).collect();
+		later.push(self.exe.clone());
+		remove_later(&root, &later);
 		Ok(())
 	}
+}
+
+/// Whether sally may be installed in `root`: a folder that is not there yet, an empty one, one sally is in, or one
+/// that holds nothing but what an install cut short put there
+fn own(root: &Path) -> bool {
+	let Ok(entries) = std::fs::read_dir(root) else { return !root.exists() };
+	root.join("sally.exe").is_file() || entries.flatten().all(|e| folder::puts(&e.file_name().to_string_lossy()))
 }
 
 /// %LOCALAPPDATA%\sally
@@ -217,44 +262,62 @@ fn after(path: &Path, suffix: &str) -> PathBuf {
 	path.with_file_name(name)
 }
 
+/// How often a new file is tried in its place once the old one is out of the way, and how long between the tries: a
+/// scanner may hold a file that was just written for a moment
+const TRIES: u32 = 4;
+const TRY_AGAIN: std::time::Duration = std::time::Duration::from_millis(250);
+
 /// A file put in its place whole: written beside it, then renamed over it. One that is in use (SteamVR holds the
 /// driver, the runtime runs) cannot be written over but can be renamed: it is set aside (`<name>.old-<n>`) and the new
-/// one takes its name, for whoever opens it next. What was set aside goes with the next install or uninstall
+/// one takes its name, for whoever opens it next. What was set aside goes with the next install or uninstall. A
+/// file that cannot be replaced is left as it was: the one set aside is put back
 fn put(path: &Path, bytes: &[u8]) -> Result<(), String> {
+	put_by(path, bytes, |from, to| std::fs::rename(from, to))
+}
+
+/// `put`, a file renamed by `rename`
+fn put_by(path: &Path, bytes: &[u8], rename: impl Fn(&Path, &Path) -> std::io::Result<()>) -> Result<(), String> {
 	if let Some(dir) = path.parent() {
 		std::fs::create_dir_all(dir).map_err(|e| format!("cannot make {}: {e}", dir.display()))?;
 	}
 	let new = after(path, ".new");
-	std::fs::write(&new, bytes).map_err(|e| format!("cannot write {}: {e}", new.display()))?;
-	if std::fs::rename(&new, path).is_ok() {
+	if let Err(e) = std::fs::write(&new, bytes) {
+		let _ = std::fs::remove_file(&new);
+		return Err(format!("cannot write {}: {e}", new.display()));
+	}
+	if rename(&new, path).is_ok() {
 		return Ok(());
 	}
 	let aside = (0..10_000).map(|n| after(path, &format!(".old-{n}"))).find(|p| !p.exists());
-	let moved = aside.is_some_and(|aside| std::fs::rename(path, aside).is_ok());
-	match std::fs::rename(&new, path) {
-		Ok(()) => Ok(()),
-		Err(e) => {
-			let _ = std::fs::remove_file(&new);
-			let in_use =
-				if moved { "" } else { " (it is in use: close SteamVR and sally's panel, then run this again)" };
-			Err(format!("cannot replace {}: {e}{in_use}", path.display()))
+	let aside = aside.filter(|aside| rename(path, aside).is_ok());
+	let mut tries = 0;
+	let e = loop {
+		match rename(&new, path) {
+			Ok(()) => return Ok(()),
+			Err(e) if tries + 1 == TRIES => break e,
+			Err(_) => std::thread::sleep(TRY_AGAIN),
 		}
-	}
+		tries += 1;
+	};
+	let _ = std::fs::remove_file(&new);
+	let why = match aside.map(|aside| rename(&aside, path)) {
+		Some(Ok(())) => " (the file there was left as it is)",
+		Some(Err(_)) => "",
+		None => " (it is in use: close SteamVR and sally's panel, then run this again)",
+	};
+	Err(format!("cannot replace {}: {e}{why}", path.display()))
 }
 
-/// What earlier installs set aside or left half written, deleted where it can be (not under the user's own data and
-/// logs, where none is)
-fn sweep(dir: &Path, depth: usize) {
-	let Ok(entries) = std::fs::read_dir(dir) else { return };
-	for e in entries.flatten() {
-		let path = e.path();
-		let name = e.file_name().to_string_lossy().into_owned();
-		if path.is_dir() {
-			if depth < 6 && !(depth == 0 && (name == "data" || name == "logs")) {
-				sweep(&path, depth + 1);
+/// What earlier installs set aside or left half written of the files this one puts (`places`), deleted where it can
+/// be: one still in use stays for the next install. Nothing else is deleted, whatever its name
+fn sweep(places: &[PathBuf]) {
+	for place in places {
+		let (Some(dir), Some(name)) = (place.parent(), place.file_name().and_then(|n| n.to_str())) else { continue };
+		for e in std::fs::read_dir(dir).into_iter().flatten().flatten() {
+			let other = e.file_name().to_string_lossy().into_owned();
+			if other != name && folder::settled(&other) == name {
+				let _ = std::fs::remove_file(e.path());
 			}
-		} else if name.contains(".old-") || name.ends_with(".new") {
-			let _ = std::fs::remove_file(&path);
 		}
 	}
 }
@@ -282,36 +345,55 @@ fn start_panel(root: &Path) {
 	let _ = c.spawn();
 }
 
-/// Everything in the folder deleted but one file
-fn remove_but(root: &Path, keep: &Path) {
-	let Ok(entries) = std::fs::read_dir(root) else { return };
-	for e in entries.flatten() {
-		let path = e.path();
-		if path.is_dir() {
-			let _ = std::fs::remove_dir_all(&path);
-		} else if path != keep {
-			let _ = std::fs::remove_file(&path);
+/// What is sally's in its folder (`folder::sallys`: the installer's files, what sally made there) but one file, and
+/// how many other things are in the folder: those stay
+fn sallys_in(root: &Path, keep: &Path) -> (Vec<PathBuf>, usize) {
+	let Ok(entries) = std::fs::read_dir(root) else { return (Vec::new(), 0) };
+	let mut ours = Vec::new();
+	let mut others = 0;
+	for e in entries.flatten().filter(|e| e.path() != keep) {
+		match folder::sallys(&e.file_name().to_string_lossy()) {
+			true => ours.push(e.path()),
+			false => others += 1,
 		}
+	}
+	(ours, others)
+}
+
+/// Files, and folders with all that is in them, deleted where they can be
+fn remove(paths: &[PathBuf]) {
+	for path in paths {
+		let _ = match path.symlink_metadata() {
+			Ok(m) if m.is_dir() => std::fs::remove_dir_all(path),
+			_ => std::fs::remove_file(path),
+		};
 	}
 }
 
-/// The folder, with this program in it, deleted once this program has ended: Windows' command interpreter, without
-/// a window, waits two seconds (a ping to itself is its way to wait) and removes it. `/s`: the command is what is
-/// between the first quote and the last, the folder's own quotes kept
-fn remove_later(root: &Path) {
+/// `paths` deleted once this program has ended (itself among them), and then sally's folder if nothing is left in
+/// it: Windows' command interpreter, without a window, waits two seconds (a ping to itself is its way to wait),
+/// deletes each (`rd /s` a folder, `del /f` a file) and removes the folder, which a plain `rd` does only to an empty
+/// one. `/s`: the command is what is between the first quote and the last, the paths' own quotes kept
+fn remove_later(root: &Path, paths: &[PathBuf]) {
 	#[cfg(windows)]
 	{
 		use std::os::windows::process::CommandExt;
-		let dir = root.display();
+		let mut line = String::from("ping -n 3 127.0.0.1 >nul");
+		for path in paths {
+			let how = if path.is_dir() { "rd /s /q" } else { "del /f /q" };
+			line.push_str(&format!(" & {how} \"{}\"", path.display()));
+		}
+		line.push_str(&format!(" & rd \"{}\"", root.display()));
 		let mut c = Command::new("cmd.exe");
-		c.raw_arg(format!("/d /s /c \"ping -n 3 127.0.0.1 >nul & rd /s /q \"{dir}\"\""));
+		c.raw_arg(format!("/d /s /c \"{line}\""));
 		c.current_dir(std::env::temp_dir());
 		sys::no_window(&mut c);
 		let _ = c.spawn();
 	}
 	#[cfg(not(windows))]
 	{
-		let _ = std::fs::remove_dir_all(root);
+		remove(paths);
+		let _ = std::fs::remove_dir(root);
 	}
 }
 
@@ -584,8 +666,16 @@ mod sys {
 mod tests {
 	use super::*;
 
+	fn names(dir: &Path) -> Vec<String> {
+		let mut names: Vec<String> =
+			std::fs::read_dir(dir).unwrap().flatten().map(|e| e.file_name().to_string_lossy().into_owned()).collect();
+		names.sort();
+		names
+	}
+
 	/// A file in use cannot be written over; it is set aside and the new one takes its name. Here nothing holds the
 	/// file, so the plain way is what runs; the names are what is checked, and that a sweep clears what was set aside
+	/// of the installer's own files and nothing else
 	#[test]
 	fn a_file_is_put_whole_and_what_was_set_aside_is_swept() {
 		let dir = std::env::temp_dir().join(format!("sally_setup_put_{}", std::process::id()));
@@ -595,16 +685,71 @@ mod tests {
 		put(&file, b"two").unwrap();
 		assert_eq!(std::fs::read(&file).unwrap(), b"two");
 		assert_eq!(after(&file, ".old-3").file_name().unwrap(), "driver_sally.dll.old-3");
-		// what an install over a running SteamVR leaves, and the user's own files of like names
+		// what an install over a running SteamVR leaves, and files of like names that are not the installer's
 		std::fs::write(after(&file, ".old-0"), b"old").unwrap();
 		std::fs::write(dir.join("sally.exe.new"), b"half").unwrap();
+		std::fs::write(dir.join("notes.txt.new"), b"theirs").unwrap();
+		std::fs::write(dir.join("driver").join("bin").join("other.dll.old-0"), b"theirs").unwrap();
 		std::fs::create_dir_all(dir.join("logs")).unwrap();
 		std::fs::write(dir.join("logs").join("session.old-1"), b"theirs").unwrap();
-		sweep(&dir, 0);
-		assert!(!after(&file, ".old-0").exists() && !dir.join("sally.exe.new").exists());
-		assert!(dir.join("logs").join("session.old-1").exists() && file.exists());
-		remove_but(&dir, &dir.join("logs"));
-		assert_eq!(std::fs::read_dir(&dir).unwrap().count(), 0);
+		sweep(&[file.clone(), dir.join("sally.exe")]);
+		assert_eq!(names(&dir), ["driver", "logs", "notes.txt.new"]);
+		assert_eq!(names(&dir.join("driver").join("bin")), ["driver_sally.dll", "other.dll.old-0"]);
+		assert!(dir.join("logs").join("session.old-1").exists());
+
+		// a new file that cannot take its place, though the old one could be set aside: the old one is back, as it was
+		let fails = |from: &Path, to: &Path| match from.extension().is_some_and(|e| e == "new") {
+			true => Err(std::io::Error::other("held")),
+			false => std::fs::rename(from, to),
+		};
+		let e = put_by(&file, b"three", fails).unwrap_err();
+		assert!(e.contains("driver_sally.dll") && e.contains("left as it is"), "{e}");
+		assert_eq!(std::fs::read(&file).unwrap(), b"two");
+		assert_eq!(names(&dir.join("driver").join("bin")), ["driver_sally.dll", "other.dll.old-0"]);
+
+		// an uninstall: what is sally's goes, the rest and the folder stay
+		let this = dir.join("uninstall.exe");
+		std::fs::write(&this, b"this").unwrap();
+		std::fs::write(dir.join("sally.exe"), b"sally").unwrap();
+		let (ours, others) = sallys_in(&dir, &this);
+		assert_eq!((ours.len(), others), (3, 1));
+		remove(&ours);
+		assert_eq!(names(&dir), ["notes.txt.new", "uninstall.exe"]);
+		// (as it is on Windows once the uninstaller has ended; here at once)
+		#[cfg(not(windows))]
+		{
+			remove_later(&dir, std::slice::from_ref(&this));
+			assert_eq!(names(&dir), ["notes.txt.new"]);
+			// and with nothing else in it, the folder too
+			std::fs::remove_file(dir.join("notes.txt.new")).unwrap();
+			std::fs::write(&this, b"this").unwrap();
+			assert_eq!(sallys_in(&dir, &this), (Vec::new(), 0));
+			remove_later(&dir, std::slice::from_ref(&this));
+			assert!(!dir.exists());
+		}
+		let _ = std::fs::remove_dir_all(&dir);
+	}
+
+	/// sally goes into a folder of its own: one that is not there, an empty one, one with sally in it (whatever
+	/// else is there by now), or what an install cut short left; not into a folder with other things in it
+	#[test]
+	fn sally_is_installed_only_into_a_folder_of_its_own() {
+		let dir = std::env::temp_dir().join(format!("sally_setup_own_{}", std::process::id()));
+		let _ = std::fs::remove_dir_all(&dir);
+		assert!(own(&dir));
+		std::fs::create_dir_all(dir.join("driver")).unwrap();
+		assert!(own(&dir));
+		std::fs::write(dir.join("sally.exe.new"), b"half").unwrap();
+		assert!(own(&dir));
+		std::fs::write(dir.join("thesis.docx"), b"theirs").unwrap();
+		assert!(!own(&dir));
+		std::fs::write(dir.join("sally.exe"), b"sally").unwrap();
+		assert!(own(&dir));
+		// somebody's own folder, though its names are ones sally makes too
+		std::fs::remove_dir_all(&dir).unwrap();
+		std::fs::create_dir_all(dir.join("data")).unwrap();
+		std::fs::create_dir_all(dir.join("logs")).unwrap();
+		assert!(!own(&dir));
 		std::fs::remove_dir_all(&dir).unwrap();
 	}
 }

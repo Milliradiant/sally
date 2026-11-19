@@ -111,13 +111,13 @@ fn capped(text: &[u8]) -> Vec<u8> {
 }
 
 /// The base stations' ids a room's file names, as numbers: a config's `"id":"<n>"`, and the first number of an
-/// `FCAL` or `LH` line and the first two of a `LAM` line
+/// `FCAL`, `LH` or `ANCHOR` line and the first two of a `LAM` line
 fn room_stations(text: &str) -> Vec<u32> {
 	let mut ids = Vec::new();
 	for line in text.lines() {
 		let f: Vec<&str> = line.split_ascii_whitespace().collect();
 		match f.first().copied() {
-			Some("FCAL" | "LH") => ids.extend(f.get(1).and_then(|n| n.parse::<u32>().ok())),
+			Some("FCAL" | "LH" | "ANCHOR") => ids.extend(f.get(1).and_then(|n| n.parse::<u32>().ok())),
 			Some("LAM") => ids.extend(f.iter().skip(1).take(2).filter_map(|n| n.parse::<u32>().ok())),
 			_ => {
 				if let Some(n) = line.trim().strip_prefix("\"id\":\"").and_then(|r| r.split('"').next()) {
@@ -319,15 +319,16 @@ fn make(r: &Request, work: &Path) -> Result<Shared, String> {
 		write(session::POSES, &poses(&rows, (cut.from_us, cut.to_us), &r.devices, &mut names))?;
 	}
 
-	// the room's files, the settings and the logs
-	for (name, bytes) in &room {
-		write(name, &text::scrub(bytes, &mut names, &r.private, false))?;
-	}
+	// the logs, then the room's files and the settings: a station that only a log names (Valve's driver by its bare
+	// id, sally by its serial) is known by then, where a room's file has its id as a number
+	let steamvr = r.steamvr_log.as_ref().and_then(|p| std::fs::read(p).ok()).unwrap_or_default();
+	write(session::STEAMVR_LOG, &capped(&steamvr_lines(&steamvr, &mut names, &r.private)))?;
 	if let Some(log) = r.sally_log.as_ref().and_then(|p| std::fs::read(p).ok()) {
 		write("sally_log.txt", &text::scrub(&capped(&log), &mut names, &r.private, false))?;
 	}
-	let steamvr = r.steamvr_log.as_ref().and_then(|p| std::fs::read(p).ok()).unwrap_or_default();
-	write(session::STEAMVR_LOG, &capped(&steamvr_lines(&steamvr, &mut names, &r.private)))?;
+	for (name, bytes) in &room {
+		write(name, &text::scrub(bytes, &mut names, &r.private, false))?;
+	}
 	write(
 		session::ABOUT,
 		format!(
@@ -419,8 +420,9 @@ mod tests {
 	fn a_rooms_stations_are_read_from_its_files() {
 		let config = "\"lighthouse0\":{\n\"index\":\"0\",\n\"id\":\"123456789\",\n\"mode\":\"7\",\n}\n";
 		assert_eq!(room_stations(config), [123456789]);
-		let map = "# sally map-solve\nLH 123456789 -1.8 2.2\nLAM 123456789 2982335460 1.1e9 -3\nFCAL 7 0 1\n";
-		assert_eq!(room_stations(map), [123456789, 123456789, 2982335460, 7]);
+		let map =
+			"# sally map-solve\nLH 123456789 -1.8 2.2\nLAM 123456789 2982335460 1.1e9 -3\nFCAL 7 0 1\nANCHOR 8 0.5 1\n";
+		assert_eq!(room_stations(map), [123456789, 123456789, 2982335460, 7, 8]);
 	}
 
 	#[test]

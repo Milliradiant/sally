@@ -518,6 +518,26 @@ mod tests {
 		assert_eq!(d(&compensated), (0x3ff0000000000000, 1008));
 		assert_eq!(d("0.1"), (0x3fb999999999999a, 3));
 		assert_eq!(c_atof(b"1.5abc"), 1.5);
+		assert_eq!(d("  -1.5e3x"), ((-1500.0f64).to_bits(), 8));
+		assert_eq!(d("0x1p3"), (8.0f64.to_bits(), 5));
+		assert_eq!(d("0x1p"), (1.0f64.to_bits(), 3));
+		assert_eq!(d("0x.8"), (0.5f64.to_bits(), 4));
+		assert_eq!(d("0x.p1"), (0, 1));
+		assert_eq!(d("1e+"), (1.0f64.to_bits(), 1));
+		assert_eq!(d(".5"), (0.5f64.to_bits(), 2));
+		assert_eq!(d("."), (0, 0));
+		assert_eq!(d("+inf"), (f64::INFINITY.to_bits(), 4));
+		assert_eq!(d("-Infinity!"), (f64::NEG_INFINITY.to_bits(), 9));
+		assert_eq!(d("infinit"), (f64::INFINITY.to_bits(), 3));
+		assert_eq!(d("nan"), (0x7ff8_0000_0000_0000, 3));
+		assert_eq!(d("-nan"), (0xfff8_0000_0000_0000, 4));
+		assert_eq!(d("nan(0x123)"), (0x7ff8_0000_0000_0123, 10));
+		assert_eq!(d("nan(abc)"), (0x7ff8_0000_0000_0000, 8));
+		assert_eq!(d("1e99999"), (f64::INFINITY.to_bits(), 7));
+		assert_eq!(d("4.9e-324"), (1, 8));
+		assert_eq!(d("2.4703282292062327e-324"), (0, 23));
+		assert_eq!(d("0x1.00000000000008p0"), (1.0f64.to_bits(), 20));
+		assert_eq!(d("0x1.000000000000080001p0"), (0x3ff0_0000_0000_0001, 24));
 	}
 
 	#[test]
@@ -533,6 +553,11 @@ mod tests {
 		assert_eq!(f("0.1"), (0x3dcccccd, 3));
 		assert_eq!(f("nan(0x1f)"), (0x7fc0001f, 9));
 		assert_eq!(f("-nan(5)"), (0xffc00005, 7));
+		// 1 + 2^-24 + 2^-60: halfway between two floats only after rounding to a double first
+		assert_eq!(f("1.000000059604644861"), (0x3f80_0001, 20));
+		assert_eq!(f("2.341761589050"), (0x4015_df6c, 14));
+		assert_eq!(f("-nan(0x7fffff)"), (0xffff_ffff, 14));
+		assert_eq!(f("3.4028236e38"), (0x7f80_0000, 12));
 	}
 
 	#[test]

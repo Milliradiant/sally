@@ -4,10 +4,17 @@
 //!
 //! A serial is found by its shape wherever it stands as a word of its own: `LHR-` or `LHB-` and eight hex digits; a
 //! dongle's ten hex digits, with or without the three characters after them; and the bare digits of a serial the
-//! table knows (a base station's id is written without `LHB-` by Valve's driver and by sally's log, and as a number
-//! in the room's files). In the lines of Valve's driver any eight hex digits with a letter and a digit among them
-//! are taken for a base station, known or not: that is how it names them. Digits after a decimal point are part of a
-//! number and never a serial.
+//! table knows (a base station's id is written without `LHB-` by Valve's driver, and as a number in the room's
+//! files). In the lines of Valve's driver any eight hex digits with a letter and a digit among them are taken for a
+//! base station, known or not: that is how it names them. Digits after a decimal point are part of a number and
+//! never a serial.
+//!
+//! Bare digits have no shape of their own: a station's are found only once the table knows the station. So sally
+//! names a station in what it logs as SteamVR does, `LHB-` and its id, and every station its log names is found,
+//! known or not.
+//!
+//! A path or a name may stand as a JSON string writes it: its separators doubled, and what is not ASCII as `\u`
+//! and four hex digits (`Jos\u00e9`). It is found in that spelling too.
 //!
 //! `clean` is the check after: text is clean when scrubbing it again changes nothing and finds no new serial.
 
@@ -68,13 +75,40 @@ fn path_at(text: &[u8], at: usize, pat: &[u8]) -> Option<usize> {
 	(i >= text.len() || !word(text[i])).then_some(i)
 }
 
+/// `s` as a JSON string writes it when it escapes what is not ASCII: `\u` and four hex digits for each 16 bits of a
+/// character. None for ASCII, which is written as it is
+fn json_spelling(s: &str) -> Option<String> {
+	if s.is_ascii() {
+		return None;
+	}
+	let mut out = String::new();
+	for c in s.chars() {
+		match c.is_ascii() {
+			true => out.push(c),
+			false => c.encode_utf16(&mut [0; 2]).iter().for_each(|u| out.push_str(&format!("\\u{u:04x}"))),
+		}
+	}
+	Some(out)
+}
+
+/// Whether a JSON string's `\uXXXX` stands at `at`
+fn escape_at(text: &[u8], at: usize) -> bool {
+	text.len() >= at + 6 && text[at] == b'\\' && text[at + 1] == b'u' && is_hex(&text[at + 2..at + 6])
+}
+
+/// Each of `named` with its JSON spelling beside it, the short ones (under `least` bytes) left out
+fn spellings<'a>(named: [(&'a str, &'a [u8]); 2], least: usize) -> Vec<(Vec<u8>, &'a [u8])> {
+	named
+		.into_iter()
+		.filter(|(n, _)| n.len() >= least)
+		.flat_map(|(n, with)| [Some(n.to_string()), json_spelling(n)].into_iter().flatten().map(move |n| (n, with)))
+		.map(|(n, with)| (n.into_bytes(), with))
+		.collect()
+}
+
 /// The paths: sally's folder as `<sally>`, the user's as `<home>`, and the name after any `Users` folder as `user`
 fn paths(text: &[u8], private: &Private) -> Vec<u8> {
-	let named: Vec<(&[u8], &[u8])> =
-		[(private.sally.as_bytes(), &b"<sally>"[..]), (private.home.as_bytes(), b"<home>")]
-			.into_iter()
-			.filter(|(p, _)| p.len() > 3)
-			.collect();
+	let named = spellings([(&private.sally, b"<sally>"), (&private.home, b"<home>")], 4);
 	let mut out = Vec::with_capacity(text.len());
 	let mut i = 0;
 	'text: while i < text.len() {
@@ -95,9 +129,21 @@ fn paths(text: &[u8], private: &Private) -> Vec<u8> {
 					while j < text.len() && sep(text[j]) {
 						j += 1;
 					}
+					// a path a JSON string writes (its separator is not one `\`): a `\uXXXX` is of the name, also
+					// where the name starts with one, its `\` then the last of the separators'
+					let json = &text[i + 5..j] != b"\\";
+					if json && j - (i + 5) > 2 && escape_at(text, j - 1) {
+						j -= 1;
+					}
 					let from = j;
-					while j < text.len() && !sep(text[j]) && !b"\"'<>|\r\n\t".contains(&text[j]) {
-						j += 1;
+					while j < text.len() {
+						if json && escape_at(text, j) {
+							j += 6;
+						} else if sep(text[j]) || b"\"'<>|\r\n\t".contains(&text[j]) {
+							break;
+						} else {
+							j += 1;
+						}
 					}
 					if j > from {
 						out.extend_from_slice(&text[i..from]);
@@ -117,10 +163,7 @@ fn paths(text: &[u8], private: &Private) -> Vec<u8> {
 /// The user's and the PC's names where they stand as words (a name under three characters is left: it is found in
 /// paths alone)
 fn words(text: &[u8], private: &Private) -> Vec<u8> {
-	let named: Vec<(&[u8], &[u8])> = [(private.user.as_bytes(), &b"<user>"[..]), (private.pc.as_bytes(), b"<pc>")]
-		.into_iter()
-		.filter(|(n, _)| n.len() >= 3)
-		.collect();
+	let named = spellings([(&private.user, b"<user>"), (&private.pc, b"<pc>")], 3);
 	let mut out = Vec::with_capacity(text.len());
 	let mut i = 0;
 	'text: while i < text.len() {
@@ -336,6 +379,11 @@ mod tests {
 			),
 			"LHB-00000001 Got OOTX packet 9 00000001 (ch 9, 00000001) \"id\":\"1\" 0x00000001"
 		);
+		// a station sally's log names is found though nothing else has named it: sally writes one as SteamVR does
+		assert_eq!(
+			s("Got OOTX packet 3 LHB-0C0FFEE0, station-fcal: LH 1 (ch 3, LHB-0C0FFEE0) corrected", &mut n, false),
+			"Got OOTX packet 3 LHB-00000002, station-fcal: LH 1 (ch 3, LHB-00000002) corrected"
+		);
 		// a known dongle without its tail; an unknown ten digits stay
 		assert_eq!(s("s/n 0a1b2c3d4e and 0123456789", &mut n, false), "s/n 0000000001 and 0123456789");
 		// a longer word is not a serial, nor are a number's digits; a known serial's digits are, wherever they stand
@@ -372,6 +420,26 @@ mod tests {
 		assert_eq!(s("D:\\Users\\Someone Else\\Steam\\config", &mut n, false), "D:\\Users\\user\\Steam\\config");
 		assert_eq!(s("C:\\Users\\Robinson\\x", &mut n, false), "C:\\Users\\user\\x");
 		assert_eq!(s("host desktop-4kq2, user Robin; Robins", &mut n, false), "host <pc>, user <user>; Robins");
+		// a name with a letter beyond ASCII, as it is and as a JSON string escapes it
+		let p = Private {
+			user: "Jos\u{e9}".into(),
+			home: "C:\\Users\\Jos\u{e9}".into(),
+			sally: "C:\\Users\\Jos\u{e9}\\AppData\\Local\\sally".into(),
+			..Private::default()
+		};
+		for (text, fit) in [
+			("C:\\Users\\Jos\u{e9}\\x by Jos\u{e9}", "<home>\\x by <user>"),
+			(r#""C:\\Users\\Jos\u00e9\\AppData\\Local\\sally\\x" by "Jos\u00E9""#, r#""<sally>\\x" by "<user>""#),
+			// another user's: the whole name goes, also where it starts with an escape
+			(r#""D:\\Users\\Ren\u00e9e\\x" "D:/Users/Ren\u00e9e/x""#, r#""D:\\Users\\user\\x" "D:/Users/user/x""#),
+			(r#""D:\\Users\\\u00c9ric\\x""#, r#""D:\\Users\\user\\x""#),
+			// not a JSON string's path: a folder
+			("D:\\Users\\Ren\\u00e9e\\x", "D:\\Users\\user\\u00e9e\\x"),
+		] {
+			let out = scrub(text.as_bytes(), &mut n, &p, false);
+			assert_eq!(String::from_utf8_lossy(&out), fit, "{text}");
+			assert!(!clean(text.as_bytes(), &n, &p, true) && clean(&out, &n, &p, true), "{text}");
+		}
 	}
 
 	#[test]

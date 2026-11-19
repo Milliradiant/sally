@@ -222,7 +222,7 @@ impl Solver {
 			}
 		}
 		use std::io::Write;
-		let _ = f.write_all(crate::map_file::text_mode_out(&t).as_bytes());
+		let _ = f.write_all(&sally_math::textmode::file(t.as_bytes()));
 	}
 
 	/// run_solve: one solve of the batch, if it has map-solve-min-snaps snapshots: the moved-station check and the

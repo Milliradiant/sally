@@ -1,9 +1,13 @@
-//! `sally pack` and `sally unpack`: a tap recording from its text to its packed form (`sally_hid::pack`) and back.
+//! `sally pack` and `sally unpack`: a tap recording from its text to its packed form (`sally_hid::pack`) and back,
+//! and a pose log (`sally_pack::table`).
 //!
 //! ```text
-//! sally pack [--strip] [--to <folder>] [--replace] [--force] <recording>...     x.hidtap -> x.hidtapz
-//! sally unpack [--to <folder>] [--replace] [--force] <recording>...             x.hidtapz -> x.hidtap
+//! sally pack [--strip] [--to <folder>] [--replace] [--force] <file>...     x.hidtap -> x.hidtapz, x.csv -> x.csvz
+//! sally unpack [--to <folder>] [--replace] [--force] <file>...             x.hidtapz -> x.hidtap, x.csvz -> x.csv
 //! ```
+//!
+//! Which of the two a file is: a packed one by its first bytes, a text one a pose log where its name ends in .csv
+//! and a recording otherwise.
 //!
 //! The new file goes beside the one it is made from, or into `--to`'s folder. It is written, then read back and held
 //! against the one it was made from, byte for byte; only then does it count as done, and only then is the one it was
@@ -12,19 +16,51 @@
 //!
 //! `--strip` leaves out of each report what nothing reads (`sally_hid::strip`), as the runtime does when it records:
 //! the packed recording then holds the text with zeros in those places, about a third smaller. A recording that is
-//! packed already is done so in its place (`--replace`), or into another folder.
+//! packed already is done so in its place (`--replace`), or into another folder. A pose log has nothing of the kind
+//! to leave out.
 
 use std::fs::File;
 use std::io::{BufRead, BufReader, BufWriter, Read, Write};
 use std::path::{Path, PathBuf};
 
-use sally_hid::pack::{self, PackWriter, PACKED_END, TEXT_END};
+use sally_hid::pack;
 use sally_hid::strip;
+use sally_pack::table;
 
 #[derive(Clone, Copy, PartialEq)]
 enum To {
 	Packed,
 	Text,
+}
+
+/// What a file is: a tap recording or a pose log
+#[derive(Clone, Copy, PartialEq, Debug)]
+enum Kind {
+	Recording,
+	PoseLog,
+}
+
+impl Kind {
+	/// What the file at `path` is, and whether it is packed
+	fn of(path: &Path) -> std::io::Result<(Kind, bool)> {
+		let mut input = File::open(path)?;
+		if pack::packed(&mut input)? {
+			return Ok((Kind::Recording, true));
+		}
+		if table::packed(&mut input)? {
+			return Ok((Kind::PoseLog, true));
+		}
+		let is_table = path.file_name().is_some_and(|n| n.to_string_lossy().ends_with(table::TEXT_END));
+		Ok((if is_table { Kind::PoseLog } else { Kind::Recording }, false))
+	}
+
+	/// The file at `path`, packed or text, as its text
+	fn open(self, path: &Path) -> std::io::Result<Box<dyn Read>> {
+		Ok(match self {
+			Kind::Recording => Box::new(pack::open(path)?),
+			Kind::PoseLog => Box::new(table::open(path)?),
+		})
+	}
 }
 
 /// What is asked of each recording
@@ -37,13 +73,15 @@ struct Ask {
 }
 
 /// The name a recording gets in the other form: its end changed, or the other end added to a name without it
-fn other_name(path: &Path, to: To) -> PathBuf {
+fn other_name(path: &Path, to: To, kind: Kind) -> PathBuf {
 	let name = path.file_name().map(|n| n.to_string_lossy().into_owned()).unwrap_or_default();
-	let to_end = match to {
-		To::Packed => PACKED_END,
-		To::Text => TEXT_END,
+	let (to_end, stem) = match (kind, to) {
+		(Kind::Recording, To::Packed) => (pack::PACKED_END, pack::stem(&name)),
+		(Kind::Recording, To::Text) => (pack::TEXT_END, pack::stem(&name)),
+		(Kind::PoseLog, To::Packed) => (table::PACKED_END, table::stem(&name)),
+		(Kind::PoseLog, To::Text) => (table::TEXT_END, table::stem(&name)),
 	};
-	path.with_file_name(format!("{}{to_end}", pack::stem(&name).unwrap_or(&name)))
+	path.with_file_name(format!("{}{to_end}", stem.unwrap_or(&name)))
 }
 
 /// A recording's text, with what `strip` leaves out gone when that is asked: the lines as they are otherwise
@@ -80,9 +118,36 @@ impl<R: BufRead> Read for Lines<R> {
 	}
 }
 
-/// The recording at `path` as its text, as `ask` wants it
-fn text_of(path: &Path, ask: &Ask) -> std::io::Result<impl Read> {
-	Ok(Lines::new(BufReader::with_capacity(1 << 20, pack::open(path)?), ask.strip))
+/// The file at `path` as its text, as `ask` wants it
+fn text_of(path: &Path, kind: Kind, ask: &Ask) -> std::io::Result<impl Read> {
+	Ok(Lines::new(BufReader::with_capacity(1 << 20, kind.open(path)?), ask.strip && kind == Kind::Recording))
+}
+
+/// Text into a packed file of `kind`: the file back when all of it is in
+fn pack_into<W: Write>(kind: Kind, text: &mut impl Read, out: W) -> std::io::Result<W> {
+	let mut piece = vec![0u8; 1 << 16];
+	match kind {
+		Kind::Recording => {
+			let mut packed = pack::PackWriter::new(out)?;
+			loop {
+				let n = text.read(&mut piece)?;
+				if n == 0 {
+					return packed.finish();
+				}
+				packed.write(&piece[..n])?;
+			}
+		}
+		Kind::PoseLog => {
+			let mut packed = table::PackWriter::new(out)?;
+			loop {
+				let n = text.read(&mut piece)?;
+				if n == 0 {
+					return packed.finish();
+				}
+				packed.write(&piece[..n])?;
+			}
+		}
+	}
 }
 
 /// Whether two readers give the same bytes to their ends
@@ -103,10 +168,9 @@ fn same(a: &mut dyn Read, b: &mut dyn Read) -> std::io::Result<bool> {
 /// One recording into its other form: what was done, or why not
 fn one(path: &Path, to: To, ask: &Ask) -> Result<String, String> {
 	let name = path.display();
-	let mut input = File::open(path).map_err(|e| format!("{name}: {e}"))?;
-	let is_packed = pack::packed(&mut input).map_err(|e| format!("{name}: {e}"))?;
-	drop(input);
-	let mut out_path = other_name(path, to);
+	let (kind, is_packed) = Kind::of(path).map_err(|e| format!("{name}: {e}"))?;
+	let strip = ask.strip && kind == Kind::Recording;
+	let mut out_path = other_name(path, to, kind);
 	if let (Some(folder), Some(file)) = (&ask.folder, out_path.file_name()) {
 		out_path = folder.join(file);
 	}
@@ -114,7 +178,7 @@ fn one(path: &Path, to: To, ask: &Ask) -> Result<String, String> {
 	let in_place = out_path == path;
 	match (to, is_packed) {
 		(To::Text, false) if in_place => return Ok(format!("{name}: text already")),
-		(To::Packed, true) if in_place && !ask.strip => return Ok(format!("{name}: packed already")),
+		(To::Packed, true) if in_place && !strip => return Ok(format!("{name}: packed already")),
 		(To::Packed, true) if in_place && !ask.replace => {
 			return Err(format!(
 				"{name}: packed already (--strip with --replace does it in its place, or --to <folder>)"
@@ -130,23 +194,12 @@ fn one(path: &Path, to: To, ask: &Ask) -> Result<String, String> {
 		return Err(format!("{name}: {} exists (--force writes over it)", written.display()));
 	}
 	let write = || -> std::io::Result<()> {
-		let mut text = text_of(path, ask)?;
+		let mut text = text_of(path, kind, ask)?;
 		let made = File::create(&written)
 			.map_err(|e| std::io::Error::new(e.kind(), format!("cannot write {}: {e}", written.display())))?;
 		let out = BufWriter::with_capacity(1 << 20, made);
 		let out = match to {
-			To::Packed => {
-				let mut packed = PackWriter::new(out)?;
-				let mut piece = vec![0u8; 1 << 16];
-				loop {
-					let n = text.read(&mut piece)?;
-					if n == 0 {
-						break;
-					}
-					packed.write(&piece[..n])?;
-				}
-				packed.finish()?
-			}
+			To::Packed => pack_into(kind, &mut text, out)?,
 			To::Text => {
 				let mut out = out;
 				std::io::copy(&mut text, &mut out)?;
@@ -160,7 +213,7 @@ fn one(path: &Path, to: To, ask: &Ask) -> Result<String, String> {
 		out.sync_all()
 	};
 	// the new file read back as text against the text it was made from
-	let check = || -> std::io::Result<bool> { same(&mut text_of(path, ask)?, &mut pack::open(&written)?) };
+	let check = || -> std::io::Result<bool> { same(&mut text_of(path, kind, ask)?, &mut kind.open(&written)?) };
 	let done = write().and_then(|()| check());
 	match done {
 		Ok(true) => {}
@@ -203,8 +256,10 @@ fn one(path: &Path, to: To, ask: &Ask) -> Result<String, String> {
 fn run(args: &[String], to: To) -> i32 {
 	let (mut ask, mut paths) = (Ask::default(), Vec::new());
 	let usage = match to {
-		To::Packed => "usage: sally pack [--strip] [--to <folder>] [--replace] [--force] <tap recording>...",
-		To::Text => "usage: sally unpack [--to <folder>] [--replace] [--force] <tap recording>...",
+		To::Packed => {
+			"usage: sally pack [--strip] [--to <folder>] [--replace] [--force] <tap recording or pose log>..."
+		}
+		To::Text => "usage: sally unpack [--to <folder>] [--replace] [--force] <tap recording or pose log>...",
 	};
 	let mut args = args.iter();
 	while let Some(a) = args.next() {
@@ -312,9 +367,50 @@ mod tests {
 		assert_eq!(std::fs::metadata(&plain).unwrap().modified().unwrap(), time);
 
 		// a name without the usual end gets the other end added
-		assert_eq!(other_name(Path::new("a/tap.rec"), To::Packed), Path::new("a/tap.rec.hidtapz"));
-		assert_eq!(other_name(Path::new("a/tap.hidtapz"), To::Text), Path::new("a/tap.hidtap"));
+		assert_eq!(other_name(Path::new("a/tap.rec"), To::Packed, Kind::Recording), Path::new("a/tap.rec.hidtapz"));
+		assert_eq!(other_name(Path::new("a/tap.hidtapz"), To::Text, Kind::Recording), Path::new("a/tap.hidtap"));
 		assert!(one(&dir.join("none.hidtap"), To::Packed, &ask(false, false, false)).is_err());
+		std::fs::remove_dir_all(&dir).unwrap();
+	}
+
+	/// A pose log is told from a recording by its name as text and by its first bytes packed, and goes there and back
+	/// the same way; `--strip` is not for it
+	#[test]
+	fn a_pose_log_goes_there_and_back() {
+		let dir = std::env::temp_dir().join(format!("sally-packing-poses-{}", std::process::id()));
+		let _ = std::fs::remove_dir_all(&dir);
+		std::fs::create_dir_all(&dir).unwrap();
+		let plain = dir.join("sally_poses_20261101_100000.csv");
+		let packed = dir.join("sally_poses_20261101_100000.csvz");
+		let mut original = b"t,id,serial,sx,sqw\n".to_vec();
+		for n in 0..3000 {
+			let row = format!(
+				"{:.6},{},LHR-0000000{},{:.5},{:.6}\n",
+				100.0 + n as f64 * 0.011,
+				n % 3,
+				n % 3,
+				n as f64 * 0.002,
+				0.25
+			);
+			original.extend(row.bytes());
+		}
+		std::fs::write(&plain, &original).unwrap();
+		assert_eq!(Kind::of(&plain).unwrap(), (Kind::PoseLog, false));
+
+		let said = one(&plain, To::Packed, &ask(true, false, false)).unwrap();
+		assert!(said.contains("read back the same") && said.contains("times smaller"), "{said}");
+		assert_eq!(Kind::of(&packed).unwrap(), (Kind::PoseLog, true));
+		assert!(std::fs::metadata(&packed).unwrap().len() < original.len() as u64 / 8);
+		assert!(one(&packed, To::Packed, &ask(true, true, false)).unwrap().contains("packed already"));
+
+		// packed, it is a pose log whatever it is called
+		let renamed = dir.join("poses.hidtapz");
+		std::fs::rename(&packed, &renamed).unwrap();
+		assert_eq!(Kind::of(&renamed).unwrap(), (Kind::PoseLog, true));
+		std::fs::remove_file(&plain).unwrap();
+		let said = one(&renamed, To::Text, &ask(false, true, false)).unwrap();
+		assert!(said.contains("as poses.hidtapz.csv") && said.contains("the old one removed"), "{said}");
+		assert_eq!(std::fs::read(dir.join("poses.hidtapz.csv")).unwrap(), original);
 		std::fs::remove_dir_all(&dir).unwrap();
 	}
 
@@ -336,7 +432,7 @@ mod tests {
 		};
 		// what the lines are without those bytes: the same length, the report's start as it was, zeros after
 		let mut lean = Vec::new();
-		text_of(&plain, &ask(true, false, false)).unwrap().read_to_end(&mut lean).unwrap();
+		text_of(&plain, Kind::Recording, &ask(true, false, false)).unwrap().read_to_end(&mut lean).unwrap();
 		assert_eq!(lean.len(), original.len());
 		let (first, was) =
 			(lean.split(|&b| b == b'\n').nth(1).unwrap(), original.split(|&b| b == b'\n').nth(1).unwrap());

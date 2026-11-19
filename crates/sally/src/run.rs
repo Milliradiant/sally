@@ -2,8 +2,9 @@
 //! the C's load order, a tap starting its own thread: the dongles' reader live, on Windows, or the recording's
 //! playback), then survive-cli's main loop on the main thread: survive_poll and the --stop-after check, until a
 //! driver's poll ends it (the protocol's quit, a playback that has finished), an error is raised, --stop-after's run
-//! time passes or a stop comes (Ctrl+C or the console closing on Windows; SIGINT or SIGTERM on Linux, where a second
-//! one exits at once with -1); then survive_close, which joins each thread without the context lock.
+//! time passes, the process the run was started for ends (--stop-with) or a stop comes (Ctrl+C or the console closing
+//! on Windows; SIGINT or SIGTERM on Linux, where a second one exits at once with -1); then survive_close, which joins
+//! each thread without the context lock.
 //!
 //! The main thread holds the context lock (`sally_runtime::context`) from survive_init on, as the C's semaphore starts
 //! taken, so a driver's thread waits for the main loop's first poll; survive_poll lets it go only for what is left of
@@ -104,6 +105,13 @@ pub fn main(argv: &[Vec<u8>]) -> i32 {
 	}
 	// survive_install_button_fn(ctx, button_process): the menu button's process is the runtime's own
 	let stop_after = g.rt.config.configf("stop-after", SC_GET, -1.0);
+	// sally: the process this run was started for, looked at once a second
+	let stop_with = g.rt.config.configi("stop-with", SC_GET, 0);
+	let (owner, why) = sys::Owner::watch(stop_with);
+	if let Some(why) = why {
+		g.rt.warn(&format!("--stop-with: {why}: this run does not end with it"));
+	}
+	let mut owner_seen = sally_os::absolute_time();
 	while KEEP_RUNNING.load(Ordering::SeqCst) {
 		let r;
 		(g, r) = survive_poll(&ctx, g, &taps);
@@ -113,6 +121,17 @@ pub fn main(argv: &[Vec<u8>]) -> i32 {
 		if stop_after > 0.0 && g.rt.run_time() > stop_after {
 			g.rt.info(&sprintf("Stopping after %.0f s (--stop-after)", &[Arg::F(stop_after)]));
 			break;
+		}
+		// (the clock's difference either way: Linux's is the wall clock, which can be set back)
+		let now = sally_os::absolute_time();
+		if (now - owner_seen).abs() >= 1.0 {
+			owner_seen = now;
+			if owner.gone() {
+				g.rt.info(&format!(
+					"Stopping: the process this run was started for has ended (--stop-with {stop_with})"
+				));
+				break;
+			}
 		}
 		if auto.as_ref().is_some_and(|a| locked(a).tick(&mut g.rt)) {
 			g.rt.info("calibration: the new room's calibration is ready: stopping to start again on it");

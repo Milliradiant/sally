@@ -6,6 +6,92 @@
 //! mark is looked for from the file's end backwards and believed only where the length and the check hold, so what a
 //! code signature adds after the footer does not hide it, and the mark's own bytes inside the program are not taken
 //! for one. `sally-release` packs (docs/release.md), the installer unpacks.
+//!
+//! `folder` says what in sally's folder is sally's: the installer puts and removes nothing else there.
+
+pub mod folder {
+	/// The first parts of the paths the installer puts in sally's folder: the programs (as Windows names them, or
+	/// another system), OpenVR's library, the driver's folder, the icon, the licenses, and the installer's own copy
+	/// there. `sally-release` packs nothing else
+	const PUT: [&str; 9] = [
+		"sally",
+		"sally-panel",
+		"uninstall",
+		"openvr_api.dll",
+		"libopenvr_api.so",
+		"driver",
+		"sally.ico",
+		"LICENSE.txt",
+		"THIRD-PARTY-NOTICES.txt",
+	];
+	/// What sally makes there: what it learned and what was set (`data`), what sessions leave (`logs`), the panel's
+	/// replays, its checks and its settings
+	const MADE: [&str; 5] = ["data", "logs", "replays", "sally-check recordings", "sally-panel.cfg"];
+
+	/// `name` without what an install adds to a file it sets aside (`.old-<n>`) or has not finished writing (`.new`)
+	pub fn settled(name: &str) -> &str {
+		if let Some(whole) = name.strip_suffix(".new") {
+			return whole;
+		}
+		match name.rsplit_once(".old-") {
+			Some((whole, n)) if !n.is_empty() && n.bytes().all(|c| c.is_ascii_digit()) => whole,
+			_ => name,
+		}
+	}
+
+	fn among(names: &[&str], name: &str) -> bool {
+		names.iter().any(|n| n.eq_ignore_ascii_case(name))
+	}
+
+	/// Whether a name in sally's folder is one the installer puts there (or what an install set aside of one)
+	pub fn puts(name: &str) -> bool {
+		let name = settled(name);
+		among(&PUT, name) || name.strip_suffix(".exe").is_some_and(|program| among(&PUT[..3], program))
+	}
+
+	/// Whether a name in sally's folder is sally's: one the installer puts there, or one sally makes
+	pub fn sallys(name: &str) -> bool {
+		puts(name) || among(&MADE, settled(name))
+	}
+
+	#[cfg(test)]
+	mod tests {
+		use super::*;
+
+		#[test]
+		fn sallys_own_names_in_its_folder() {
+			for name in
+				["sally.exe", "Sally-Panel.exe", "sally", "uninstall.exe", "driver", "openvr_api.dll", "LICENSE.txt"]
+			{
+				assert!(puts(name) && sallys(name), "{name}");
+			}
+			// what an install set aside or left half written of one
+			for name in ["sally.exe.old-0", "openvr_api.dll.old-12", "sally-panel.exe.new", "sally.ico.new"] {
+				assert!(puts(name) && settled(name) != name, "{name}");
+			}
+			for name in ["data", "logs", "replays", "sally-check recordings", "sally-panel.cfg"] {
+				assert!(sallys(name) && !puts(name), "{name}");
+			}
+			for name in [
+				"notes.txt",
+				"sally.exe.bak",
+				"driver.zip",
+				"data2",
+				"photos",
+				"x.new",
+				"x.old-1",
+				"sally.exe.old-",
+				"sally.exe.old-1a",
+			] {
+				assert!(!sallys(name), "{name}");
+			}
+			assert_eq!(
+				(settled("a.old-3"), settled("a.new"), settled("a.old-x"), settled("a.old-")),
+				("a", "a", "a.old-x", "a.old-")
+			);
+		}
+	}
+}
 
 pub mod payload {
 	/// The footer's last 16 bytes

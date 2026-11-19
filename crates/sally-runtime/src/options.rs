@@ -160,10 +160,22 @@ const SURVIVE_SENSOR_ACTIVATIONS: [Opt; 7] = [
 ];
 
 /// survive-cli.c
-const SURVIVE_CLI: [Opt; 2] = [
+const SURVIVE_CLI: [Opt; 3] = [
 	("stop-after", Float(-1.0), "sally: stop a live run cleanly after this many seconds (-1 = never)"),
+	STOP_WITH,
 	DEVICE_LEARNED,
 ];
+
+/// sally: a runtime does not outlive the SteamVR it was started for
+const STOP_WITH: Opt = (
+	"stop-with",
+	Int(0),
+	concat!(
+		"sally: stop a live run cleanly once the process with this id has ended. The SteamVR driver gives its own ",
+		"(the SteamVR server's), so that a runtime it started does not go on reading the dongles and recording ",
+		"after a SteamVR that crashed or was killed (0 = never)",
+	),
+);
 
 /// sally: the tracker's device calibration carried between sessions (learned.rs)
 const DEVICE_LEARNED: Opt = (
@@ -697,13 +709,15 @@ mod tests {
 		let at = c.iter().position(|l| l.contains(r#""filter-outlier-minimum-count""#)).unwrap() + 1;
 		let stop_after = r#"option f "stop-after" bff0000000000000 "sally: stop a live run cleanly after this many seconds (-1 = never)""#;
 		c.insert(at, stop_after);
+		let stop_with = format!("option i {} 0 {}", quote(STOP_WITH.0.as_bytes()), quote(STOP_WITH.2.as_bytes()));
+		c.insert(at + 1, &stop_with);
 		let learned = format!(
 			"option s {} {} {}",
 			quote(DEVICE_LEARNED.0.as_bytes()),
 			quote(b""),
 			quote(DEVICE_LEARNED.2.as_bytes())
 		);
-		c.insert(at + 1, &learned);
+		c.insert(at + 2, &learned);
 		// the runtime protocol's file of the driver stream (sally's, after the C's last option of that file)
 		let at = c.iter().position(|l| l.contains(r#""runtime-sub-timeout""#)).unwrap() + 1;
 		let (name, _, says) = DRIVER_POSE_UDP[7];
@@ -732,7 +746,8 @@ mod tests {
 		let mut c: Vec<&str> = include_str!("../tests/data/options/windows_order.txt").split_whitespace().collect();
 		// sally's options since that build
 		let at = c.iter().position(|&o| o == "stop-after").unwrap() + 1;
-		c.insert(at, "device-learned-file");
+		c.insert(at, "stop-with");
+		c.insert(at + 1, "device-learned-file");
 		let at = c.iter().position(|&o| o == "runtime-sub-timeout").unwrap() + 1;
 		c.insert(at, "runtime-driver-file");
 		let at = c.iter().position(|&o| o == "hidtap-record").unwrap() + 1;

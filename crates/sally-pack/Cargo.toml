@@ -1,0 +1,11 @@
+[package]
+name = "sally-pack"
+description = "What sally's packed files are made with: the entropy coder (a tap recording's and a pose log's), and a table of numbers as text (the pose log) packed and read back"
+version.workspace = true
+edition.workspace = true
+license.workspace = true
+publish.workspace = true
+
+[dependencies]
+# the blocks' checksum
+sally-math = { path = "../sally-math" }

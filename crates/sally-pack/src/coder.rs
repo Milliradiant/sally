@@ -1,4 +1,4 @@
-//! The packed recordings' entropy coder: a binary range coder whose probabilities adapt as it goes (the scheme LZMA
+//! The packed files' entropy coder: a binary range coder whose probabilities adapt as it goes (the scheme LZMA
 //! uses, with wider probabilities that adapt at two rates), and the two shapes every model is built from: a tree of
 //! bits for a small symbol, and a signed number coded by its length.
 //!
@@ -15,6 +15,11 @@ pub trait Io {
 	fn bit(&mut self, p: &mut Prob, bit: bool) -> bool;
 	/// `bits` bits (32 at most) as they are: for what no model can shorten
 	fn raw(&mut self, bits: u32, value: u32) -> u32;
+	/// whether more has been read than there was (unpacking a block that is damaged): what is read from then on is
+	/// nothing's, and a long run of it can be left unread
+	fn overrun(&self) -> bool {
+		false
+	}
 }
 
 /// The probability that a bit is 0, in 1/65536, as the mean of two estimates: one that follows the last few dozen
@@ -74,7 +79,7 @@ impl Encoder {
 	}
 
 	/// The bytes written so far (the block's size, near enough)
-	pub fn len(&self) -> usize {
+	pub fn size(&self) -> usize {
 		self.out.len()
 	}
 
@@ -197,6 +202,10 @@ impl Io for Decoder<'_> {
 			self.code = (self.code << 8) | self.next() as u32;
 		}
 		bit
+	}
+
+	fn overrun(&self) -> bool {
+		Decoder::overrun(self)
 	}
 
 	fn raw(&mut self, bits: u32, _: u32) -> u32 {

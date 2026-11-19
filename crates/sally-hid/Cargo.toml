@@ -8,4 +8,8 @@ publish.workspace = true
 
 [dependencies]
 miniz_oxide = "0.9"
+# the packed recordings' checksum
+sally-math = { path = "../sally-math" }
 sally-os = { path = "../sally-os" }
+# the packed recordings' entropy coder
+sally-pack = { path = "../sally-pack" }

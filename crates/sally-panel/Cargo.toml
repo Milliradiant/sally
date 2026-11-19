@@ -23,6 +23,8 @@ path = "src/bin/poses.rs"
 sally-lighthouse = { path = "../sally-lighthouse" }
 # a session's recording read whether it is packed or text (its span, the devices it names)
 sally-hid = { path = "../sally-hid" }
+# a session's pose log read whether it is packed or text
+sally-pack = { path = "../sally-pack" }
 # the Check tab: a stretch of the session checked and made into a file to send
 sally-check = { path = "../sally-check" }
 sally-math = { path = "../sally-math" }

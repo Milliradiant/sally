@@ -33,7 +33,6 @@
 //! - `open`, `text`: a recording of either form as its text, for everything that reads one
 //! - `stem`: a recording's name without its end, whichever of the two it has
 
-mod coder;
 mod imu;
 mod light;
 mod report;
@@ -43,8 +42,9 @@ use std::fs::File;
 use std::io::{self, Read, Seek, SeekFrom, Write};
 use std::path::Path;
 
-use coder::{Decoder, Encoder, Io, Number, Prob, Symbol};
 use report::{Models as ReportModels, Stream, MAX_REPORT};
+use sally_math::crc::crc32;
+use sally_pack::coder::{Decoder, Encoder, Io, Number, Prob, Symbol};
 
 /// A packed recording's first bytes: no text recording starts with them
 pub const MAGIC: &[u8; 8] = b"\x89HIDTAPZ";
@@ -60,12 +60,20 @@ const BLOCK_HEADER: usize = 24;
 pub const TEXT_END: &str = ".hidtap";
 pub const PACKED_END: &str = ".hidtapz";
 
-/// A block ends once it holds this much of the recording's time, or this many lines
+/// A block ends once it holds this much of the recording's time, this many lines, or this much of its text
 const BLOCK_US: u64 = 500_000;
 const BLOCK_LINES: u32 = 8192;
-/// The most a block is read as (a damaged length must not ask for the machine's memory)
+const BLOCK_TEXT: usize = 1 << 24;
+/// The most a block is read as (a damaged block, or one made up to, must not ask for the machine's memory): its
+/// coded bytes, a line's bytes, and the text it unpacks to. A block is written up to `BLOCK_TEXT` (and before that
+/// bound was, up to `BLOCK_LINES` of a recording's lines, a few hundred bytes each), so the line that took it there
+/// is all it can hold beyond
 const MAX_BLOCK: u32 = 1 << 26;
 const MAX_TEXT: i64 = 1 << 26;
+const MAX_BLOCK_TEXT: usize = BLOCK_TEXT + MAX_TEXT as usize;
+/// The longest name a device has (a dongle's or a device's serial, with what follows it on a report's line): the
+/// names are kept for the whole recording. A report line with a longer one is kept as its bytes
+const MAX_NAME: usize = 255;
 
 /// The devices a recording can name; a line of one more is kept as its bytes
 const STREAMS: usize = 255;
@@ -74,26 +82,6 @@ const STREAMS: usize = 255;
 const CR_LF: u8 = 0;
 const LF: u8 = 1;
 const NO_END: u8 = 2;
-
-/// CRC-32 (IEEE), as zip has it
-fn crc32(bytes: &[u8]) -> u32 {
-	const TABLE: [u32; 256] = {
-		let mut table = [0u32; 256];
-		let mut i = 0;
-		while i < 256 {
-			let mut c = i as u32;
-			let mut k = 0;
-			while k < 8 {
-				c = if c & 1 != 0 { 0xedb8_8320 ^ (c >> 1) } else { c >> 1 };
-				k += 1;
-			}
-			table[i] = c;
-			i += 1;
-		}
-		table
-	};
-	!bytes.iter().fold(!0u32, |c, &b| TABLE[((c ^ b as u32) & 0xff) as usize] ^ (c >> 8))
-}
 
 /// One line, between its text and the coder: a report line as sally writes it is its device, its time and its
 /// report; any other is its bytes
@@ -128,6 +116,8 @@ struct State {
 	last_time: u64,
 	/// the size of the last step in time: steps come in runs (the reports read together, then the wait for the next)
 	last_step: usize,
+	/// unpacking: a line held more than one may
+	over: bool,
 }
 
 impl State {
@@ -147,11 +137,15 @@ impl State {
 			last_stream: STREAMS,
 			last_time: 0,
 			last_step: 0,
+			over: false,
 		}
 	}
 
-	fn bytes<I: Io>(&mut self, io: &mut I, text: &mut Vec<u8>) {
-		let len = self.text_len.code(io, 0, text.len() as i64).clamp(0, MAX_TEXT) as usize;
+	/// Bytes kept as they are: a line that is not a report (`most`: `MAX_TEXT`), a device's name (`MAX_NAME`)
+	fn bytes<I: Io>(&mut self, io: &mut I, text: &mut Vec<u8>, most: usize) {
+		let len = self.text_len.code(io, 0, text.len() as i64);
+		self.over |= len < 0 || len > most as i64;
+		let len = len.clamp(0, most as i64) as usize;
 		if !I::PACKING {
 			text.clear();
 			text.resize(len, 0);
@@ -167,7 +161,7 @@ impl State {
 		l.end = self.end.code(io, self.last_end as usize, l.end as u32) as u8;
 		self.last_end = l.end;
 		if !l.is_report {
-			return self.bytes(io, &mut l.text);
+			return self.bytes(io, &mut l.text, MAX_TEXT as usize);
 		}
 
 		let stream = self.stream.code(io, self.last_stream, l.stream as u32) as usize;
@@ -175,7 +169,7 @@ impl State {
 			stream
 		} else {
 			// a device not seen before, by its name
-			self.bytes(io, &mut l.name);
+			self.bytes(io, &mut l.name, MAX_NAME);
 			if self.streams.len() < STREAMS {
 				self.names.push(l.name.clone());
 				self.streams.push(Stream::default());
@@ -226,6 +220,9 @@ pub struct Packer {
 	places: HashMap<Vec<u8>, usize>,
 	line: Line,
 	lines: u32,
+	/// the bytes of the block's lines, and how many end a block
+	text: usize,
+	block_text: usize,
 	/// the earliest and the latest of the block's report times
 	span: Option<(u64, u64)>,
 }
@@ -249,6 +246,8 @@ impl Packer {
 			places: HashMap::new(),
 			line: Line::default(),
 			lines: 0,
+			text: 0,
+			block_text: BLOCK_TEXT,
 			span: None,
 		}
 	}
@@ -269,7 +268,7 @@ impl Packer {
 		// the name is all up to the last space, with it; the report's hex is what follows
 		let name_len = rest.iter().rposition(|&c| c == b' ').map_or(0, |i| i + 1);
 		let (name, hex) = rest.split_at(name_len);
-		if hex.len() % 2 != 0 || hex.len() > 2 * MAX_REPORT {
+		if hex.len() % 2 != 0 || hex.len() > 2 * MAX_REPORT || name.len() > MAX_NAME {
 			return false;
 		}
 		let l = &mut self.line;
@@ -314,12 +313,14 @@ impl Packer {
 		}
 		self.state.line(&mut self.coder, &mut self.line);
 		self.lines += 1;
+		self.text += line.len();
 	}
 
 	/// Whether the lines taken since the last block are a block's worth
 	pub fn full(&self) -> bool {
 		self.lines >= BLOCK_LINES
-			|| self.coder.len() >= MAX_BLOCK as usize / 4
+			|| self.text >= self.block_text
+			|| self.coder.size() >= MAX_BLOCK as usize / 4
 			|| self.span.is_some_and(|(from, to)| to - from >= BLOCK_US)
 	}
 
@@ -338,6 +339,7 @@ impl Packer {
 		block.extend_from_slice(&coded);
 		block.extend_from_slice(&crc32(&block).to_le_bytes());
 		self.lines = 0;
+		self.text = 0;
 		block
 	}
 }
@@ -417,6 +419,8 @@ pub struct Unpacker<R: Read> {
 	/// the text of the block read last, and how much of it has been handed on
 	text: Vec<u8>,
 	given: usize,
+	/// the most text a block is read as
+	most: usize,
 	ended: bool,
 	cut: bool,
 }
@@ -460,6 +464,7 @@ impl<R: Read> Unpacker<R> {
 			line: Line::default(),
 			text: Vec::new(),
 			given: 0,
+			most: MAX_BLOCK_TEXT,
 			ended: false,
 			cut: false,
 		})
@@ -516,6 +521,9 @@ impl<R: Read> Unpacker<R> {
 				CR_LF => self.text.extend_from_slice(b"\r\n"),
 				LF => self.text.push(b'\n'),
 				_ => {}
+			}
+			if self.state.over || self.text.len() > self.most {
+				return Err(damaged("a block holds more than one can"));
 			}
 			if coder.overrun() {
 				return Err(damaged("a block holds less than it says"));
@@ -928,6 +936,13 @@ mod tests {
 		let too_long = format!("R 6 X 2102 -1 -1 I {}\r\n", hex(&[0x5a; MAX_REPORT + 1]));
 		let text = [longest.as_bytes(), too_long.as_bytes(), longest.as_bytes()].concat();
 		assert!(unpack(&pack(&text, 1000)).unwrap() == text);
+		// a device's name, likewise: one too long is not a device's (its line is kept as its bytes, and takes no place)
+		let named = |n: usize| format!("R 5 {} 23\r\n", "N".repeat(n - 1));
+		let text = [named(MAX_NAME), named(MAX_NAME + 1), named(MAX_NAME)].concat();
+		let mut w = PackWriter::new(Vec::new()).unwrap();
+		w.write(text.as_bytes()).unwrap();
+		assert_eq!(w.packer.places.len(), 1);
+		assert!(unpack(&w.finish().unwrap()).unwrap() == text.as_bytes());
 	}
 
 	#[test]
@@ -995,11 +1010,8 @@ mod tests {
 		}
 	}
 
-	#[test]
-	fn a_block_ends_every_half_second() {
-		// ten seconds of reports
-		let packed = pack(&steady(20000), 1 << 16);
-		assert_eq!(span(&mut io::Cursor::new(&packed)).unwrap(), Some((7_000_000, 7_000_000 + 19999 * 500)));
+	/// How many blocks a packed recording has
+	fn blocks_of(packed: &[u8]) -> usize {
 		let mut blocks = 0;
 		let mut at = HEADER;
 		while at < packed.len() {
@@ -1007,7 +1019,26 @@ mod tests {
 			at += BLOCK_HEADER + block_size(&head).1 as usize + 4;
 			blocks += 1;
 		}
-		assert_eq!((at, blocks), (packed.len(), 20));
+		assert_eq!(at, packed.len());
+		blocks
+	}
+
+	#[test]
+	fn a_block_ends_every_half_second_and_at_its_fill_of_text() {
+		// ten seconds of reports
+		let packed = pack(&steady(20000), 1 << 16);
+		assert_eq!(span(&mut io::Cursor::new(&packed)).unwrap(), Some((7_000_000, 7_000_000 + 19999 * 500)));
+		assert_eq!(blocks_of(&packed), 20);
+		// lines without a time, a few of them long: a block ends with the line that fills it (here at 1000 bytes)
+		let text =
+			[&b"# a short one\n"[..], &[b'#'; 700], b"\n", &[b'-'; 400], b"\n# next\n", &[b'='; 999], b"\n# last\n"]
+				.concat();
+		let mut w = PackWriter::new(Vec::new()).unwrap();
+		w.packer.block_text = 1000;
+		w.write(&text).unwrap();
+		let packed = w.finish().unwrap();
+		assert_eq!(blocks_of(&packed), 3);
+		assert!(unpack(&packed).unwrap() == text);
 	}
 
 	#[test]
@@ -1068,6 +1099,35 @@ mod tests {
 		assert_eq!(e.kind(), io::ErrorKind::InvalidData);
 		assert!(e.to_string().contains("checksum"), "{e}");
 		assert!(!got.is_empty() && text.starts_with(&got));
+
+		// a block made up to unpack to more than a block holds is not unpacked: the blocks before it are read (here
+		// a block of one line, then one of the rest, and a bound between the two)
+		let (line, rest) = text.split_at(text.iter().position(|&c| c == b'\n').unwrap() + 1);
+		let mut w = PackWriter::new(Vec::new()).unwrap();
+		w.write(line).unwrap();
+		w.end_block().unwrap();
+		w.write(rest).unwrap();
+		let packed = w.finish().unwrap();
+		let mut u = Unpacker::new(&packed[..]).unwrap();
+		u.most = line.len();
+		let mut got = Vec::new();
+		let e = u.read_to_end(&mut got).unwrap_err();
+		assert!(e.kind() == io::ErrorKind::InvalidData && e.to_string().contains("more than"), "{e}");
+		assert!(got == line);
+		// nor is one that names a device at more length than a name has (the names are kept)
+		let mut p = Packer::new();
+		p.line = Line {
+			is_report: true,
+			stream: STREAMS,
+			name: vec![b'N'; MAX_NAME + 1],
+			report: vec![0x23],
+			..Line::default()
+		};
+		p.state.line(&mut p.coder, &mut p.line);
+		p.lines = 1;
+		let made = [&p.header()[..], &p.block()].concat();
+		let e = unpack(&made).unwrap_err();
+		assert!(e.kind() == io::ErrorKind::InvalidData && e.to_string().contains("more than"), "{e}");
 	}
 
 	#[test]

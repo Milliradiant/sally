@@ -5,6 +5,8 @@
 use std::fs::File;
 use std::io::{Read, Seek, SeekFrom};
 
+use sally_math::crc::crc32;
+
 /// One file of the zip, as its central directory gives it
 #[derive(Clone, Debug)]
 pub struct Entry {
@@ -151,23 +153,6 @@ fn py_repr(s: &str) -> String {
 	}
 }
 
-/// CRC-32 (IEEE), as zip has it
-fn crc32(data: &[u8]) -> u32 {
-	static TABLE: std::sync::OnceLock<[u32; 256]> = std::sync::OnceLock::new();
-	let t = TABLE.get_or_init(|| {
-		let mut t = [0u32; 256];
-		for (i, e) in t.iter_mut().enumerate() {
-			let mut c = i as u32;
-			for _ in 0..8 {
-				c = if c & 1 != 0 { 0xedb8_8320 ^ (c >> 1) } else { c >> 1 };
-			}
-			*e = c;
-		}
-		t
-	});
-	!data.iter().fold(!0u32, |c, &b| t[((c ^ b as u32) & 0xff) as usize] ^ (c >> 8))
-}
-
 #[cfg(test)]
 pub(crate) mod tests {
 	use super::*;
@@ -241,10 +226,5 @@ pub(crate) mod tests {
 		std::fs::write(dir.join("y.zip"), b"not a zip at all, not at all").unwrap();
 		assert_eq!(entries(&mut File::open(dir.join("y.zip")).unwrap()).unwrap_err(), NOT_A_ZIP);
 		let _ = std::fs::remove_dir_all(&dir);
-	}
-
-	#[test]
-	fn crc_is_zips() {
-		assert_eq!(crc32(b"123456789"), 0xcbf4_3926);
 	}
 }
