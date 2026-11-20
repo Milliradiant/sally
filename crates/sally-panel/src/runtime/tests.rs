@@ -353,6 +353,13 @@ fn the_calibration_status_reads_its_parts() {
 	assert_eq!(why, "it 0.061 mrad, the room's 0.065 mrad");
 	assert_eq!(c.pending, None);
 	assert!(c.last.as_ref().unwrap().starts_with("20261109_011500 pending"));
+	assert_eq!(c.failed, None);
+	// a room that waits for its calibration, after one of this session that failed
+	let c = Calib::parse(
+		"OK calibrate newroom 79 | failed only 9 still moments were seen by two placed stations: too few | last 20261119_230915 failed sallytap_20261119_230704.hidtapz only 9 still moments were seen by two placed stations: too few",
+	);
+	assert_eq!(c.new_room, Some(79.0));
+	assert_eq!(c.failed.as_deref(), Some("only 9 still moments were seen by two placed stations: too few"));
 	assert_eq!(Calib::parse("OK calibrate idle"), Calib { available: Some(true), ..Calib::default() });
 	let replay = Calib::parse("ERR calibrate needs the live runtime (the dongles, a config file and --hidtap-record)");
 	assert_eq!(replay.available, Some(false));

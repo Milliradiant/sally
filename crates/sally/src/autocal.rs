@@ -259,16 +259,38 @@ fn replace_dir(from: &Path, to: &Path) -> std::io::Result<()> {
 	std::fs::rename(from, to)
 }
 
-/// A file copied into place through a temporary beside it, the old one put aside as `<file>.bak_<stamp>` first
+/// A file copied into place through a temporary beside it, the old one put aside as `<file>.bak_<stamp>` first.
+/// Where the new one cannot be put there (a scanner holding the file just written, say) the old one is put back
 fn put_in_place(from: &Path, to: &Path, stamp: &str) -> std::io::Result<Option<PathBuf>> {
 	let tmp = to.with_extension("tmp_adopt");
 	std::fs::copy(from, &tmp)?;
 	let aside = to.is_file().then(|| bak(to, stamp));
-	if let Some(a) = &aside {
-		std::fs::rename(to, a)?;
+	let placed = match &aside {
+		Some(a) => std::fs::rename(to, a),
+		None => Ok(()),
 	}
-	std::fs::rename(&tmp, to)?;
-	Ok(aside)
+	.and_then(|()| {
+		std::fs::rename(&tmp, to).inspect_err(|_| {
+			if let Some(a) = &aside {
+				let _ = std::fs::rename(a, to);
+			}
+		})
+	});
+	if placed.is_err() {
+		let _ = std::fs::remove_file(&tmp);
+	}
+	placed.map(|()| aside)
+}
+
+/// What `put_in_place` and a file put aside did, taken back, the last first: each file where it is and where its old
+/// one went (None: there was none, and the new one goes)
+fn take_back(done: &[(PathBuf, Option<PathBuf>)]) {
+	for (to, aside) in done.iter().rev() {
+		let _ = match aside {
+			Some(a) => std::fs::rename(a, to),
+			None => std::fs::remove_file(to),
+		};
+	}
 }
 
 fn bak(p: &Path, stamp: &str) -> PathBuf {
@@ -382,7 +404,9 @@ impl Auto {
 	}
 
 	/// The ready calibration into the room's files, unless the room's calibration is no longer the one it was made
-	/// from
+	/// from. Whole or not at all: where one of its files cannot be put in its place the ones before it are taken
+	/// back, so that the room is not left with half of it, or with no config (a room with none is a new one, and
+	/// SteamVR keeps Valve's tracking until it has been calibrated again); it stays ready for the next start
 	fn take_up(&mut self, from: &Path) {
 		let info = read(&from.join("info.txt"));
 		let rec = field(&info, "recording").unwrap_or_default();
@@ -399,24 +423,23 @@ impl Auto {
 			);
 			return;
 		}
-		let mut aside = Vec::new();
+		let mut done: Vec<(PathBuf, Option<PathBuf>)> = Vec::new();
 		let r = (|| -> std::io::Result<()> {
-			if let Some(a) = put_in_place(&from.join("driver_config.json"), &self.config, &s)? {
-				aside.push(a);
-			}
+			let a = put_in_place(&from.join("driver_config.json"), &self.config, &s)?;
+			done.push((self.config.clone(), a));
 			let fc = from.join("station_fcal.txt");
 			if fc.is_file() {
-				if let Some(a) = put_in_place(&fc, &self.fcal, &s)? {
-					aside.push(a);
-				}
+				let a = put_in_place(&fc, &self.fcal, &s)?;
+				done.push((self.fcal.clone(), a));
 			}
 			if let Some(m) = self.map.as_ref().filter(|m| m.is_file()) {
 				let a = bak(m, &s);
 				std::fs::rename(m, &a)?;
-				aside.push(a);
+				done.push((m.clone(), Some(a)));
 			}
 			Ok(())
 		})();
+		let aside: Vec<PathBuf> = done.iter().filter_map(|(_, a)| a.clone()).collect();
 		match r {
 			Ok(()) => {
 				let to = self.dir.join(format!("adopted_{s}"));
@@ -433,8 +456,12 @@ impl Auto {
 				);
 			}
 			Err(e) => {
+				take_back(&done);
 				self.log("failed", &rec, &format!("taking it up: {e}"));
-				self.note(true, format!("cannot take the ready calibration up: {e}"));
+				self.note(
+					true,
+					format!("cannot take the ready calibration up: {e}; the room's files are as they were"),
+				);
 			}
 		}
 	}
@@ -838,6 +865,7 @@ impl Auto {
 
 	/// `calibrate status`'s words: `running <kind> <recording> <state> <progress> <moments>`, then `ready <recording>
 	/// <why>` when one waits for the next start, `pending <recording>:<wins> ...` for those waiting for sessions' word,
+	/// `failed <why>` where that line is this session's recording's and says it failed,
 	/// and `last <log.txt's last line>`, joined by " | "
 	fn status_text(&mut self) -> String {
 		let mut parts = Vec::new();
@@ -879,6 +907,12 @@ impl Auto {
 		if let Some(l) =
 			read(&self.dir.join("log.txt")).lines().rev().find(|l| !l.split(' ').nth(1).is_some_and(|w| w == "started"))
 		{
+			// this session's own calibration failed: why. An earlier session's failure says nothing of this one (one
+			// that ended before a station was seen fails for that alone), and is not said as this one's
+			let w: Vec<&str> = l.splitn(4, ' ').collect();
+			if w.get(1) == Some(&"failed") && w.get(2) == Some(&name_of(&self.record).as_str()) {
+				parts.push(format!("failed {}", w.get(3).unwrap_or(&"").trim()));
+			}
 			parts.push(format!("last {}", l));
 		}
 		if self.lh1 {
@@ -1130,6 +1164,34 @@ mod tests {
 	}
 
 	#[test]
+	fn a_calibration_that_cannot_be_taken_up_whole_leaves_the_room_as_it_was() {
+		let (root, mut argv) = room("whole");
+		// the corrections' file is named in a folder that is not there: the config can be put in its place, the
+		// corrections cannot
+		let gone = root.join("gone/station_fcal.txt").to_string_lossy().into_owned().into_bytes();
+		argv.extend([b"--station-fcal-file".to_vec(), gone]);
+		let mut a = Auto::new(&argv).unwrap();
+		finished(&a, Kind::SoFar, R2, "state done\nwritten 1\nready 0\ntext asked for\n", "B");
+		assert!(a.finish_if_done());
+		assert!(a.ready().join("driver_config.json").is_file());
+		let mut b = Auto::new(&argv).unwrap();
+		b.adopt();
+		// the room has the config and the map it had, nothing is left aside, and the calibration is still ready
+		assert_eq!(read(&root.join("survive/driver_config.json")), "A");
+		assert_eq!(read(&root.join("survive/map_solve.txt")), "M");
+		let left: Vec<String> = std::fs::read_dir(root.join("survive"))
+			.unwrap()
+			.flatten()
+			.map(|e| e.file_name().to_string_lossy().into_owned())
+			.filter(|n| n.contains(".bak_") || n.contains("tmp_adopt"))
+			.collect();
+		assert!(left.is_empty(), "{left:?}");
+		assert!(b.ready().join("driver_config.json").is_file());
+		assert!(read(&b.dir.join("log.txt")).contains(&format!(" failed {R2} taking it up: ")));
+		let _ = std::fs::remove_dir_all(&root);
+	}
+
+	#[test]
 	fn a_ready_one_made_from_another_config_is_dropped_and_a_judged_one_that_lost_goes() {
 		let (root, argv) = room("drop");
 		let mut a = Auto::new(&argv).unwrap();
@@ -1185,6 +1247,17 @@ mod tests {
 		if let Some(mut child) = a.child.take() {
 			let _ = child.wait();
 		}
+		// a session before this one that failed (it ended before a station was seen) is the log's last line, and not
+		// this session's failure; this session's own is
+		a.log("failed", R1, "no stations");
+		let st = a.status_text();
+		assert!(
+			st.contains(&format!("failed {R1} no stations")) && !st.contains("| failed") && !st.starts_with("failed")
+		);
+		a.log("failed", R2, "only 9 still moments were seen by two placed stations: too few");
+		assert!(a
+			.status_text()
+			.starts_with("failed only 9 still moments were seen by two placed stations: too few | last "));
 		// what the calibration leaves when it has placed the stations is ready at once, the runtime is to stop for it,
 		// and the next start takes it up as the room's first config and corrections
 		finished(&a, Kind::NewRoom, R2, "state done\nwritten 1\nready 1\ntext 4 stations\n", "N");

@@ -288,6 +288,37 @@ pub fn fit_rigid(src: &[V3], dst: &[V3]) -> Option<(Pose, f64)> {
 	Some((out, (e / n as f64).sqrt()))
 }
 
+/// Whether the points lie off their own main line by `rms_m` or more (root mean square): what a rigid fit of them
+/// needs beyond `fit_rigid`'s own check, which only refuses points all in one place. Points along one line (still
+/// devices side by side, one device moved straight) are fitted as well by any turn about that line, and the fit gives
+/// one of them. The scatter's second-largest eigenvalue, the squared distances off the main line summed, is within a
+/// factor of three of the sum of the scatter's principal 2x2 minors over its trace (the same for points near a
+/// line), which needs no eigenvalues
+pub fn off_one_line(points: &[V3], rms_m: f64) -> bool {
+	if points.is_empty() {
+		return false;
+	}
+	let n = points.len() as f64;
+	let mut c = V3::default();
+	for p in points {
+		c += *p;
+	}
+	c = c * (1.0 / n);
+	let (mut xx, mut yy, mut zz, mut xy, mut xz, mut yz) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
+	for p in points {
+		let d = *p - c;
+		xx += d.x * d.x;
+		yy += d.y * d.y;
+		zz += d.z * d.z;
+		xy += d.x * d.y;
+		xz += d.x * d.z;
+		yz += d.y * d.z;
+	}
+	let trace = xx + yy + zz;
+	let minors = (xx * yy - xy * xy) + (xx * zz - xz * xz) + (yy * zz - yz * yz);
+	trace > 0.0 && minors / trace >= n * rms_m * rms_m
+}
+
 /// fit_rigid with the outliers trimmed: refits on the pairs whose residual is under max(floor_m, the 70th
 /// percentile), six rounds at most. The fit, the median residual over all pairs (outliers included) and the pairs in
 /// the final fit; None when the first fit fails

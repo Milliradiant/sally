@@ -413,6 +413,8 @@ pub struct Calib {
 	pub pending: Option<String>,
 	/// log.txt's last line: time, what, recording, text
 	pub last: Option<String>,
+	/// this session's own calibration failed: why, as it said (a runtime before 0.31.0 does not say)
+	pub failed: Option<String>,
 }
 
 /// A calibration running: what of, its recording, where it is (replaying, solving), how far, the still moments so far
@@ -427,7 +429,8 @@ pub struct CalibRun {
 
 impl Calib {
 	/// `OK calibrate idle`, or its parts joined by " | ": `running <kind> <recording> <state> <progress> <moments>`,
-	/// `newroom <seconds>`, `lh1`, `ready <recording> <why>`, `pending <recording>`, `last <time> <what> <recording> <text>`
+	/// `newroom <seconds>`, `lh1`, `ready <recording> <why>`, `pending <recording>`, `failed <why>`,
+	/// `last <time> <what> <recording> <text>`
 	pub fn parse(reply: &str) -> Calib {
 		let Some(body) = reply.strip_prefix("OK calibrate ") else {
 			return Calib { available: Some(false), ..Calib::default() };
@@ -454,6 +457,7 @@ impl Calib {
 				}
 				"pending" => c.pending = Some(tail.to_string()),
 				"last" => c.last = Some(tail.to_string()),
+				"failed" => c.failed = Some(tail.trim().to_string()),
 				_ => {}
 			}
 		}

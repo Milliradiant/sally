@@ -1290,6 +1290,22 @@ mod tests {
 		assert!(
 			tap.is_configured(k) && tap.take_record_lines().is_empty() && !std::path::Path::new(&caches[0]).exists()
 		);
+		// a headset on its cable is a device under its own serial, and SteamVR's word names it on that: its own config,
+		// kept under its serial for the next start, and the recording told
+		let hmd = format!("LHR-{:08X}", id);
+		let cache = format!("{hmd}_config.json");
+		let _ = std::fs::remove_file(&cache);
+		let mut rt = Devices { configs: vec![(hmd.clone(), "{\"h\": 3}".into())], ..Devices::default() };
+		let mut tap = Tap::new(Options { config_fetch: false, ..Options::default() }, Mode::Live);
+		let k = tap.device(&mut rt, &hmd, 0x2300).unwrap();
+		assert!(!tap.is_configured(k));
+		assert_eq!(tap.assign(&mut rt, &hmd, &hmd, 20), Assigned::Configured);
+		assert!(tap.is_configured(k));
+		assert_eq!(std::fs::read_to_string(&cache).unwrap(), "{\"h\": 3}");
+		assert_eq!(tap.assign(&mut rt, &hmd, &hmd, 21), Assigned::Same);
+		let lines: Vec<String> = tap.take_record_lines().into_iter().map(|l| String::from_utf8(l).unwrap()).collect();
+		assert_eq!(lines, [format!("A 20 {hmd} {hmd}\n")]);
+		let _ = std::fs::remove_file(&cache);
 	}
 
 	#[test]

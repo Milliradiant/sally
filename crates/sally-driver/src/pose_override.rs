@@ -18,8 +18,9 @@
 //! devices are only as right as the configs it has for its dongles, and a device paired to another dongle leaves the
 //! old one's config with another device (re-paired trackers then fly about on each other's poses). The driver tells the
 //! runtime which device each dongle carries (`pairs`, the protocol's `pair`), and a device's runtime pose stands in for
-//! Valve's only while the runtime has it on the dongle Valve's driver does (`same_device`). The headset keeps Valve's
-//! pose unless driver.hmd is set. Until the frame fit is ready, or when sally has no fresh pose for a device, Valve's
+//! Valve's only while the runtime has it on the dongle Valve's driver does (`same_device`). The headset, on a cable
+//! with no dongle, is named to the runtime on its own serial, and keeps Valve's pose unless driver.hmd is set. Until
+//! the frame fit is ready, or when sally has no fresh pose for a device, Valve's
 //! pose is shown (blended, see on_pose). If Valve's driver stops reporting a device the runtime still tracks, the
 //! runtime's pose is pushed by this driver.
 //!
@@ -32,7 +33,9 @@ use std::ffi::{c_void, CStr};
 use std::sync::atomic::{AtomicBool, AtomicI32, AtomicI64, AtomicUsize, Ordering::SeqCst};
 use std::sync::{Mutex, MutexGuard, RwLock};
 
-use sally_math::math3d::{compose, cross, inverse, len, norm, qangle, qconj, qmul, qnorm, qrot, xform, Pose, Q4, V3};
+use sally_math::math3d::{
+	compose, cross, inverse, len, norm, off_one_line, qangle, qconj, qmul, qnorm, qrot, xform, Pose, Q4, V3,
+};
 use sally_math::printf::{bsprintf, BArg};
 
 use crate::body::{Body, Dash};
@@ -273,6 +276,10 @@ pub struct State {
 	/// The toys that move the whole body (body.rs): their state between poses
 	pub body: Body,
 }
+
+/// `fit`: how far off their own main line a fit's pairs have to lie (m, root mean square). A body's trackers standing
+/// still are 0.1 to 0.3 m off theirs; at 0.1 m, 150 pairs that agree to 5 mm pin the turn about that line to 4 mrad
+const FIT_OFF_LINE_M: f64 = 0.1;
 
 /// `level`: how long the free fits' up is averaged over with a lighthouse headset (s)
 const LEVEL_TAU: f64 = 600.0;
@@ -1189,22 +1196,28 @@ impl PoseOverride {
 
 	/// Pairs: the runtime protocol's `pair <dongle> <serial>` for each dongle one of Valve's devices is on, as Valve's
 	/// driver says (the devices it has reported connected within the last 1.5 s; the headset only with driver.hmd). A
-	/// dongle two of them name is left out until one goes (Valve's driver is moving a device over)
+	/// dongle two of them name is left out until one goes (Valve's driver is moving a device over).
+	///
+	/// The headset is on a cable and Valve's driver names no dongle for it: it is named on its own serial, which is what
+	/// the runtime has a device on a cable under, so that the runtime takes its config as it takes any device's (it has
+	/// none of its own for a headset it has not tracked before, and nothing else tells it whose to take). Another
+	/// device with no dongle (a tracker or a controller on a cable) is not named: SteamVR keeps Valve's pose for it
 	pub fn pairs(&self, now: f64) -> Vec<Vec<u8>> {
 		let o = g_opt();
 		let st = self.lock();
 		let mut by: BTreeMap<&[u8], Option<&[u8]>> = BTreeMap::new();
 		for d in st.devs.values() {
 			let connected = d.last.deviceIsConnected != 0 && now - d.last_call < 1.5;
+			let dongle = if d.hmd && d.dongle.is_empty() { &d.serial } else { &d.dongle };
 			if !d.target
 				|| (d.hmd && !(o.hmd && self.headset.load(SeqCst)))
 				|| !connected
-				|| !word(&d.dongle)
+				|| !word(dongle)
 				|| !word(&d.serial)
 			{
 				continue;
 			}
-			by.entry(&d.dongle).and_modify(|e| *e = None).or_insert(Some(&d.serial));
+			by.entry(dongle).and_modify(|e| *e = None).or_insert(Some(&d.serial));
 		}
 		by.into_iter()
 			.filter_map(|(dongle, serial)| {
@@ -1564,8 +1577,14 @@ impl PoseOverride {
 	}
 
 	/// Fit: the frame fit over the last fit_window_s of pairs, eased in. After a "refit" (the panel's "Re-align to
-	/// Valve") the pairs start over, SteamVR keeps the fit it has until the new pairs make one (150 from 3 devices, as
-	/// the first), and that one is taken as it is
+	/// Valve") the pairs start over, SteamVR keeps the fit it has until the new pairs make one (150 that pin it, as
+	/// the first), and that one is taken as it is.
+	///
+	/// A fit is made of pairs that pin it: 150 of them (~15 s of play: a first fit from a few pairs can be centimetres
+	/// off) whose points lie FIT_OFF_LINE_M off their own main line, however many devices they are of. Two devices
+	/// carried about the room give that, and so does one; devices standing in a row do not, as many as they are (any
+	/// turn about the row fits them). Without it the fit stays as it is, and before the first one SteamVR keeps
+	/// Valve's tracking
 	fn fit(&self, now: f64) {
 		let o = g_opt();
 		let mut a: Vec<V3> = Vec::new();
@@ -1595,8 +1614,7 @@ impl PoseOverride {
 			}
 			devices = per.len() as i32;
 		}
-		if (a.len() as i32) < 150 || devices < 3 {
-			// ~15 s of play: a first fit from a few pairs can be centimetres off
+		if (a.len() as i32) < 150 || !off_one_line(&a, FIT_OFF_LINE_M) {
 			return;
 		}
 		let Some((tf, med, kept)) = sally_math::math3d::fit_rigid_robust(&a, &b, 0.03) else { return };
@@ -2976,14 +2994,14 @@ mod tests {
 	fn pairs_name_each_dongle_one_connected_device_is_on() {
 		let now = 50.0;
 		let po = PoseOverride::new();
+		let connected = |serial: &[u8], dongle: &[u8], last_call: f64| {
+			let mut d = dev(serial, dongle);
+			d.last_call = last_call;
+			d.last.deviceIsConnected = 1;
+			d
+		};
 		{
 			let mut st = po.lock();
-			let connected = |serial: &[u8], dongle: &[u8], last_call: f64| {
-				let mut d = dev(serial, dongle);
-				d.last_call = last_call;
-				d.last.deviceIsConnected = 1;
-				d
-			};
 			st.devs.insert(1, connected(SERIAL, DONGLE, now - 0.01));
 			// gone quiet, disconnected, no dongle, a dongle no protocol word: not named
 			st.devs.insert(2, connected(b"LHR-00000002", b"1B7A62914E-3YX", now - 2.0));
@@ -3000,6 +3018,20 @@ mod tests {
 			other.target = false;
 			st.devs.insert(8, other);
 		}
+		assert_eq!(po.pairs(now), [b"#p pair 00A4AE2B50-RYB LHR-C57C5A45".to_vec()]);
+		// the headset, on its cable with no dongle: named on its own serial (the runtime has it under that, and gets
+		// its config by it), and not at all while the panel's Headset tracking says Valve's
+		{
+			let mut st = po.lock();
+			let mut hmd = connected(b"LHR-00000009", b"", now);
+			hmd.hmd = true;
+			st.devs.insert(k_unTrackedDeviceIndex_Hmd, hmd);
+		}
+		assert_eq!(
+			po.pairs(now),
+			[b"#p pair 00A4AE2B50-RYB LHR-C57C5A45".to_vec(), b"#p pair LHR-00000009 LHR-00000009".to_vec()]
+		);
+		po.headset.store(false, SeqCst);
 		assert_eq!(po.pairs(now), [b"#p pair 00A4AE2B50-RYB LHR-C57C5A45".to_vec()]);
 	}
 
@@ -3264,6 +3296,30 @@ mod tests {
 
 	fn norm_v(v: V3) -> V3 {
 		v * (1.0 / len(v))
+	}
+
+	#[test]
+	fn the_first_fit_is_of_pairs_that_pin_it_however_many_devices_they_are_of() {
+		let truth = Pose { p: V3::new(0.11, 0.0, 0.0), q: Q4::default() };
+		let now = 50.0;
+		let pairs = |po: &PoseOverride, of: u32, at: &dyn Fn(u32) -> V3| {
+			let mut st = po.lock();
+			for i in 0..200 {
+				let src = at(i);
+				st.samples.push_back(Sample { t: now, src, dst: xform(&truth, src), id: 1 + i % of });
+			}
+		};
+		// four devices standing in a row, a few millimetres off it: any turn about the row fits them, and SteamVR
+		// keeps Valve's tracking
+		let po = devices(4, false);
+		pairs(&po, 4, &|i| V3::new(0.3 * (i % 4) as f64, 1.0 + 0.002 * (i % 3) as f64, 0.1 * (i % 4) as f64));
+		po.fit(now);
+		assert!(!po.fit_ok());
+		// two devices carried about the room: their pairs make the fit
+		let po = devices(2, false);
+		pairs(&po, 2, &|i| V3::new((i % 7) as f64 * 0.1, (i % 5) as f64 * 0.2, (i % 3) as f64 * 0.3));
+		po.fit(now);
+		assert!(po.fit_ok() && len(po.lock().t.p - truth.p) < 1e-9);
 	}
 
 	#[test]

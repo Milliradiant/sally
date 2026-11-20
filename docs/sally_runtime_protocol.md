@@ -209,7 +209,7 @@ prefix, so a client can tell replies from stream lines and from each other. Mult
 | `record stop` | `OK record stopped` |
 | `quit` | `OK quit`, then the runtime ends the session as `--stop-after` does (recordings closed) |
 | `calibrate` (`calibrate start`) | `OK calibrate started on <recording> so far`: a calibration of the session so far, in the background (below) |
-| `calibrate status` | `OK calibrate idle`, or its parts joined by ` \| `: `running <session\|so-far\|new-room> <recording> <replaying\|solving> <share read> <still moments>`, `newroom <seconds>` (stations the room's calibration does not place, and the seconds until the session is calibrated for them: 0.16), `ready <recording> <why>`, `pending <recording>:<wins> ...`, `last <time> <step> <recording> <text>` (calibration\log.txt's last line), `lh1` (LH1 base stations were seen this run, which sally does not track with: 0.16) |
+| `calibrate status` | `OK calibrate idle`, or its parts joined by ` \| `: `running <session\|so-far\|new-room> <recording> <replaying\|solving> <share read> <still moments>`, `newroom <seconds>` (stations the room's calibration does not place, and the seconds until the session is calibrated for them: 0.16), `ready <recording> <why>`, `pending <recording>:<wins> ...`, `failed <text>` (this session's own calibration failed, and why: where the log's last line is this session's recording's and says so; 0.31), `last <time> <step> <recording> <text>` (calibration\log.txt's last line), `lh1` (LH1 base stations were seen this run, which sally does not track with: 0.16) |
 | `calibrate apply` | `OK calibrate apply: ...`, then the runtime ends as for `quit` (the SteamVR driver starts it again, and the start takes the ready calibration up); `ERR` when none is ready |
 | `reload` | `ERR ... not implemented yet` |
 
@@ -234,6 +234,9 @@ gets an `A` line, so a replay switches where the live run did (`crates/sally-hid
 dongle's device away. A dongle not open yet gets its device when it opens; a device with no config anywhere leaves its
 dongle with none (logged once, looked for again every 5 s). A playback ignores `pair`: its recording has the `A`
 lines. Asking again is harmless (the driver does every second): a dongle that has the device already is left as it is.
+A device on a cable is the tap's device under its own serial, and is named on that: the driver does so for the
+headset (`pair <serial> <serial>`, sally 0.31), whose config then comes the same way and is kept as
+`<serial>_config.json`.
 
 `subtype` is one of `generic`, `vive_hmd`, `index_hmd`, `wand`, `knuckles_r`, `knuckles_l`, `tracker`,
 `tracker_gen2`; `generic` (and a `-` serial) means the device's config has not been read yet.

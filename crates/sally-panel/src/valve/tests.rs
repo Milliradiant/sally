@@ -220,24 +220,31 @@ fn the_chaperones_walls_are_put_in_sallys_frame_with_the_fit() {
 		("KN1", "LHR-C1", TrackedDeviceClass_Controller),
 	]);
 	b.run(2.0);
-	// read, in OpenVR's raw universe; none in sally's frame before the fit
+	// read, in OpenVR's raw universe; none in sally's frame before the fit, and no floor of SteamVR's
 	assert_eq!(b.vc.walls_raw.len(), 4);
-	assert!(b.vc.walls.is_empty());
+	assert!(b.vc.walls.is_empty() && b.vc.floor.is_none());
 	b.run(30.0);
 	assert!(b.vc.fit_ok);
 	// a wall's corner where the fake has it
 	let truth = b.a_walls_corner();
 	assert_eq!(b.vc.walls.len(), 4);
 	assert!(len(b.vc.walls[1][2] - truth) < 0.005, "{:?} against {truth:?}", b.vc.walls[1][2]);
-	// the floor corners at one height in sally's Z up, the top ones 2.4 m over them
+	// the floor corners (a wall's first and last, as SteamVR has them) at one height in sally's Z up, the top ones
+	// 2.4 m over them; and that height is SteamVR's floor, which stays put while the raw universe's place is measured
+	// again and again
 	let w = &b.vc.walls[0];
-	assert!((w[0].z - w[1].z).abs() < 0.005 && (w[3].z - w[0].z - 2.4).abs() < 0.005, "{w:?}");
+	assert_eq!(floor_corners(w), [0, 3]);
+	assert!((w[0].z - w[3].z).abs() < 0.005 && (w[1].z - w[0].z - 2.4).abs() < 0.005, "{w:?}");
+	let floor = b.vc.floor.unwrap();
+	assert!((floor - w[0].z).abs() < 0.005, "{floor} against {w:?}");
+	b.run(10.0);
+	assert_eq!(b.vc.floor, Some(floor));
 	// a SteamVR without the interface: no walls
 	b.steamvr.lock().missing.push(Interface::ChaperoneSetup);
 	b.vc.shutdown();
 	b.vc.next_try = 0.0;
 	b.run(6.0);
-	assert!(b.vc.running && b.vc.walls.is_empty() && b.vc.walls_raw.is_empty());
+	assert!(b.vc.running && b.vc.walls.is_empty() && b.vc.walls_raw.is_empty() && b.vc.floor.is_none());
 }
 
 #[test]

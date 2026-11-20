@@ -333,13 +333,12 @@ impl Panel {
 	}
 
 	fn floor_z(&self) -> f64 {
-		if !self.st.floor_z.is_nan() {
-			self.st.floor_z
-		} else if self.auto_floor.is_nan() {
-			0.0
-		} else {
-			self.auto_floor
-		}
+		self.floor().0
+	}
+
+	/// The room's floor and where it is from
+	fn floor(&self) -> (f64, FloorFrom) {
+		floor_of(self.st.floor_z, self.vc.floor, self.auto_floor)
 	}
 
 	fn role_of(&self, d: &Device) -> &'static str {
@@ -778,9 +777,46 @@ impl Panel {
 	}
 }
 
+/// Where the room's floor is from
+#[derive(Clone, Copy, Debug, PartialEq)]
+enum FloorFrom {
+	/// set by hand (Set it here)
+	Set,
+	/// SteamVR's own: where its walls stand
+	SteamVr,
+	/// the lowest a tracking device has been
+	Devices,
+}
+
+/// The room's floor (m, in sally's world) and where it is from: the one set by hand (`set`, NaN for none); else
+/// SteamVR's own, where the panel has its walls (`steamvr`); else 3 cm under the lowest a tracking device has been
+/// since the panel started (`lowest`, NaN before one has: 0 then). SteamVR's comes before the devices' because one
+/// pose of one device under the floor, at any moment, takes theirs down for good
+fn floor_of(set: f64, steamvr: Option<f64>, lowest: f64) -> (f64, FloorFrom) {
+	if !set.is_nan() {
+		(set, FloorFrom::Set)
+	} else if let Some(z) = steamvr {
+		(z, FloorFrom::SteamVr)
+	} else if lowest.is_nan() {
+		(0.0, FloorFrom::Devices)
+	} else {
+		(lowest, FloorFrom::Devices)
+	}
+}
+
 #[cfg(test)]
 mod tests {
 	use super::*;
+
+	#[test]
+	fn the_rooms_floor_is_the_set_one_then_steamvrs_then_the_lowest_a_device_went() {
+		let nan = f64::NAN;
+		assert_eq!(floor_of(0.4, Some(1.3), -0.02), (0.4, FloorFrom::Set));
+		// SteamVR's stands whatever a device's pose once said
+		assert_eq!(floor_of(nan, Some(1.3), -0.02), (1.3, FloorFrom::SteamVr));
+		assert_eq!(floor_of(nan, None, -0.02), (-0.02, FloorFrom::Devices));
+		assert_eq!(floor_of(nan, None, nan), (0.0, FloorFrom::Devices));
+	}
 
 	#[test]
 	fn names_are_cleaned_and_cut_between_characters() {

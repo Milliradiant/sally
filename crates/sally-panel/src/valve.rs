@@ -29,7 +29,7 @@ use std::collections::{BTreeMap, BTreeSet, VecDeque};
 use std::net::{Ipv4Addr, SocketAddrV4, UdpSocket};
 
 use sally_math::math3d::{
-	compose, fit_rigid_robust, inverse, len, qangle, qconj, qfrom_mat, qmul, qnorm, xform, Pose, Q4, V3,
+	compose, fit_rigid_robust, inverse, len, off_one_line, qangle, qconj, qfrom_mat, qmul, qnorm, xform, Pose, Q4, V3,
 };
 use sally_math::nth_element::nth_element;
 use sally_math::scanf::{c_str, sscanf, Value};
@@ -192,7 +192,7 @@ impl Pairs {
 	/// distance left and the pairs it kept. None while the points lie along one line (still devices side by side, one
 	/// device moved straight): any turn about that line fits them as well, and the fit would give one of them
 	fn fit(&self) -> Option<(Pose, f64, i32)> {
-		if !off_one_line(&self.src) {
+		if !off_one_line(&self.src, K_FIT_OFF_LINE_M) {
 			return None;
 		}
 		fit_rigid_robust(&self.src, &self.dst, 0.03)
@@ -201,34 +201,6 @@ impl Pairs {
 
 /// How far off their own main line a fit's points have to lie, as a root mean square (m)
 const K_FIT_OFF_LINE_M: f64 = 0.05;
-
-/// Whether the points spread in more than one direction: their scatter's second-largest eigenvalue, which is how far
-/// they lie off their main line (squared, summed), is within a factor of three of the sum of the scatter's principal
-/// 2x2 minors over its trace, and that needs no eigenvalues
-fn off_one_line(points: &[V3]) -> bool {
-	let n = points.len() as f64;
-	if points.is_empty() {
-		return false;
-	}
-	let mut c = V3::default();
-	for p in points {
-		c += *p;
-	}
-	c = c * (1.0 / n);
-	let (mut xx, mut yy, mut zz, mut xy, mut xz, mut yz) = (0.0, 0.0, 0.0, 0.0, 0.0, 0.0);
-	for p in points {
-		let d = *p - c;
-		xx += d.x * d.x;
-		yy += d.y * d.y;
-		zz += d.z * d.z;
-		xy += d.x * d.y;
-		xz += d.x * d.z;
-		yz += d.y * d.z;
-	}
-	let trace = xx + yy + zz;
-	let minors = (xx * yy - xy * xy) + (xx * zz - xz * xz) + (yy * zz - yz * yz);
-	trace > 0.0 && minors / trace >= n * K_FIT_OFF_LINE_M * K_FIT_OFF_LINE_M
-}
 
 /// The runtime's device of a serial (the last with it) where it is tracked now
 fn tracked<'a>(rt: &'a Runtime, serial: &str, now: f64) -> Option<&'a crate::runtime::Device> {
@@ -342,6 +314,9 @@ pub struct ValveCompare {
 	/// sally's world through `from_raw` (empty without it)
 	pub walls_raw: Vec<[V3; 4]>,
 	pub walls: Vec<[V3; 4]>,
+	/// SteamVR's floor in sally's world: the height its walls stand on (`walls_floor`), None without walls there. Held
+	/// until it has moved FLOOR_HOLD_M
+	pub floor: Option<f64>,
 
 	vr: Box<dyn Vr>,
 	/// 127.0.0.1:driver_port, bound by the first poll that can
@@ -384,6 +359,33 @@ pub struct ValveCompare {
 
 /// How often the chaperone's walls are read again (s)
 const WALLS_S: f64 = 5.0;
+
+/// How far SteamVR's floor moves before the room's follows it (m): the raw universe's place it comes through is
+/// measured again every 2 s, and a floor that moved with each would move the room's grid and every height read from it
+const FLOOR_HOLD_M: f64 = 0.005;
+
+/// A wall's two corners on the floor, as their places among its four (the lower first place first): its two lowest.
+/// Which they are is the chaperone's own order (SteamVR's walls begin on the floor, go up, along the top and down
+/// again: the first and the last)
+pub fn floor_corners(q: &[V3; 4]) -> [usize; 2] {
+	let mut i = [0, 1, 2, 3];
+	i.sort_by(|&a, &b| q[a].z.total_cmp(&q[b].z));
+	[i[0].min(i[1]), i[0].max(i[1])]
+}
+
+/// The height the walls stand on (m, in the frame they are in): the median over the walls of each one's floor
+/// corners' mean. None without walls
+fn walls_floor(walls: &[[V3; 4]]) -> Option<f64> {
+	let mut z: Vec<f64> = walls
+		.iter()
+		.map(|q| {
+			let [a, b] = floor_corners(q);
+			0.5 * (q[a].z + q[b].z)
+		})
+		.collect();
+	z.sort_by(f64::total_cmp);
+	z.get(z.len() / 2).copied()
+}
 
 /// How often the driver's output settings are asked for while they are shown (s)
 const OUTPUT_ASK_S: f64 = 2.0;
@@ -450,7 +452,7 @@ const F_LINE: &str = "F %d %d %d %lf %lf %lf %lf %lf %lf %lf %d %lf %lf %lf %lf 
 pub struct DriverFit {
 	pub t_recv: f64,
 	pub ok: bool,
-	/// the pairs it has now (a re-align waits for 150 from 3 devices)
+	/// the pairs it has now (a re-align waits for 150 that do not lie along one line)
 	pub samples: i32,
 	pub refitting: bool,
 	pub t: Pose,
@@ -528,6 +530,7 @@ impl ValveCompare {
 			kb_error: String::new(),
 			walls_raw: Vec::new(),
 			walls: Vec::new(),
+			floor: None,
 			vr,
 			drv_sock: None,
 			last_v: -1e9,
@@ -651,6 +654,7 @@ impl ValveCompare {
 		self.from_raw = None;
 		self.walls_raw.clear();
 		self.walls.clear();
+		self.floor = None;
 		self.next_walls = 0.0;
 		self.buzz = None;
 	}
@@ -1457,6 +1461,10 @@ impl ValveCompare {
 		if let Some(m) = self.from_raw {
 			self.walls.extend(self.walls_raw.iter().map(|q| q.map(|p| xform(&m, p))));
 		}
+		self.floor = match (walls_floor(&self.walls), self.floor) {
+			(Some(z), Some(held)) if (z - held).abs() < FLOOR_HOLD_M => Some(held),
+			(z, _) => z,
+		};
 		self.buzz_poll(now);
 
 		self.status = if lighthouse_devices == 0 {

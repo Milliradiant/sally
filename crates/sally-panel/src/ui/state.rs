@@ -46,8 +46,9 @@ pub struct Facts {
 	pub new_room: Option<f64>,
 	/// ... and how far it has got once it runs (0 to 1)
 	pub calibrating: Option<f64>,
-	/// the calibration's last word was that it failed (it could not start, or broke off)
-	pub calibration_failed: bool,
+	/// this session's calibration failed (it could not start, or broke off): why, as it said. Not an earlier
+	/// session's: one that ended before a station was seen fails for that alone, and says nothing of this one
+	pub calibration_failed: Option<String>,
 }
 
 /// The state in a sentence; None while SteamVR is shown sally's tracking and nothing is in its way
@@ -86,13 +87,15 @@ pub fn state(f: &Facts) -> Option<(Tone, String)> {
 	if let Some(done) = f.calibrating {
 		return said(Tone::Wait, format!("Calibrating this room: {:.0} % done. {own} until it is.", done * 100.0));
 	}
-	if let Some(s) = f.new_room.filter(|_| f.calibration_failed) {
-		// the wait would otherwise start over without a word: said, with what to send if it goes on
+	if let (Some(s), Some(why)) = (f.new_room, &f.calibration_failed) {
+		// the wait would otherwise start over without a word: said, with why (a picture of the panel then tells) and
+		// what to send if it goes on
+		let why = if why.is_empty() { String::new() } else { format!(" ({why})") };
 		return said(
 			Tone::Stop,
 			format!(
-				"sally could not calibrate this room and tries again in {}. {own} meanwhile. If this goes on, send the \
-				 newest files from sally's logs folder.",
+				"sally could not calibrate this room{why} and tries again in {}. {own} meanwhile. If this goes on, \
+				 send the newest files from sally's logs folder.",
 				clock(s)
 			),
 		);
@@ -152,8 +155,7 @@ impl Panel {
 			lh1: c.lh1,
 			new_room: c.new_room,
 			calibrating: c.running.as_ref().filter(|r| r.kind == "new-room").map(|r| r.progress),
-			// log.txt's last line: time, what, recording, text
-			calibration_failed: c.last.as_deref().is_some_and(|l| l.split(' ').nth(1) == Some("failed")),
+			calibration_failed: c.failed.clone(),
 		}
 	}
 
@@ -227,9 +229,15 @@ mod tests {
 		f.stations = 4;
 		f.new_room = Some(75.0);
 		assert_eq!(state(&f).unwrap().1.split('.').next(), Some("Learning this room: its calibration starts in 1:15"));
-		f.calibration_failed = true;
+		f.calibration_failed = Some(String::new());
 		assert_eq!(says(&f), Some((Tone::Stop, "sally could not calibrate this room and tries again in 1".into())));
-		f.calibration_failed = false;
+		// with why, as the calibration said it
+		f.calibration_failed = Some("only 9 still moments were seen by two placed stations: too few".into());
+		assert!(state(&f).unwrap().1.starts_with(
+			"sally could not calibrate this room (only 9 still moments were seen by two placed stations: too few) and \
+			 tries again in 1:15. "
+		));
+		f.calibration_failed = None;
 		f.new_room = None;
 		f.calibrating = Some(0.42);
 		assert_eq!(state(&f).unwrap().1.split('.').next(), Some("Calibrating this room: 42 % done"));

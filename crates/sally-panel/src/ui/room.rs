@@ -613,10 +613,16 @@ impl Panel {
 	fn floor_pop(&mut self, ui: &mut egui::Ui) {
 		let t = tk();
 		super::topbar::pop_title(ui, "Floor");
-		let s = if self.st.floor_z.is_nan() {
-			"Found by itself: 3 cm under the lowest a tracking device has been."
-		} else {
-			"Set by hand. Auto finds it again from the devices."
+		let from = self.floor().1;
+		let s = match from {
+			// (each two lines long: the buttons under them stay where they are)
+			super::FloorFrom::Set => {
+				"Set by hand. Auto finds it again: SteamVR's floor, else the lowest a device has been."
+			}
+			super::FloorFrom::SteamVr => {
+				"SteamVR's floor: the height its walls stand on. Set it here puts yours in its place."
+			}
+			super::FloorFrom::Devices => "Found by itself: 3 cm under the lowest a tracking device has been.",
 		};
 		ui.label(egui::RichText::new(s).font(label()).color(t.muted));
 		ui.add_space(6.0);
@@ -631,8 +637,18 @@ impl Panel {
 		{
 			self.set_floor();
 		}
-		if kit::button(ui, Id::unique("floor-auto"), b, "Auto", None, kit::Look::Plain, !self.st.floor_z.is_nan())
-			.clicked()
+		// (SteamVR's floor is found already; the devices' is found again from where they are now)
+		if kit::button(
+			ui,
+			Id::unique("floor-auto"),
+			b,
+			"Auto",
+			None,
+			kit::Look::Plain,
+			from != super::FloorFrom::SteamVr,
+		)
+		.on_hover_text("SteamVR's floor where its walls are known, else 3 cm under the lowest device from now on")
+		.clicked()
 		{
 			self.st.floor_z = f64::NAN;
 			self.auto_floor = f64::NAN;
@@ -717,12 +733,13 @@ impl Panel {
 			cam.grid(&p, grid_squares(stations, step), step, fz, t.grid, t.grid_minor);
 		}
 
-		// SteamVR's chaperone: its walls, faint, their floor edges (a wall's first two corners) brighter
+		// SteamVR's chaperone: its walls, faint, their floor edges (between a wall's two lowest corners) brighter
 		if self.st.show_walls {
 			for q in &self.vc.walls {
 				cam.poly(&p, q, alpha(WALL, 10));
+				let on_floor = crate::valve::floor_corners(q);
 				for i in 0..4 {
-					let floor = i == 0;
+					let floor = on_floor.contains(&i) && on_floor.contains(&((i + 1) % 4));
 					cam.line(
 						&p,
 						q[i],
@@ -972,7 +989,11 @@ impl Panel {
 		draw_tags(&p, tags, canvas.shrink(4.0));
 
 		// over it: the floor (a click opens what sets it), the coverage's key
-		let ft = if self.st.floor_z.is_nan() { format!("Floor {fz:.2} m") } else { format!("Floor {fz:.2} m, set") };
+		let ft = match self.floor().1 {
+			super::FloorFrom::Set => format!("Floor {fz:.2} m, set"),
+			super::FloorFrom::SteamVr => format!("Floor {fz:.2} m, SteamVR's"),
+			super::FloorFrom::Devices => format!("Floor {fz:.2} m"),
+		};
 		let fw = kit::text_w(&p, &ft, label()) + 20.0;
 		let floor_r = Rect::from_min_size(canvas.min + Vec2::new(8.0, 8.0), Vec2::new(fw, 26.0));
 		let fresp = kit::button(ui, Id::unique("room-floor"), floor_r, "", None, kit::Look::Ghost, true);

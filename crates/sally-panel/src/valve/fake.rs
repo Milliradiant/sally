@@ -238,7 +238,7 @@ impl Default for SteamVrState {
 }
 
 /// A room's four walls in a standing universe (Y up, the floor at 0), `w` by `d` metres about its middle, `h` high:
-/// each wall's two floor corners, then its two top ones
+/// each wall as SteamVR's chaperone has one, from a floor corner up, along the top and down to the other floor corner
 pub fn room_walls(w: f32, d: f32, h: f32) -> Vec<HmdQuad_t> {
 	let (x, z) = (w / 2.0, d / 2.0);
 	let floor = [[-x, -z], [x, -z], [x, z], [-x, z]];
@@ -246,7 +246,7 @@ pub fn room_walls(w: f32, d: f32, h: f32) -> Vec<HmdQuad_t> {
 		.map(|i| {
 			let (a, b) = (floor[i], floor[(i + 1) % 4]);
 			let c = |p: [f32; 2], y: f32| HmdVector3_t { v: [p[0], y, p[1]] };
-			HmdQuad_t { vCorners: [c(a, 0.0), c(b, 0.0), c(b, h), c(a, h)] }
+			HmdQuad_t { vCorners: [c(a, 0.0), c(a, h), c(b, h), c(b, 0.0)] }
 		})
 		.collect()
 }
