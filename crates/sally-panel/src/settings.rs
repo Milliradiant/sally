@@ -41,6 +41,18 @@ pub struct Settings {
 	pub events_filter: i32,
 	/// the device page's range (s)
 	pub page_range: f64,
+	/// the Tracking tab's boxes over the room: which are folded to their title line (the room's, the stations', the
+	/// events', the devices'), how wide the stations' and the events' column is, and how tall the events and the
+	/// devices are (points; 0: as the panel lays them out)
+	pub fold: [bool; 4],
+	pub side_w: f64,
+	pub events_h: f64,
+	pub devices_h: f64,
+	/// the picture behind the panel: a file of the `wallpapers` folder beside this file ("" for none), how much
+	/// its copy under the boxes' glass is blurred and how dark that glass is (`ui::wallpaper`'s BLUR and DARK)
+	pub wallpaper: String,
+	pub glass_blur: f64,
+	pub glass_dark: f64,
 	/// the SteamVR dashboard overlay: the same panel, this wide in VR (m)
 	pub overlay: bool,
 	pub overlay_width: f64,
@@ -85,6 +97,13 @@ impl Default for Settings {
 			tab: 0,
 			events_filter: 0,
 			page_range: 30.0,
+			fold: [false; 4],
+			side_w: 0.0,
+			events_h: 0.0,
+			devices_h: 0.0,
+			wallpaper: String::new(),
+			glass_blur: crate::ui::wallpaper::BLUR.2,
+			glass_dark: crate::ui::wallpaper::DARK.2,
 			overlay: true,
 			overlay_width: 2.5,
 			overlay_flip_pointer: false,
@@ -175,6 +194,22 @@ impl Settings {
 				"tab" => self.tab = tab_of(v),
 				"events_filter" => self.events_filter = atoi(v),
 				"page_range" => self.page_range = atof(v),
+				"fold_room" => self.fold[0] = b(v),
+				"fold_stations" => self.fold[1] = b(v),
+				"fold_events" => self.fold[2] = b(v),
+				"fold_devices" => self.fold[3] = b(v),
+				"side_w" => self.side_w = atof(v).max(0.0),
+				"events_h" => self.events_h = atof(v).max(0.0),
+				"devices_h" => self.devices_h = atof(v).max(0.0),
+				"wallpaper" => self.wallpaper = v.trim().into(),
+				"glass_blur" => {
+					let (lo, hi, _) = crate::ui::wallpaper::BLUR;
+					self.glass_blur = atof(v).clamp(lo, hi);
+				}
+				"glass_dark" => {
+					let (lo, hi, _) = crate::ui::wallpaper::DARK;
+					self.glass_dark = atof(v).clamp(lo, hi);
+				}
 				"overlay" => self.overlay = b(v),
 				"overlay_flip_pointer" => self.overlay_flip_pointer = b(v),
 				"overlay_width" => self.overlay_width = atof(v).clamp(1.0, 5.0),
@@ -234,6 +269,18 @@ impl Settings {
 			self.page_range
 		);
 		s += &format!(
+			"fold_room {}\nfold_stations {}\nfold_events {}\nfold_devices {}\n",
+			b(self.fold[0]),
+			b(self.fold[1]),
+			b(self.fold[2]),
+			b(self.fold[3])
+		);
+		s += &format!("side_w {:.0}\nevents_h {:.0}\ndevices_h {:.0}\n", self.side_w, self.events_h, self.devices_h);
+		if !self.wallpaper.is_empty() {
+			s += &format!("wallpaper {}\n", self.wallpaper);
+		}
+		s += &format!("glass_blur {:.0}\nglass_dark {:.0}\n", self.glass_blur, self.glass_dark);
+		s += &format!(
 			"overlay {}\noverlay_width {:.2}\noverlay_flip_pointer {}\n",
 			b(self.overlay),
 			self.overlay_width,
@@ -287,7 +334,13 @@ mod tests {
 		assert_eq!(st.tab, 1);
 		assert_eq!(st.roles["LHR-0334A73B"], "head");
 		assert_eq!(st.names["LHR-2D779713"], "Tracker one");
-		// and its own lines come back from the text it writes
+		// and its own lines come back from the text it writes, what was folded and dragged in the Tracking tab too
+		st.fold = [false, true, false, true];
+		(st.side_w, st.events_h, st.devices_h) = (520.0, 180.0, 231.0);
+		// and the picture behind the panel, by a name with a space in it (the older panel's `background` line of
+		// the file above is not it: that one named a picture of a folder that is gone)
+		assert!(st.wallpaper.is_empty());
+		(st.wallpaper, st.glass_blur, st.glass_dark) = ("blue hour.jpg".into(), 5.0, 62.0);
 		let mut again = Settings::default();
 		again.parse(&st.text());
 		assert_eq!(again, st);

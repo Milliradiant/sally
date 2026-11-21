@@ -11,8 +11,8 @@ use egui::{Align2, Color32, CornerRadius, Id, Key, PointerButton, Pos2, Rect, Se
 use sally_math::math3d::{dot, len, xform, Pose, V3};
 
 use super::icons;
-use super::kit::{self, Surface, HEADER_H};
-use super::room::{camera_input, draw_tags, grid_squares, model_name_for, Cam3, Camera, Tag};
+use super::kit::{self, Col, Surface, Table, HEADER_H};
+use super::room::{camera_input, draw_tags, grid_squares, model_name_for, Cam3, Camera, Tag, STATION_MODEL};
 use super::theme;
 use super::theme::*;
 use super::{Panel, View};
@@ -21,7 +21,21 @@ use crate::replay::{self, Data, Dev, Job, Paths, Session};
 /// The tracks: Valve's own tracking, what SteamVR got (sally live), sally run again
 pub fn tracks() -> [(&'static str, Color32); 3] {
 	let t = theme::tk();
-	[("Valve", t.valve), ("SteamVR got", t.note), ("Replay", t.good)]
+	// (pink, blue and green: told apart by a colour-blind eye too, sally_panel.md "Look")
+	[("Valve", t.valve), ("SteamVR got", AXIS_Z), ("Replay", AXIS_Y)]
+}
+
+/// The hue of a recorded device's kind, by its render model and its type as SteamVR names them
+fn kind_ink(x: &Dev) -> Color32 {
+	let t = theme::tk();
+	let named = format!("{} {}", x.model, x.kind).to_lowercase();
+	if named.contains("hmd") || named.contains("headset") {
+		t.headset
+	} else if ["controller", "knuckles", "knu_", "wand"].iter().any(|k| named.contains(k)) {
+		t.controller
+	} else {
+		t.tracker
+	}
 }
 const SPEEDS: [f64; 6] = [0.1, 0.25, 0.5, 1.0, 2.0, 4.0];
 /// The other devices' models
@@ -50,7 +64,8 @@ pub struct ReplayState {
 	dirs_t: f64,
 	sessions: Vec<Session>,
 	scanned: f64,
-	picking: bool,
+	/// when the sessions' list was last drawn (the panel's clock): listed anew when it comes back
+	list_drawn: f64,
 	pick_scroll: f32,
 	session: Option<Session>,
 	job: Option<Job>,
@@ -88,7 +103,7 @@ impl Default for ReplayState {
 			dirs_t: -1e9,
 			sessions: Vec::new(),
 			scanned: -1e9,
-			picking: false,
+			list_drawn: f64::NEG_INFINITY,
 			pick_scroll: 0.0,
 			session: None,
 			job: None,
@@ -258,7 +273,6 @@ impl Panel {
 		self.rp.data = None;
 		self.rp.error.clear();
 		self.rp.status.clear();
-		self.rp.picking = false;
 		self.rp.session = Some(s.clone());
 		self.rp.t = 0.0;
 		self.rp.playing = false;
@@ -287,7 +301,7 @@ impl Panel {
 		self.rp.cursor_shown = true;
 	}
 
-	/// Out of the session: the replay running stopped, what was loaded let go, the tab back to the picker
+	/// Out of the session: the replay running stopped, what was loaded let go, the tab back to the sessions' list
 	pub fn replay_close(&mut self) {
 		if let Some(j) = self.rp.job.as_mut() {
 			j.cancel();
@@ -459,8 +473,14 @@ impl Panel {
 		let dt = (now - self.rp.last_now).clamp(0.0, 0.25);
 		self.rp.last_now = now;
 		self.replay_poll();
-		if self.rp.sessions.is_empty() && now - self.rp.scanned > 10.0 {
-			self.replay_scan();
+		// the sessions' list, listed anew when it comes back into view (the tab opened, a session closed) and every
+		// 10 s while it is empty
+		if self.rp.session.is_none() {
+			if now - self.rp.list_drawn > 1.0 || (self.rp.sessions.is_empty() && now - self.rp.scanned > 10.0) {
+				self.replay_scan();
+				self.rp.pick_scroll = 0.0;
+			}
+			self.rp.list_drawn = now;
 		}
 		if self.replay_busy() || self.rp.playing {
 			ui.ctx().request_repaint();
@@ -500,15 +520,22 @@ impl Panel {
 			}
 		}
 
-		let m = 10.0;
-		let head_h = 46.0;
-		let opened = self.replay_header(ui, Rect::from_min_size(r.min, Vec2::new(r.width(), head_h)));
+		// no session open: the sessions, to pick one from
+		if self.rp.session.is_none() {
+			self.replay_sessions(ui, r);
+			return;
+		}
+		let m = kit::GAP;
+		let head_h = 44.0;
+		if !self.replay_header(ui, Rect::from_min_size(r.min, Vec2::new(r.width(), head_h))) {
+			return;
+		}
 		let area = Rect::from_min_max(Pos2::new(r.min.x, r.min.y + head_h + m), r.max);
 		let data = self.rp.data.take();
 		match &data {
 			Some(d) => {
 				// the list as wide as the Tracking tab's right column
-				let list_w = (area.width() * 0.262).clamp(352.0, 414.0);
+				let list_w = (area.width() * 0.3).clamp(380.0, 480.0);
 				let tl_h = 250.0f32.max(area.height() * 0.3);
 				let room = Rect::from_min_max(area.min, Pos2::new(area.max.x - list_w - m, area.max.y - tl_h - m));
 				let list = Rect::from_min_max(Pos2::new(room.max.x + m, area.min.y), Pos2::new(area.max.x, room.max.y));
@@ -518,148 +545,110 @@ impl Panel {
 				self.replay_timeline(ui, tl, d);
 			}
 			None => {
+				// the session is being replayed or loaded, or could not be
 				let p = ui.painter().clone();
 				self.surface(&p, area, Surface::Well);
-				let (text, col) = if !self.rp.error.is_empty() {
-					(self.rp.error.clone(), theme::tk().bad)
+				let failed = !self.rp.error.is_empty();
+				let text = if failed {
+					self.rp.error.clone()
 				} else if !self.rp.status.is_empty() {
-					(format!("{}...", self.rp.status), theme::tk().muted)
-				} else if self.rp.sessions.is_empty() {
-					(format!("no sessions in {}", self.replay_paths().logs.display()), theme::tk().muted)
+					format!("{}...", self.rp.status)
 				} else {
-					("Pick a session to replay it with this build".into(), theme::tk().muted)
+					String::new()
 				};
-				self.text_at(&p, area.center(), Align2::CENTER_CENTER, body(), col, &text);
+				let ink = if failed { theme::tk().bad } else { theme::tk().text };
+				self.text_at(&p, area.center(), Align2::CENTER_CENTER, body(), ink, &text);
 				if let Some(j) = &self.rp.job {
 					if j.dur > 0.0 {
 						let w = 360.0f32.min(area.width() - 40.0);
-						let mr = Rect::from_center_size(area.center() + Vec2::new(0.0, 30.0), Vec2::new(w, 6.0));
-						super::kit::meter(&p, mr, (j.at / j.dur).clamp(0.0, 1.0), theme::tk().good);
+						let mr = Rect::from_center_size(area.center() + Vec2::new(0.0, 30.0), Vec2::new(w, 4.0));
+						super::kit::meter(&p, mr, (j.at / j.dur).clamp(0.0, 1.0), theme::tk().accent);
 					}
 				}
 			}
 		}
 		self.rp.data = data;
-		if self.rp.picking {
-			self.replay_picker(ui, area, opened);
-		}
 	}
 
-	/// The session's line: the picker's button, Replay again, what is going on; whether the picker opened now
+	/// The open session's line: which one it is, Replay again and Close (back to the sessions), and what is going
+	/// on. False when the session was closed
 	fn replay_header(&mut self, ui: &mut egui::Ui, r: Rect) -> bool {
 		let t = theme::tk();
 		let p = ui.painter().clone();
 		self.surface(&p, r, Surface::Card);
-		let h = 32.0;
-		let y = r.center().y - h * 0.5;
-		let says = match &self.rp.session {
-			Some(s) => format!(
-				"{}{}   {}",
-				stamp_text(&s.stamp),
-				if s.check.is_some() { "  sally-check" } else { "" },
-				dur_text(s.duration())
+		let Some(s) = self.rp.session.clone() else { return false };
+		let cy = r.center().y;
+		let says = format!("{}{}", stamp_text(&s.stamp), if s.check.is_some() { "  sally-check" } else { "" },);
+		let nr = kit::text(&p, Pos2::new(r.min.x + kit::PAD, cy), Align2::LEFT_CENTER, &says, name(), t.text);
+		let dr =
+			kit::text(&p, Pos2::new(nr.max.x + 12.0, cy), Align2::LEFT_CENTER, &dur_text(s.duration()), num(), t.soft);
+		// from the right: back to the sessions, and the session through this build again
+		let busy = self.replay_busy();
+		let items = [
+			("Replay again", kit::Look::Plain, !busy, "Runs the session through this build again"),
+			(
+				"Close",
+				kit::Look::Plain,
+				true,
+				"Back to the sessions: what was loaded is let go, a replay running stopped",
 			),
-			None => "Pick a session".into(),
-		};
-		// the picker's button: the session, a caret
-		let sw = kit::text_w(&p, &says, body()) + 54.0;
-		let sr = Rect::from_min_size(Pos2::new(r.min.x + 10.0, y), Vec2::new(sw, h));
-		let look = if self.rp.session.is_none() && !self.rp.picking { kit::Look::Primary } else { kit::Look::Plain };
-		let clicked = kit::button(ui, Id::unique("rp_pick"), sr, "", None, look, true).clicked();
-		let ink = if look == kit::Look::Primary { t.on_ink } else { t.text };
-		p.text(Pos2::new(sr.min.x + 14.0, sr.center().y), Align2::LEFT_CENTER, &says, body(), ink);
-		kit::icon_at(
-			&p,
-			Pos2::new(sr.max.x - 18.0, sr.center().y),
-			if self.rp.picking { icons::CARET_UP } else { icons::CARET_DOWN },
-			14.0,
-			ink,
-		);
-		if clicked {
-			self.rp.picking = !self.rp.picking;
-			if self.rp.picking {
-				self.replay_scan();
-				self.rp.pick_scroll = 0.0;
-			}
-		}
-		let mut x = sr.max.x + 8.0;
-		if let Some(s) = self.rp.session.clone() {
-			if !self.replay_busy() {
-				let bw = kit::button_w(&p, "Replay again", true);
-				let br = Rect::from_min_size(Pos2::new(x, y), Vec2::new(bw, h));
-				let resp = kit::button(
-					ui,
-					Id::unique("rp_again"),
-					br,
-					"Replay again",
-					Some(icons::ARROWS_CLOCKWISE),
-					kit::Look::Ghost,
-					true,
-				)
-				.on_hover_text("Runs the session through this build again");
-				if resp.clicked() {
-					self.replay_open(&s.key(), true);
-				}
-				x = br.max.x + 4.0;
-			}
-			// out of the session: what it loaded let go, a replay still running stopped
-			let bw = kit::button_w(&p, "Close", true);
-			let br = Rect::from_min_size(Pos2::new(x, y), Vec2::new(bw, h));
-			if kit::button(ui, Id::unique("rp_close"), br, "Close", Some(icons::X), kit::Look::Ghost, true).clicked() {
+		];
+		let (clicked, left) = kit::buttons_right(ui, Id::unique("rp_head"), r.max.x - 8.0, cy, 28.0, &items);
+		match clicked {
+			Some(0) => self.replay_open(&s.key(), true),
+			Some(1) => {
 				self.replay_close();
 				return false;
 			}
-			x = br.max.x + 16.0;
-			let mut info = Vec::new();
-			if !self.rp.error.is_empty() {
-				info.push(self.rp.error.clone());
-			}
-			if !self.rp.status.is_empty() {
-				info.push(self.rp.status.clone());
-			}
-			if let Some(d) = &self.rp.data {
-				info.extend(d.notes.iter().cloned());
-				if d.notes.is_empty() {
-					info.push(format!(
-						"{} devices, {} stations, {} events",
-						d.devs.len(),
-						d.stations.len(),
-						d.events.len()
-					));
-				}
-			}
-			let col = if self.rp.error.is_empty() { t.muted } else { t.bad };
-			let clip = Rect::from_min_max(Pos2::new(x, r.min.y), Pos2::new(r.max.x - 10.0, r.max.y));
-			kit::text_in(&p, clip, &info.join(";  "), theme::label(), col);
+			_ => {}
 		}
-		clicked && self.rp.picking
+		let mut info = Vec::new();
+		if !self.rp.error.is_empty() {
+			info.push(self.rp.error.clone());
+		}
+		if !self.rp.status.is_empty() {
+			info.push(self.rp.status.clone());
+		}
+		if let Some(d) = &self.rp.data {
+			info.extend(d.notes.iter().cloned());
+			if d.notes.is_empty() {
+				info.push(format!(
+					"{} devices, {} stations, {} events",
+					d.devs.len(),
+					d.stations.len(),
+					d.events.len()
+				));
+			}
+		}
+		let clip = Rect::from_min_max(Pos2::new(dr.max.x + 20.0, r.min.y), Pos2::new(left - 12.0, r.max.y));
+		let ink = if self.rp.error.is_empty() { t.muted } else { t.bad };
+		kit::text_in(&p, clip, &info.join(";  "), theme::label(), ink);
+		true
 	}
 
-	/// The session list, over the view: newest first
-	fn replay_picker(&mut self, ui: &mut egui::Ui, r: Rect, opened: bool) {
-		let w = 760.0f32.min(r.width() - 20.0);
-		let row_h = 34.0;
-		let n = self.rp.sessions.len();
-		let foot = 30.0;
-		let hh = (n.max(1) as f32 * row_h + 20.0 + foot).min(r.height() - 10.0).min(640.0);
-		let rr = Rect::from_min_size(r.min + Vec2::new(10.0, 0.0), Vec2::new(w, hh));
-		let p = ui.painter().clone();
-		p.rect_filled(rr, 8.0, theme::tk().float);
-		p.rect_stroke(rr, 8.0, Stroke::new(1.0, theme::tk().card_edge), StrokeKind::Inside);
-		let inner = Rect::from_min_max(rr.min + Vec2::new(10.0, 10.0), rr.max - Vec2::new(10.0, 10.0 + foot));
-		let resp = ui.interact(rr, Id::unique("rp_picker"), Sense::click());
+	/// The sessions, newest first, a row each: when it was, how long, its size, whether it has Valve's poses, and
+	/// whether it has been replayed. A click opens one
+	fn replay_sessions(&mut self, ui: &mut egui::Ui, r: Rect) {
+		let t = theme::tk();
 		// the replays' room on the disk: each is kept for as long as its session's recording is
 		let used: u64 = self.rp.sessions.iter().map(|s| s.replay_bytes).sum();
-		let foot_t = format!("replays kept in {}: {:.1} GB", self.replay_paths().replays.display(), used as f64 / 1e9);
-		let fy = rr.max.y - foot * 0.5 - 4.0;
-		self.text_at(
-			&p.with_clip_rect(rr),
-			Pos2::new(rr.min.x + 20.0, fy),
-			Align2::LEFT_CENTER,
-			theme::label(),
-			theme::tk().faint,
-			&foot_t,
-		);
+		let foot = format!("replays kept in {}: {:.1} GB", self.replay_paths().replays.display(), used as f64 / 1e9);
+		self.boxed(ui, r, "Sessions", &foot, None);
+		let body = Self::under_header(r);
+		let p = ui.painter().clone();
+		let cols = [
+			Col::text("Session", 190.0),
+			Col::num("Length", 80.0),
+			Col::num("Size MB", 84.0),
+			Col::text("Valve's poses", 190.0).sep(),
+			Col::text("Replayed", -1.0),
+		];
+		let table = Table::new(body.min.x, body.width(), &cols);
+		let y0 = table.header(&p, body.min.y, &cols);
+		let inner = Rect::from_min_max(Pos2::new(body.min.x, y0), body.max);
+		let n = self.rp.sessions.len();
+		let row_h = kit::TR_H;
+		let resp = ui.interact(inner, Id::unique("rp_picker"), Sense::click());
 		if resp.hovered() {
 			let wheel = ui.input(|i| i.smooth_scroll_delta.y);
 			self.rp.pick_scroll -= wheel;
@@ -674,58 +663,44 @@ impl Panel {
 			if y + row_h < inner.min.y || y > inner.max.y {
 				continue;
 			}
-			let row = Rect::from_min_size(Pos2::new(inner.min.x, y), Vec2::new(inner.width(), row_h));
-			if hover.is_some_and(|q| row.contains(q) && inner.contains(q)) {
-				pc.rect_filled(row, 6.0, white(16));
-				if resp.clicked() {
-					chosen = Some(s.key());
-				}
-			} else if self.rp.session.as_ref().is_some_and(|c| c.key() == s.key()) {
-				pc.rect_filled(row, 6.0, white(8));
+			let row = table.row(y, row_h);
+			let over = hover.is_some_and(|q| row.contains(q) && inner.contains(q));
+			kit::row_ground(&pc, row, i % 2 == 1, false, if over { 1.0 } else { 0.0 });
+			if over && resp.clicked() {
+				chosen = Some(s.key());
 			}
-			let cy = row.center().y;
-			let x0 = row.min.x + 10.0;
-			self.text_at(&pc, Pos2::new(x0, cy), Align2::LEFT_CENTER, body(), theme::tk().text, &stamp_text(&s.stamp));
-			self.text_at(
-				&pc,
-				Pos2::new(x0 + 170.0, cy),
-				Align2::LEFT_CENTER,
-				theme::label(),
-				theme::tk().soft,
-				&dur_text(s.duration()),
-			);
-			let mb = format!("{:.0} MB", s.bytes as f64 / 1e6);
-			self.text_at(&pc, Pos2::new(x0 + 250.0, cy), Align2::LEFT_CENTER, theme::label(), theme::tk().muted, &mb);
-			let (t, c) = match (&s.check, &s.poselog) {
-				(Some(_), _) => ("sally-check recording", theme::tk().violet),
-				(None, Some(_)) => ("with Valve's poses", theme::tk().note),
-				(None, None) => ("no pose log", theme::tk().faint),
+			table.put(&pc, 0, y, &stamp_text(&s.stamp), semibold(14.0), t.text);
+			table.put(&pc, 1, y, &dur_text(s.duration()), num(), t.text);
+			table.put(&pc, 2, y, &format!("{:.0}", s.bytes as f64 / 1e6), num(), t.text);
+			let (says, c) = match (&s.check, &s.poselog) {
+				(Some(_), _) => ("sally-check recording", t.soft),
+				(None, Some(_)) => ("yes", t.text),
+				(None, None) => ("no pose log", t.muted),
 			};
-			self.text_at(&pc, Pos2::new(x0 + 340.0, cy), Align2::LEFT_CENTER, theme::label(), c, t);
-			let (t, c) = match s.replayed.as_deref() {
+			table.put(&pc, 3, y, says, theme::label(), c);
+			match s.replayed.as_deref() {
 				Some(d) if d.starts_with("exit 0") => {
-					(format!("replayed  {:.0} MB", s.replay_bytes as f64 / 1e6), theme::tk().good)
+					let says = format!("yes, {:.0} MB", s.replay_bytes as f64 / 1e6);
+					table.put(&pc, 4, y, &says, theme::label(), t.text);
 				}
-				Some(_) => ("replay failed".into(), theme::tk().bad),
-				None => (String::new(), theme::tk().text),
-			};
-			self.text_at(&pc, Pos2::new(row.max.x - 10.0, cy), Align2::RIGHT_CENTER, theme::label(), c, &t);
+				Some(_) => table.put(&pc, 4, y, "replay failed", theme::label(), t.bad),
+				None => {}
+			}
 		}
+		table.seps(&pc, y0, (inner.min.y + n as f32 * row_h - self.rp.pick_scroll).min(inner.max.y));
 		if n == 0 {
-			let t = format!("no sallytap_* recording in {}", self.replay_paths().logs.display());
-			self.text_at(&p, inner.center(), Align2::CENTER_CENTER, theme::label(), theme::tk().muted, &t);
+			let says = format!("no sallytap_* recording in {}", self.replay_paths().logs.display());
+			self.text_at(&p, inner.center(), Align2::CENTER_CENTER, theme::label(), t.muted, &says);
 		}
 		if let Some(s) = chosen {
 			self.replay_open(&s, false);
-		} else if resp.clicked_elsewhere() && !opened {
-			self.rp.picking = false;
 		}
 	}
 
 	fn replay_room(&mut self, ui: &mut egui::Ui, r: Rect, d: &Data) {
 		self.card(ui, r, "Room");
-		// what is shown, in the header line (a second row where they do not fit): the three tracks by their colours,
-		// then the layers
+		// what is shown, a tick box each under the title line (a second row where they do not fit): the three tracks by
+		// their colours, then the layers
 		let tracks = self.st.replay_tracks;
 		let mut items: Vec<(&str, bool, Option<Color32>)> =
 			self::tracks().iter().zip(tracks).map(|(t, s)| (t.0, s, Some(t.1))).collect();
@@ -736,11 +711,11 @@ impl Panel {
 			("Labels", self.st.show_labels, None),
 			("Follow", self.rp.follow, None),
 		]);
-		let (clicked, bottom) = kit::chips(
+		let (clicked, bottom) = kit::ticks(
 			ui,
 			Id::unique("rp_pills"),
-			Pos2::new(r.min.x + 76.0, r.min.y + 6.0),
-			r.max.x - 12.0,
+			Pos2::new(r.min.x + kit::PAD, r.min.y + HEADER_H + 5.0),
+			r.max.x - kit::PAD,
 			28.0,
 			&items,
 		);
@@ -755,11 +730,9 @@ impl Panel {
 			}
 			self.st.dirty = true;
 		}
-		let y0 = (bottom.y + 6.0).max(r.min.y + HEADER_H);
-		let canvas = Rect::from_min_max(
-			Pos2::new(r.min.x + 12.0, y0),
-			Pos2::new(r.max.x - 12.0, (r.max.y - 12.0).max(y0 + 20.0)),
-		);
+		let y0 = bottom.y + 6.0;
+		let canvas =
+			Rect::from_min_max(Pos2::new(r.min.x + 1.0, y0), Pos2::new(r.max.x - 1.0, (r.max.y - 1.0).max(y0 + 20.0)));
 		let resp = ui.interact(canvas, Id::unique("rp_room"), Sense::click_and_drag());
 		if camera_input(&mut self.rp.cam, ui, &resp, canvas) {
 			self.rp.follow = false;
@@ -796,6 +769,7 @@ impl Panel {
 		let mut tags: Vec<Tag> = Vec::new();
 		// the stations: white where they lit the device, grey where not; with one chosen, the others dimmer
 		let mut station_picks: Vec<(Pos2, i32)> = Vec::new();
+		let station_model = if self.st.show_models { self.models.get(STATION_MODEL) } else { None };
 		for (idx, pose) in &d.stations {
 			let lights = lit_by(*idx).is_some_and(|l| l.2 != 0);
 			let col = if !light_on {
@@ -809,7 +783,7 @@ impl Panel {
 			} else {
 				UNLIT
 			};
-			cam.station(&p, pose, col);
+			cam.station(&p, station_model.as_deref(), pose, col);
 			if let Some(q) = cam.pt(pose.p) {
 				station_picks.push((q, *idx));
 				if sel_station == Some(*idx) {
@@ -823,7 +797,7 @@ impl Panel {
 						text: format!("ch {}", idx + 1),
 						font: theme::label(),
 						color: alpha(col, 230),
-						rank: 1,
+						depth: None,
 					});
 				}
 			}
@@ -948,7 +922,7 @@ impl Panel {
 							text: lbl,
 							font: theme::label(),
 							color: alpha(c, if *i == sel { 230 } else { 170 }),
-							rank: if *i == sel { 0 } else { 2 },
+							depth: Some(if *i == sel { 0.0 } else { dot(pose.p - cam.eye(), cam.forward()) }),
 						});
 					}
 				}
@@ -978,11 +952,12 @@ impl Panel {
 		// sensors each lit (a click shows its light alone, again all)
 		let bh = 24.0;
 		let by = canvas.max.y - bh - 8.0;
-		// the labels over the view, clear of the bar
-		draw_tags(&p, tags, Rect::from_min_max(canvas.min + Vec2::splat(4.0), Pos2::new(canvas.max.x - 4.0, by - 8.0)));
-		// a shade under it, so that what is behind does not run through its text
-		let shade_r = Rect::from_min_max(Pos2::new(canvas.min.x, by - 6.0), canvas.max);
-		p.rect_filled(shade_r, CornerRadius { nw: 0, ne: 0, sw: 6, se: 6 }, Color32::from_black_alpha(120));
+		// the labels over the view, each at its mark's right (the bar under the view is drawn over them)
+		draw_tags(&p, tags);
+		// its own ground, so that what is behind does not run through its text
+		let bar_r = Rect::from_min_max(Pos2::new(canvas.min.x, by - 6.0), canvas.max);
+		p.rect_filled(bar_r, 0.0, theme::tk().card);
+		p.line_segment([bar_r.left_top(), bar_r.right_top()], Stroke::new(1.0, theme::tk().card_edge));
 		let mut lx = canvas.min.x + 10.0;
 		let tr = self.text_at(
 			&p,
@@ -1000,7 +975,11 @@ impl Panel {
 			let on = self.rp.primary == Some(k);
 			let (pr, c) =
 				self.pill_toggle(ui, Id::unique(("rp_primary", k)), Pos2::new(lx, by), bh, &format!("    {label}"), on);
-			p.circle_filled(Pos2::new(pr.min.x + 12.0, pr.center().y), 4.0, *col);
+			p.rect_filled(
+				Rect::from_center_size(Pos2::new(pr.min.x + 12.0, pr.center().y), Vec2::splat(8.0)),
+				1.0,
+				*col,
+			);
 			if c {
 				self.rp.primary = if on { None } else { Some(k) };
 			}
@@ -1049,14 +1028,8 @@ impl Panel {
 					lx = pr.max.x + 5.0;
 				}
 				if lit.is_empty() {
-					self.text_at(
-						&p,
-						Pos2::new(lx + 6.0, by + bh * 0.5),
-						Align2::LEFT_CENTER,
-						theme::label(),
-						theme::tk().bad,
-						"dark",
-					);
+					let at = Pos2::new(lx + 6.0, by + bh * 0.5);
+					self.text_at(&p, at, Align2::LEFT_CENTER, theme::label(), theme::tk().warn, "dark");
 				}
 			}
 		}
@@ -1133,34 +1106,46 @@ impl Panel {
 	}
 
 	fn replay_devices(&mut self, ui: &mut egui::Ui, r: Rect, d: &Data) {
-		let inner = self.boxed(ui, r, "Devices", "from Valve", None);
+		self.card(ui, r, "Devices");
+		let inner = Self::under_header(r);
 		let p = ui.painter().clone();
 		let tk = theme::tk();
-		// the numbers in columns, each to its right edge: the median, 9 in 10, the times over 3 cm
-		let cols = [inner.max.x - 138.0, inner.max.x - 82.0, inner.max.x - 10.0];
-		for (cx, head) in cols.iter().zip(["median", "9 in 10", "over 3 cm"]) {
-			kit::text(&p, Pos2::new(*cx, inner.min.y + 6.0), Align2::RIGHT_CENTER, head, theme::caption(), tk.faint);
+		// the numbers in columns under their headings, each to its right edge: how far from Valve at the median, 9 in
+		// 10 within, and the times it was over 3 cm
+		let cols = [inner.max.x - 152.0, inner.max.x - 86.0, inner.max.x - 12.0];
+		let head = Rect::from_min_size(inner.min, Vec2::new(inner.width(), kit::TH_H));
+		p.rect_filled(head, 0.0, tk.head);
+		p.line_segment([head.left_bottom(), head.right_bottom()], Stroke::new(1.0, tk.card_edge));
+		let hy = head.center().y;
+		kit::text(
+			&p,
+			Pos2::new(inner.min.x + 46.0, hy),
+			Align2::LEFT_CENTER,
+			"Device, from Valve",
+			theme::caption(),
+			tk.muted,
+		);
+		for (cx, says) in cols.iter().zip(["Median", "p90", "Over 3 cm"]) {
+			kit::text(&p, Pos2::new(*cx, hy), Align2::RIGHT_CENTER, says, theme::caption(), tk.muted);
 		}
-		let top = inner.min + Vec2::new(0.0, 18.0);
-		let row_h = 70.0;
+		let top = Pos2::new(inner.min.x, head.max.y);
+		let row_h = 64.0;
+		// the lines before the three columns of figures, through the header and the rows
+		let rows_end = (head.max.y + d.devs.len() as f32 * row_h).min(inner.max.y);
+		let rules = [inner.max.x - 206.0, inner.max.x - 142.0, inner.max.x - 78.0];
 		let resp = ui.interact(inner, Id::unique("rp_devs"), Sense::click());
 		let t = self.rp.t;
 		let any_valve = d.devs.iter().any(|x| !x.valve.is_empty());
 		for (i, x) in d.devs.iter().enumerate() {
-			let row =
-				Rect::from_min_size(top + Vec2::new(0.0, i as f32 * row_h), Vec2::new(inner.width(), row_h - 6.0));
+			let row = Rect::from_min_size(top + Vec2::new(0.0, i as f32 * row_h), Vec2::new(inner.width(), row_h));
 			if row.max.y > inner.max.y + 4.0 {
 				let more = format!("{} more", d.devs.len() - i);
-				self.text(&p, Pos2::new(inner.min.x + 8.0, row.min.y), theme::label(), theme::tk().faint, &more);
+				self.text(&p, Pos2::new(inner.min.x + 12.0, row.min.y + 4.0), theme::label(), theme::tk().faint, &more);
 				break;
 			}
 			let sel = i == self.rp.dev;
 			let hov = resp.hover_pos().is_some_and(|q| row.contains(q));
-			if sel {
-				p.rect_filled(row, 6.0, white(18));
-			} else if hov {
-				p.rect_filled(row, 6.0, white(9));
-			}
+			kit::row_ground(&p, row, i % 2 == 1, sel, if hov { 1.0 } else { 0.0 });
 			if resp.clicked() && resp.interact_pointer_pos().is_some_and(|q| row.contains(q)) {
 				// the view to it: followed, from 1.6 m at most
 				self.rp.dev = i;
@@ -1169,29 +1154,23 @@ impl Panel {
 			}
 			let name = self.rp_name(x);
 			let clip = p.with_clip_rect(row);
-			let sym = Rect::from_min_size(row.min + Vec2::new(6.0, 5.0), Vec2::new(26.0, 24.0));
-			kit::symbol(
-				&p,
-				sym,
-				self.symbol_of(&x.serial),
-				icons::HEXAGON,
-				if sel { theme::tk().text } else { theme::tk().soft },
-			);
+			let sym = Rect::from_min_size(row.min + Vec2::new(12.0, 7.0), Vec2::new(24.0, 22.0));
+			kit::symbol(&p, sym, self.symbol_of(&x.serial), icons::HEXAGON, kind_ink(x));
 			self.text(
 				&clip,
-				row.min + Vec2::new(40.0, 6.0),
-				body(),
+				row.min + Vec2::new(46.0, 8.0),
+				semibold(14.0),
 				if sel { theme::tk().text } else { theme::tk().soft },
 				&name,
 			);
 			// whether the replay has a pose at the cursor
 			let here = x.replay.at(t).is_some();
 			p.circle_filled(
-				Pos2::new(row.max.x - 12.0, row.min.y + 15.0),
+				Pos2::new(row.max.x - 16.0, row.min.y + 17.0),
 				4.0,
-				if here { theme::tk().good } else { theme::tk().faint },
+				if here { theme::tk().text } else { theme::tk().faint },
 			);
-			let mut y = row.min.y + 32.0;
+			let mut y = row.min.y + 30.0;
 			let mut any = false;
 			for (k, label) in [(0usize, "SteamVR got"), (1, "Replay")] {
 				let (med, p90, _, spans) = x.stats[k];
@@ -1199,21 +1178,27 @@ impl Panel {
 					continue;
 				}
 				any = true;
-				p.circle_filled(Pos2::new(row.min.x + 46.0, y + 8.0), 3.5, self::tracks()[k + 1].1);
-				self.text(&clip, Pos2::new(row.min.x + 56.0, y), theme::label(), tk.muted, label);
+				let sq = Rect::from_center_size(Pos2::new(row.min.x + 50.0, y + 8.0), Vec2::splat(8.0));
+				p.rect_filled(sq, 1.0, self::tracks()[k + 1].1);
+				self.text(&clip, Pos2::new(row.min.x + 60.0, y), theme::label(), tk.muted, label);
 				for (cx, s) in cols.iter().zip([mm(med), mm(p90)]) {
-					kit::text(&clip, Pos2::new(*cx, y), Align2::RIGHT_TOP, &s, theme::label(), tk.text);
+					kit::text(&clip, Pos2::new(*cx, y), Align2::RIGHT_TOP, &s, num(), tk.text);
 				}
 				if spans > 0 {
 					let s = format!("{spans}x");
-					kit::text(&clip, Pos2::new(cols[2], y), Align2::RIGHT_TOP, &s, theme::label(), tk.warn);
+					kit::text(&clip, Pos2::new(cols[2], y), Align2::RIGHT_TOP, &s, num(), tk.text);
 				}
 				y += 16.0;
 			}
 			if !any {
 				let tx = if any_valve { "no Valve poses for it" } else { "no Valve poses (no pose log)" };
-				self.text(&clip, Pos2::new(row.min.x + 40.0, y), theme::label(), theme::tk().faint, tx);
+				self.text(&clip, Pos2::new(row.min.x + 46.0, y), theme::label(), theme::tk().muted, tx);
 			}
+		}
+		// (a strong one before the figures, a light one between them)
+		for (k, x) in rules.into_iter().enumerate() {
+			let col = if k == 0 { tk.group } else { tk.line };
+			p.line_segment([Pos2::new(x, head.min.y), Pos2::new(x, rows_end)], Stroke::new(1.0, col));
 		}
 	}
 
@@ -1250,7 +1235,7 @@ impl Panel {
 			self.rp.speed = SPEEDS[i];
 		}
 		cx = sr.max.x + 10.0;
-		// the selected device's red events (lost, the state wrong): to the one before or after the cursor, a second early
+		// the selected device's worst events (lost, the state wrong): to the one before or after the cursor, a second early
 		let evs: Vec<&replay::Event> =
 			d.events.iter().filter(|e| x.is_some_and(|x| x.codename == e.dev) && e.level >= 2).collect();
 		let br = Rect::from_min_size(Pos2::new(cx, cy), Vec2::splat(h));
@@ -1274,19 +1259,9 @@ impl Panel {
 			}
 		}
 		let whole = self.rp.view.0 <= 0.0 && self.rp.view.1 >= d.dur.max(1.0) - 1e-6;
-		let zw = kit::button_w(&p, "Whole session", true);
+		let zw = kit::button_w(&p, "Whole session", false);
 		let zr = Rect::from_min_size(Pos2::new(nr.max.x + 8.0, cy), Vec2::new(zw, h));
-		if kit::button(
-			ui,
-			Id::unique("rp_zoom"),
-			zr,
-			"Whole session",
-			Some(icons::ARROWS_HORIZONTAL),
-			kit::Look::Ghost,
-			!whole,
-		)
-		.clicked()
-		{
+		if kit::button(ui, Id::unique("rp_zoom"), zr, "Whole session", None, kit::Look::Plain, !whole).clicked() {
 			self.rp.view = (0.0, d.dur.max(1.0));
 		}
 		// the time and, for the selected device, the distances at the cursor
@@ -1395,7 +1370,7 @@ impl Panel {
 		let mut hover_text = None;
 		let hover = resp.hover_pos();
 		if let Some(x) = x {
-			// the stations in view, per LANE_S: red none, amber one, green two or more
+			// the stations in view, per LANE_S: red none, yellow one, green two or more
 			let (b0, b1) = (
 				((v0.max(0.0) / replay::LANE_S) as usize).min(x.lane.len()),
 				((v1.max(0.0) / replay::LANE_S) as usize + 1).min(x.lane.len()),
@@ -1410,9 +1385,9 @@ impl Panel {
 				}
 				if v != 255 {
 					let col = match v {
-						0 => alpha(theme::tk().bad, 190),
-						1 => alpha(theme::tk().warn, 170),
-						_ => alpha(theme::tk().good, 110),
+						0 => theme::tk().bad,
+						1 => theme::tk().warn,
+						_ => theme::tk().good,
 					};
 					let (xa, xb) = (tx(i as f64 * replay::LANE_S), tx(j as f64 * replay::LANE_S));
 					gp.rect_filled(
@@ -1524,8 +1499,8 @@ impl Panel {
 				}
 				let y0 = g.min.y + if e.live { 3.0 } else { lane + 3.0 };
 				let (col, hh) = match e.level {
-					0 => (alpha(theme::tk().good, 150), (lane - 4.0) * 0.5),
-					1 => (alpha(theme::tk().warn, 200), (lane - 4.0) * 0.6),
+					0 => (theme::tk().good, (lane - 4.0) * 0.5),
+					1 => (theme::tk().warn, (lane - 4.0) * 0.6),
 					_ => (theme::tk().bad, lane - 4.0),
 				};
 				let y0 = y0 + (lane - 4.0 - hh);

@@ -107,16 +107,15 @@ impl Panel {
 		&mut self, ui: &mut egui::Ui, r: Rect, d: &Device, v: &Verdict, model: Option<&(Arc<Model>, Arc<Bvh>, Q4)>,
 	) {
 		let vi = self.view.index();
-		// the toggle over the view's top left, the legend along its bottom
-		let (tr, flip) = super::kit::chip(
+		// the tick box over the view's top left, the legend along its bottom
+		let (tr, flip) = super::kit::tick_label(
 			ui,
 			Id::unique("sensors-as-room"),
 			r.min,
-			28.0,
+			26.0,
 			"Turned as in the room",
 			self.page_state.sensors.as_in_room,
-			None,
-			22.0,
+			true,
 		);
 		if flip {
 			self.page_state.sensors.as_in_room = !self.page_state.sensors.as_in_room;
@@ -259,14 +258,11 @@ impl Panel {
 		] {
 			let c = if st == SensorState::Dark { theme::tk().faint } else { state_color(st) };
 			ui.painter().circle_filled(Pos2::new(x + 5.0, y + 7.0), 4.5, c);
-			let nr = self.text(
-				ui.painter(),
-				Pos2::new(x + 14.0, y),
-				theme::label(),
-				theme::tk().text,
-				&v.count(st).to_string(),
-			);
-			let tr = self.text(ui.painter(), Pos2::new(nr.max.x + 5.0, y), theme::label(), theme::tk().muted, label);
+			// the count in the room of two figures, from the right: what follows it stays where it is as it changes
+			let nw = super::kit::text_w(ui.painter(), "00", num());
+			let at = Pos2::new(x + 14.0 + nw, y);
+			self.text_at(ui.painter(), at, Align2::RIGHT_TOP, num(), theme::tk().text, &v.count(st).to_string());
+			let tr = self.text(ui.painter(), Pos2::new(at.x + 6.0, y), theme::label(), theme::tk().muted, label);
 			x = tr.max.x + 18.0;
 		}
 		let note = if !v.judged {
@@ -282,7 +278,7 @@ impl Panel {
 				Pos2::new(r.max.x, y),
 				Align2::RIGHT_TOP,
 				theme::label(),
-				theme::tk().warn,
+				theme::tk().muted,
 				note,
 			);
 		}
@@ -302,17 +298,36 @@ impl Panel {
 		let x_state = r.min.x + 30.0;
 		let x0 = r.min.x + 196.0;
 		let cw = ((r.max.x - x0) / v.stations.len().max(1) as f32).min(124.0);
-		let head_h = 20.0;
+		let head_h = 24.0;
 		let legend_h = 40.0;
 		let row = ((r.height() - head_h - legend_h) / n as f32).clamp(13.0, 22.0);
-		self.text(&p, Pos2::new(r.min.x, r.min.y), theme::label(), theme::tk().faint, "#");
-		self.text(&p, Pos2::new(x_state, r.min.y), theme::label(), theme::tk().faint, "state");
+		let t = theme::tk();
+		// the headings on the header's ground, as every table's
+		let hr = Rect::from_min_max(
+			Pos2::new(r.min.x - 6.0, r.min.y - 2.0),
+			Pos2::new(r.max.x + 6.0, r.min.y + head_h - 4.0),
+		);
+		p.rect_filled(hr, 0.0, t.head);
+		p.line_segment([hr.left_bottom(), hr.right_bottom()], Stroke::new(1.0, t.card_edge));
+		let hy = hr.center().y;
+		self.text_at(&p, Pos2::new(r.min.x, hy), Align2::LEFT_CENTER, caption(), t.muted, "#");
+		self.text_at(&p, Pos2::new(x_state, hy), Align2::LEFT_CENTER, caption(), t.muted, "State");
 		for (j, idx) in v.stations.iter().enumerate() {
 			let label = self.rt.stations.get(idx).map(|s| s.channel_label()).unwrap_or_else(|| idx.to_string());
-			let c = if v.lights[j] { theme::tk().soft } else { theme::tk().faint };
-			self.text(&p, Pos2::new(x0 + j as f32 * cw, r.min.y), theme::label(), c, &label);
+			let c = if v.lights[j] { t.muted } else { t.faint };
+			let says = format!("{label}: hits, angle");
+			self.text_at(&p, Pos2::new(x0 + j as f32 * cw, hy), Align2::LEFT_CENTER, caption(), c, &says);
 		}
 		let mut y = r.min.y + head_h;
+		// the columns' lines, through the header and the rows
+		let rows_end = y + n as f32 * row - 2.0;
+		let mut rules = vec![x_state - 9.0];
+		rules.extend((0..v.stations.len()).map(|j| x0 + j as f32 * cw - 9.0));
+		// (a strong one before the state and before the stations, a light one between the stations)
+		for (k, x) in rules.iter().enumerate() {
+			let col = if k < 2 { t.group } else { t.line };
+			p.line_segment([Pos2::new(*x, hr.min.y), Pos2::new(*x, rows_end)], Stroke::new(1.0, col));
+		}
 		let hovered = self.page_state.sensors.hover[vi];
 		let mut row_hover = None;
 		let pointer = ui.input(|i| i.pointer.hover_pos());
@@ -321,25 +336,32 @@ impl Panel {
 			if pointer.is_some_and(|q| rr.contains(q)) {
 				row_hover = Some(i);
 			}
-			if hovered == Some(i) {
-				p.rect_filled(rr, 3.0, white(16));
+			if i % 2 == 1 {
+				p.rect_filled(rr, 0.0, t.stripe);
 			}
-			self.row_rule(&p, Pos2::new(r.min.x, y - 2.0), Pos2::new(r.max.x, y - 2.0));
+			if hovered == Some(i) {
+				p.rect_filled(rr, 0.0, white(14));
+			}
+			self.row_rule(&p, Pos2::new(r.min.x, y + row - 2.0), Pos2::new(r.max.x, y + row - 2.0));
 			let st = v.states[i];
-			let sc = if st == SensorState::Dark { theme::tk().muted } else { state_color(st) };
-			self.text(&p, Pos2::new(r.min.x, y), theme::label(), theme::tk().soft, &i.to_string());
-			self.text(&p, Pos2::new(x_state, y), theme::label(), sc, st.label());
+			let cy = y + row * 0.5 - 2.0;
+			self.text_at(&p, Pos2::new(r.min.x, cy), Align2::LEFT_CENTER, num(), t.soft, &i.to_string());
+			// the state in words, in its colour, as in the view's key
+			let sc = state_color(st);
+			self.text_at(&p, Pos2::new(x_state, cy), Align2::LEFT_CENTER, theme::label(), sc, st.label());
 			for (j, c) in v.cells[i].iter().enumerate() {
 				let x = x0 + j as f32 * cw;
 				let (txt, col) = if c.hits > 0 {
-					(c.hits.to_string(), if c.behind { theme::tk().violet } else { theme::tk().good })
+					(c.hits.to_string(), if c.behind { t.violet } else { t.text })
 				} else {
-					("-".to_string(), if c.expected { theme::tk().bad } else { theme::tk().faint })
+					("-".to_string(), t.faint)
 				};
 				if c.expected {
-					p.circle_stroke(Pos2::new(x + 4.0, y + 7.0), 4.0, Stroke::new(1.3, col));
+					// it should light the sensor: a ring, in the fault's colour where it does not
+					let ring = if c.hits > 0 { t.good } else { t.bad };
+					p.circle_stroke(Pos2::new(x + 4.0, cy), 4.0, Stroke::new(1.3, ring));
 				}
-				self.text(&p, Pos2::new(x + 12.0, y), theme::label(), col, &txt);
+				self.text_at(&p, Pos2::new(x + 34.0, cy), Align2::RIGHT_CENTER, num(), col, &txt);
 				let ang = if c.angle.is_nan() {
 					String::new()
 				} else if c.hidden {
@@ -349,7 +371,7 @@ impl Panel {
 				} else {
 					format!("{:.0}°", c.angle)
 				};
-				self.text(&p, Pos2::new(x + 40.0, y), theme::label(), theme::tk().faint, &ang);
+				self.text_at(&p, Pos2::new(x + 44.0, cy), Align2::LEFT_CENTER, num(), t.muted, &ang);
 			}
 			y += row;
 		}

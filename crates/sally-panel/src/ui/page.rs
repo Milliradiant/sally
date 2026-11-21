@@ -1,16 +1,16 @@
-//! The device page: one device over its last seconds (10 to 120, 30 by default), beside the devices' list (which picks
-//! its device): which stations' light it got and its state, its position, orientation, speed, pose rate and position sd
-//! as charts with one time cursor across them, and under each chart its series over the range (now, min, max, mean,
-//! peak to peak). Pause holds the range still. Selected is the device now; this is how it got there. The range is on
-//! the runtime's clock, as the history is. Its Sensors view is `sensors.rs`'s.
+//! The device page: one device over its last seconds (10 to 120, 30 by default), under a row of the devices (a
+//! button each, which picks the page's device): which stations' light it got and its state, its position,
+//! orientation, speed, pose rate and position sd as charts with one time cursor across them, and under each chart
+//! its series over the range (now, min, max, mean, peak to peak). Pause holds the range still. The table on the
+//! Tracking tab is the device now; this is how it got there. The range is on the runtime's clock, as the history
+//! is. Its Sensors view is `sensors.rs`'s.
 
 use egui::{Align2, Color32, Id, Pos2, Rect, Sense, Shape, Stroke, Vec2};
 
-use super::icons;
-use super::kit::{self, sd_color, Surface, GAP, HEADER_H, PAD};
+use super::kit::{self, Look, Surface, CTL_H, GAP, HEADER_H, PAD};
 use super::theme;
 use super::theme::*;
-use super::{Panel, Sel};
+use super::Panel;
 use crate::history::{yaw_pitch_roll, Light, Sample};
 use crate::runtime::Device;
 
@@ -72,11 +72,13 @@ impl Chart {
 
 /// A lane of the light's strip, and a row of a chart's table
 const LANE: f32 = 20.0;
-const ROW: f32 = 19.0;
+const ROW: f32 = 20.0;
+/// A chart's table's header row
+const TABLE_HEAD: f32 = 22.0;
 
 fn charts() -> Vec<Chart> {
-	// one series: the theme's light ink, so that colour stays what it says elsewhere (a state, an axis)
-	let ink: fn(&Tk) -> Color32 = |t| t.soft;
+	// one series: the charts' own hue, which is no axis's and no status's
+	let ink: fn(&Tk) -> Color32 = |t| t.series;
 	vec![
 		Chart {
 			title: "Position",
@@ -123,18 +125,18 @@ fn charts() -> Vec<Chart> {
 			wraps: false,
 		},
 		Chart {
-			title: "Position, how sure",
-			unit: "± mm",
-			series: vec![Series { name: "± pos", color: |t| t.good, value: |p| p.s.sd_mm }],
+			title: "Position ±",
+			unit: "mm",
+			series: vec![Series { name: "± pos", color: ink, value: |p| p.s.sd_mm }],
 			decimals: 1,
 			steps: false,
 			from_zero: true,
 			wraps: false,
 		},
 		Chart {
-			title: "Light's residual",
+			title: "Residual",
 			unit: "mrad",
-			series: vec![Series { name: "residual", color: |t| t.violet, value: |p| p.s.res_mrad }],
+			series: vec![Series { name: "residual", color: ink, value: |p| p.s.res_mrad }],
 			decimals: 2,
 			steps: false,
 			from_zero: true,
@@ -164,33 +166,50 @@ fn tick_label(v: f64, step: f64) -> String {
 }
 
 impl Panel {
-	/// How wide the devices' list is beside the room, and beside a device's page
-	pub(super) fn list_width(w: f32) -> f32 {
-		(w * 0.245).clamp(330.0, 392.0)
+	/// The devices as a row of buttons over the page, each its symbol and name, the page's own lit; before them the
+	/// way back to the room. False when the page was left
+	fn page_devices(&mut self, ui: &mut egui::Ui, r: Rect) -> bool {
+		let t = theme::tk();
+		let p = ui.painter().clone();
+		let bw = kit::button_w(&p, "Back to the room", false);
+		let back = Rect::from_min_size(r.min, Vec2::new(bw, r.height()));
+		if kit::button(ui, Id::unique("page-back"), back, "Back to the room", None, Look::Plain, true).clicked() {
+			self.page = None;
+			return false;
+		}
+		let codes: Vec<String> = self.active_devices().iter().map(|d| d.codename.clone()).collect();
+		let n = codes.len().max(1) as f32;
+		let left = back.max.x + 14.0;
+		let each = ((r.max.x - left - 6.0 * (n - 1.0)) / n).clamp(64.0, 190.0);
+		let mut x = left;
+		let mut open = None;
+		for code in &codes {
+			let Some(d) = self.rt.devices.get(code) else { continue };
+			let br = Rect::from_min_size(Pos2::new(x, r.min.y), Vec2::new(each, r.height()));
+			let on = self.page.as_deref() == Some(code.as_str());
+			let look = if on { Look::Primary } else { Look::Plain };
+			if kit::button(ui, Id::unique(("page-dev", code)), br, "", None, look, true).clicked() && !on {
+				open = Some(code.clone());
+			}
+			let fg = if on { t.on_ink } else { t.text };
+			let sr = Rect::from_center_size(Pos2::new(br.min.x + 20.0, br.center().y), Vec2::splat(20.0));
+			self.draw_symbol(&p, sr, d, if on { fg } else { t.kind(&d.subtype) });
+			let clip = Rect::from_min_max(Pos2::new(br.min.x + 36.0, br.min.y), Pos2::new(br.max.x - 8.0, br.max.y));
+			kit::text_in(&p, clip, &self.short_name(d), theme::label(), fg);
+			x = br.max.x + 6.0;
+		}
+		if let Some(c) = open {
+			self.open_device_page(&c);
+		}
+		true
 	}
 
 	pub(super) fn device_page(&mut self, ui: &mut egui::Ui, r: Rect) {
-		// the list stays beside the page where there is room for both, and picks its device
-		let with_list = r.width() >= 1300.0;
-		if with_list {
-			if let Sel::Device(c) = &self.sel {
-				if self.page.as_deref() != Some(c) && self.rt.devices.get(c).is_some_and(|d| d.active) {
-					self.page = Some(c.clone());
-					self.page_state.hover = [None, None];
-				}
-			}
+		if !self.page_devices(ui, Rect::from_min_size(r.min, Vec2::new(r.width(), CTL_H))) {
+			return;
 		}
 		let Some(code) = self.page.clone() else { return };
-		let r = if with_list {
-			let lw = Self::list_width(r.width());
-			self.devices_card(ui, Rect::from_min_size(r.min, Vec2::new(lw, r.height())));
-			if self.page.is_none() {
-				return;
-			}
-			Rect::from_min_max(Pos2::new(r.min.x + lw + GAP, r.min.y), r.max)
-		} else {
-			r
-		};
+		let r = Rect::from_min_max(Pos2::new(r.min.x, r.min.y + CTL_H + GAP), r.max);
 		// a copy for the boxes (which change the panel's state as they draw) without the history, whose range is taken
 		// from the device itself below: a whole copy a frame was its 120 s of samples
 		let Some(d) = self.rt.devices.get_mut(&code).map(Device::copy_light) else {
@@ -201,10 +220,8 @@ impl Panel {
 		let t1 = self.page_state.paused_at.unwrap_or(self.rt.run_time);
 		let span = (t1 - range, t1);
 
-		let head_h = 108.0;
-		if !self.page_head(ui, Rect::from_min_size(r.min, Vec2::new(r.width(), head_h)), &d, !with_list) {
-			return;
-		}
+		let head_h = 104.0;
+		self.page_head(ui, Rect::from_min_size(r.min, Vec2::new(r.width(), head_h)), &d);
 		let mut y = r.min.y + head_h + GAP;
 		if self.page_state.sensors_tab {
 			self.page_sensors(ui, Rect::from_min_max(Pos2::new(r.min.x, y), r.max), &d);
@@ -224,7 +241,7 @@ impl Panel {
 			.filter(|(_, s)| s.have_pose || s.seen)
 			.map(|(i, s)| (*i, s.channel_label()))
 			.collect();
-		let light_h = HEADER_H + LANE * (stations.len() as f32 + 1.0) + 22.0 + PAD - 4.0;
+		let light_h = HEADER_H + 8.0 + LANE * (stations.len() as f32 + 1.0) + 22.0 + PAD - 4.0;
 		let light_r = Rect::from_min_size(Pos2::new(r.min.x, y), Vec2::new(r.width(), light_h));
 		let mut hover = self.page_light(ui, light_r, &stations, &samples, span);
 		y += light_h + GAP;
@@ -234,13 +251,13 @@ impl Panel {
 		let mut cs = charts();
 		let has_res = samples.iter().any(|p| p.s.res_mrad >= 0.0);
 		if !has_res {
-			cs.retain(|c| c.title != "Light's residual");
+			cs.retain(|c| c.title != "Residual");
 		}
 		let row_h = ((r.max.y - y - GAP) / 2.0).max(150.0);
 		let w3 = (r.width() - 2.0 * GAP) / 3.0;
 		for (i, ch) in cs.iter().enumerate() {
 			let (col, row) = ((i % 3) as f32, (i / 3) as f32);
-			let w = if !has_res && ch.title == "Position, how sure" { 2.0 * w3 + GAP } else { w3 };
+			let w = if !has_res && ch.title == "Position ±" { 2.0 * w3 + GAP } else { w3 };
 			let at = Pos2::new(r.min.x + col * (w3 + GAP), y + row * (row_h + GAP));
 			if let Some(t) = self.page_chart(ui, Rect::from_min_size(at, Vec2::new(w, row_h)), ch, &samples, span, i) {
 				hover = Some(t);
@@ -252,51 +269,26 @@ impl Panel {
 		}
 	}
 
-	/// The page's head: back to the room, the device (its symbol, name, what it is), the view (curves or sensors), the
-	/// curves' range and pause; under them its numbers now. `switcher`: with arrows to the devices before and after it
-	/// (where the list is not beside the page). False when the page was left
-	fn page_head(&mut self, ui: &mut egui::Ui, r: Rect, d: &Device, switcher: bool) -> bool {
+	/// The page's head: the device (its symbol, name, what it is), the view (curves or sensors), the curves' range and
+	/// Pause; under them its numbers now, a cell each
+	fn page_head(&mut self, ui: &mut egui::Ui, r: Rect, d: &Device) {
 		let t = theme::tk();
 		let p = ui.painter().clone();
 		self.surface(&p, r, Surface::Card);
 		let h = self.health_of(d);
 		let x0 = r.min.x + PAD;
 		let xr = r.max.x - PAD;
-		let cy = r.min.y + 30.0;
-		let back = Rect::from_min_size(Pos2::new(x0 - 2.0, cy - 16.0), Vec2::splat(32.0));
-		if kit::icon_button(ui, Id::unique("page-back"), back, icons::ARROW_LEFT, false, true)
-			.on_hover_text("Back to the room")
-			.clicked()
-		{
-			self.page = None;
-			return false;
-		}
-		let mut x = back.max.x + 8.0;
-		if switcher {
-			// the devices in the list's order, round
-			let codes: Vec<String> = self.active_devices().iter().map(|d| d.codename.clone()).collect();
-			let at = codes.iter().position(|c| *c == d.codename).unwrap_or(0);
-			for (k, glyph, step) in [(0, icons::CARET_LEFT, codes.len().saturating_sub(1)), (1, icons::CARET_RIGHT, 1)]
-			{
-				let br = Rect::from_min_size(Pos2::new(x, cy - 16.0), Vec2::splat(32.0));
-				if kit::icon_button(ui, Id::unique(("page-step", k)), br, glyph, false, codes.len() > 1).clicked() {
-					let next = codes[(at + step) % codes.len().max(1)].clone();
-					self.open_device_page(&next);
-				}
-				x = br.max.x + 2.0;
-			}
-			x += 6.0;
-		}
+		let cy = r.min.y + 24.0;
 		self.draw_symbol(
 			&p,
-			Rect::from_min_size(Pos2::new(x, cy - 17.0), Vec2::new(36.0, 34.0)),
+			Rect::from_min_size(Pos2::new(x0, cy - 15.0), Vec2::new(30.0, 30.0)),
 			d,
-			if h.level <= 1 { t.soft } else { h.color },
+			t.kind(&d.subtype),
 		);
-		x += 46.0;
+		let x = x0 + 40.0;
 
-		// from the right: the view, the range, pause
-		let bh = 30.0;
+		// from the right: the view, Pause, the range
+		let bh = 28.0;
 		let views = ["Curves", "Sensors"];
 		let vw = kit::segmented_w(&p, bh, &views);
 		let (_, c) = kit::segmented(
@@ -313,13 +305,17 @@ impl Panel {
 		let mut right = xr - vw - 12.0;
 		if !self.page_state.sensors_tab {
 			let paused = self.page_state.paused_at.is_some();
-			let pr = Rect::from_min_size(Pos2::new(right - bh, cy - bh * 0.5), Vec2::splat(bh));
-			let glyph = if paused { icons::PLAY } else { icons::PAUSE };
-			let tip = if paused { "Goes on" } else { "Holds the range still" };
-			if kit::icon_button(ui, Id::unique("page-pause"), pr, glyph, paused, true).on_hover_text(tip).clicked() {
+			let (says, look, tip) = if paused {
+				("Go on", Look::Primary, "The range follows the device again")
+			} else {
+				("Pause", Look::Plain, "Holds the range still")
+			};
+			let (clicked, left) =
+				kit::buttons_right(ui, Id::unique("page-pause"), right, cy, bh, &[(says, look, true, tip)]);
+			if clicked.is_some() {
 				self.page_state.paused_at = if paused { None } else { Some(self.rt.run_time) };
 			}
-			right = pr.min.x - 8.0;
+			right = left - 8.0;
 			let labels: Vec<String> = RANGES.iter().map(|rg| format!("{rg:.0} s")).collect();
 			let items: Vec<&str> = labels.iter().map(String::as_str).collect();
 			let rw = kit::segmented_w(&p, bh, &items);
@@ -335,44 +331,57 @@ impl Panel {
 		}
 
 		// the name, and what it is
-		let clip = Rect::from_min_max(Pos2::new(x, r.min.y + 8.0), Pos2::new(right, r.min.y + 32.0));
-		kit::text_in(&p, clip, &self.short_name(d), semibold(20.0), t.text);
+		let nr = kit::text_in(
+			&p,
+			Rect::from_min_max(Pos2::new(x, cy - 14.0), Pos2::new(right, cy + 14.0)),
+			&self.short_name(d),
+			semibold(17.0),
+			t.text,
+		);
 		let sub = self.type_of(d);
-		let sr = kit::text(&p, Pos2::new(x, r.min.y + 43.0), Align2::LEFT_CENTER, &sub, theme::label(), t.muted);
+		let kind = t.kind(&d.subtype);
+		let sr = kit::text(&p, Pos2::new(nr.max.x + 14.0, cy + 1.0), Align2::LEFT_CENTER, &sub, theme::label(), kind);
 		let mut id = format!("{}  {}", d.codename, d.serial);
 		if !d.dongle.is_empty() && d.dongle != "-" {
 			id += &format!("  dongle {}", d.dongle);
 		}
-		let clip = Rect::from_min_max(Pos2::new(sr.max.x + 10.0, r.min.y + 33.0), Pos2::new(right, r.min.y + 53.0));
-		kit::text_in(&p, clip, &id, code(), t.faint);
+		let clip = Rect::from_min_max(Pos2::new(sr.max.x + 12.0, cy - 10.0), Pos2::new(right, cy + 12.0));
+		kit::text_in(&p, clip, &id, code(), t.muted);
 
-		// its numbers now
+		// its numbers now: a cell each, ruled apart
 		let sdmm = if d.pos_sd >= 0.0 { d.pos_sd * 1000.0 } else { -1.0 };
 		let charge = d.charge();
 		let dash = || "–".to_string();
-		let fields: Vec<(&str, String, &str, Color32)> = vec![
-			("State", h.state.clone(), "", if h.level <= 1 { t.good } else { h.color }),
-			("Pose rate", format!("{:.0}", d.rate_hz), "/s", t.text),
-			("Position", if sdmm < 0.0 { dash() } else { format!("±{sdmm:.1}") }, "mm", sd_color(sdmm)),
-			("Light's age", if d.light_age < 0.0 { dash() } else { format!("{:.3}", d.light_age) }, "s", t.text),
-			("Speed", format!("{:.2}", sally_math::math3d::len(d.vel)), "m/s", t.text),
-			("Height", format!("{:.2}", d.pos.z - self.floor_z()), "m", t.text),
-			(
-				"Battery",
-				if charge < 0 { dash() } else { charge.to_string() },
-				if charge < 0 { "" } else { "%" },
-				t.text,
-			),
+		let fields: Vec<(&str, String, &str)> = vec![
+			("State", h.state.clone(), ""),
+			("Pose rate", format!("{:.0}", d.rate_hz), "/s"),
+			("Position", if sdmm < 0.0 { dash() } else { format!("±{sdmm:.1}") }, "mm"),
+			("Light's age", if d.light_age < 0.0 { dash() } else { format!("{:.3}", d.light_age) }, "s"),
+			("Speed", format!("{:.2}", sally_math::math3d::len(d.vel)), "m/s"),
+			("Height", format!("{:.2}", d.pos.z - self.floor_z()), "m"),
+			("Battery", if charge < 0 { dash() } else { charge.to_string() }, if charge < 0 { "" } else { "%" }),
 		];
-		let fy = r.min.y + 64.0;
-		p.line_segment([Pos2::new(r.min.x + 1.0, fy), Pos2::new(r.max.x - 1.0, fy)], Stroke::new(1.0, t.line));
-		let cw = ((xr - x0) / fields.len() as f32).min(190.0);
-		for (i, (k, v, unit, c)) in fields.iter().enumerate() {
-			let fx = x0 + i as f32 * cw;
-			kit::text(&p, Pos2::new(fx, fy + 13.0), Align2::LEFT_CENTER, k, caption(), t.muted);
-			kit::value_unit(&p, Pos2::new(fx, fy + 38.0), v, unit, semibold(16.0), *c);
+		let fy = r.min.y + 48.0;
+		p.line_segment([Pos2::new(r.min.x + 1.0, fy), Pos2::new(r.max.x - 1.0, fy)], Stroke::new(1.0, t.card_edge));
+		let cw = (r.width() - 2.0) / fields.len() as f32;
+		for (i, (k, v, unit)) in fields.iter().enumerate() {
+			let cell = Rect::from_min_max(
+				Pos2::new(r.min.x + 1.0 + i as f32 * cw, fy + 1.0),
+				Pos2::new(r.min.x + 1.0 + (i as f32 + 1.0) * cw, r.max.y - 1.0),
+			);
+			if i > 0 {
+				p.line_segment([cell.left_top(), cell.left_bottom()], Stroke::new(1.0, t.line));
+			}
+			let inner = Rect::from_min_max(cell.min + Vec2::new(PAD, 5.0), cell.max - Vec2::new(8.0, 5.0));
+			if i > 0 {
+				kit::reading(&p, inner, k, v, unit, false);
+				continue;
+			}
+			// the state: a word, in its status' colour
+			kit::text(&p, Pos2::new(inner.min.x, inner.min.y + 9.0), Align2::LEFT_CENTER, k, caption(), t.muted);
+			let at = Pos2::new(inner.min.x, inner.max.y - 3.0);
+			kit::text(&p, at, Align2::LEFT_BOTTOM, v, name(), self.state_ink(d));
 		}
-		true
 	}
 
 	/// A strip per station over the range, filled where the tracker got its sweeps (S lines' station mask), and one
@@ -399,26 +408,25 @@ impl Panel {
 				t.muted,
 			);
 			let lane = Rect::from_min_max(Pos2::new(x0, y + 3.0), Pos2::new(x1, y + LANE - 5.0));
-			p.rect_filled(lane, 3.0, t.ctl);
+			p.rect_filled(lane, 0.0, t.ctl);
 			// runs of samples with the bit set (or in one state), split where samples are over 0.25 s apart
 			let mut run: Option<(f64, f64, Color32)> = None;
 			let flush = |run: &mut Option<(f64, f64, Color32)>| {
 				if let Some((a, b, c)) = run.take() {
 					let rr =
 						Rect::from_min_max(Pos2::new(tx(a), lane.min.y), Pos2::new(tx(b).max(tx(a) + 1.0), lane.max.y));
-					p.rect_filled(rr, 2.0, c);
+					p.rect_filled(rr, 0.0, c);
 				}
 			};
 			let mut last_t = f64::NEG_INFINITY;
 			for s in samples.iter().map(|pt| &pt.s) {
 				let c = if i < stations.len() {
-					(s.lh_mask & (1u32 << stations[i].0) != 0).then_some(alpha(t.good, 215))
+					(s.lh_mask & (1u32 << stations[i].0) != 0).then_some(t.good)
 				} else {
 					Some(match s.light {
-						Light::Tracking if s.lh_mask.count_ones() >= 2 => alpha(t.good, 130),
-						Light::Tracking => t.note,
-						Light::Dark => t.warn,
-						Light::Coasting => t.bad,
+						Light::Tracking => t.good,
+						Light::Dark => mix(t.ctl, t.warn, 0.55),
+						Light::Coasting => t.warn,
 						Light::Other => t.faint,
 					})
 				};
@@ -474,7 +482,7 @@ impl Panel {
 			} else {
 				Align2::CENTER_TOP
 			};
-			kit::text(p, Pos2::new(x, y), align, &says, caption(), t.faint);
+			kit::text(p, Pos2::new(x, y), align, &says, mono(11.5), t.muted);
 			k += step;
 		}
 	}
@@ -497,10 +505,12 @@ impl Panel {
 			t.muted,
 		);
 		let (t0, t1) = span;
-		let table_h = 20.0 + ch.series.len() as f32 * ROW;
+		// the table of the series at the box's foot, from edge to edge; the plot over it
+		let table_h = TABLE_HEAD + ch.series.len() as f32 * ROW;
+		let foot = r.max.y - 1.0;
 		let plot = Rect::from_min_max(
 			Pos2::new(inner.min.x + 40.0, inner.min.y + 2.0),
-			Pos2::new(inner.max.x - 2.0, inner.max.y - table_h - 24.0),
+			Pos2::new(inner.max.x - 2.0, foot - table_h - 26.0),
 		);
 		// (each sample's values straight in: a list of them a sample was the frame's most allocations)
 		let (mut lo, mut hi) = (f64::INFINITY, f64::NEG_INFINITY);
@@ -510,7 +520,8 @@ impl Panel {
 				hi = hi.max(v);
 			}
 		}
-		self.chart_table(&p, Rect::from_min_max(Pos2::new(inner.min.x, inner.max.y - table_h), inner.max), ch, samples);
+		let table = Rect::from_min_max(Pos2::new(r.min.x + 1.0, foot - table_h), Pos2::new(r.max.x - 1.0, foot));
+		self.chart_table(&p, table, ch, samples);
 		if !lo.is_finite() {
 			kit::text(&p, plot.center(), Align2::CENTER_CENTER, "no samples", theme::label(), t.muted);
 			return None;
@@ -534,16 +545,14 @@ impl Panel {
 				Pos2::new(plot.min.x - 7.0, y),
 				Align2::RIGHT_CENTER,
 				&tick_label(*v, tstep),
-				caption(),
-				t.faint,
+				mono(11.5),
+				t.muted,
 			);
 		}
 		self.time_axis(&p, plot.min.x, plot.max.x, plot.max.y + 5.0, span);
-		// the lines, thinned to about two samples a point, broken where samples are over 0.25 s apart; a chart of one
-		// series from 0 has a wash under its line
+		// the lines, thinned to about two samples a point, broken where samples are over 0.25 s apart
 		let step = (samples.len() as f32 / (plot.width() * 2.0)).ceil().max(1.0) as usize;
 		let pc = p.with_clip_rect(plot.expand(1.0).intersect(p.clip_rect()));
-		let wash = ch.series.len() == 1 && ch.from_zero && !ch.steps;
 		for se in &ch.series {
 			let col = (se.color)(&t);
 			let mut line: Vec<Pos2> = Vec::new();
@@ -551,18 +560,6 @@ impl Panel {
 			let mut last_v = f64::NAN;
 			let draw = |line: &mut Vec<Pos2>| {
 				if line.len() > 1 {
-					if wash {
-						let mut mesh = egui::Mesh::default();
-						for q in line.iter() {
-							mesh.colored_vertex(*q, alpha(col, 34));
-							mesh.colored_vertex(Pos2::new(q.x, plot.max.y), alpha(col, 0));
-						}
-						for k in 0..line.len() as u32 - 1 {
-							mesh.add_triangle(2 * k, 2 * k + 1, 2 * k + 2);
-							mesh.add_triangle(2 * k + 1, 2 * k + 2, 2 * k + 3);
-						}
-						pc.add(Shape::mesh(mesh));
-					}
 					pc.add(Shape::line(std::mem::take(line), Stroke::new(1.6, col)));
 				}
 				line.clear();
@@ -616,14 +613,14 @@ impl Panel {
 					}))
 					.collect();
 			let kw = lines.iter().map(|l| kit::text_w(&p, &l.1, theme::label())).fold(0.0, f32::max);
-			let vw = lines.iter().map(|l| kit::text_w(&p, &l.2, theme::label())).fold(0.0, f32::max);
+			let vw = lines.iter().map(|l| kit::text_w(&p, &l.2, num())).fold(0.0, f32::max);
 			let size = Vec2::new(14.0 + kw + 16.0 + vw + 20.0, lines.len() as f32 * 18.0 + 12.0);
 			let mut bx = Rect::from_min_size(Pos2::new(x + 12.0, plot.min.y + 4.0), size);
 			if bx.max.x > plot.max.x {
 				bx = bx.translate(Vec2::new(-(bx.width() + 24.0), 0.0));
 			}
-			p.rect_filled(bx, 6.0, t.float);
-			p.rect_stroke(bx, 6.0, Stroke::new(1.0, t.card_edge), egui::StrokeKind::Inside);
+			p.rect_filled(bx, t.ctl_radius, t.float);
+			p.rect_stroke(bx, t.ctl_radius, Stroke::new(1.0, t.card_edge), egui::StrokeKind::Inside);
 			for (k, (c, name, v)) in lines.iter().enumerate() {
 				let ly = bx.min.y + 15.0 + k as f32 * 18.0;
 				if let Some(c) = c {
@@ -633,20 +630,20 @@ impl Panel {
 					);
 				}
 				p.text(Pos2::new(bx.min.x + 24.0, ly), Align2::LEFT_CENTER, name, theme::label(), t.muted);
-				p.text(Pos2::new(bx.max.x - 10.0, ly), Align2::RIGHT_CENTER, v, theme::label(), t.text);
+				p.text(Pos2::new(bx.max.x - 10.0, ly), Align2::RIGHT_CENTER, v, num(), t.text);
 			}
 		}
 		hover_t
 	}
 
-	/// A chart's series over the range, a row each: its colour's mark and name, then now, min, max, mean and peak to
-	/// peak
+	/// A chart's series over the range, a table as the panel's others (a header row, ruled and striped rows, a line
+	/// between the columns), a row each: its colour's mark and name, then now, min, max, mean and peak to peak
 	fn chart_table(&self, p: &egui::Painter, r: Rect, ch: &Chart, samples: &[Point]) {
 		let t = theme::tk();
 		let cols = ["now", "min", "max", "mean", "p-p"];
-		let name_w = 62.0;
+		let name_w = 76.0 + PAD;
 		// the columns that fit, from the left: the peak to peak, then the mean, go first
-		let n = (((r.width() - name_w) / 50.0).floor() as usize).clamp(2, cols.len());
+		let n = (((r.width() - name_w - PAD) / 50.0).floor() as usize).clamp(2, cols.len());
 		let shown: Vec<usize> = match n {
 			5 => vec![0, 1, 2, 3, 4],
 			4 => vec![0, 1, 2, 4],
@@ -654,12 +651,18 @@ impl Panel {
 			_ => vec![0, 4],
 		};
 		let cw = (r.width() - name_w) / shown.len() as f32;
-		let col_x = |k: usize| r.min.x + name_w + (k as f32 + 1.0) * cw;
+		// a column's right edge, and where its figures end
+		let edge = |k: usize| r.min.x + name_w + (k as f32 + 1.0) * cw;
+		let col_x = |k: usize| edge(k) - 10.0;
+		let head = Rect::from_min_max(r.min, Pos2::new(r.max.x, r.min.y + TABLE_HEAD));
+		p.rect_filled(head, 0.0, t.head);
+		p.line_segment([head.left_top(), head.right_top()], Stroke::new(1.0, t.card_edge));
+		p.line_segment([head.left_bottom(), head.right_bottom()], Stroke::new(1.0, t.card_edge));
 		for (k, c) in shown.iter().enumerate() {
-			kit::text(p, Pos2::new(col_x(k), r.min.y + 8.0), Align2::RIGHT_CENTER, cols[*c], caption(), t.faint);
+			kit::text(p, Pos2::new(col_x(k), head.center().y), Align2::RIGHT_CENTER, cols[*c], caption(), t.muted);
 		}
-		let mut y = r.min.y + 20.0;
-		for se in &ch.series {
+		let mut y = head.max.y;
+		for (row, se) in ch.series.iter().enumerate() {
 			// now, min, max and the sum in one pass over the values (a list of them a series was 13 a frame); the
 			// sum from -0.0, as Iterator::sum's
 			let (mut now, mut mn, mut mx, mut sum, mut n) = (None, f64::INFINITY, f64::NEG_INFINITY, -0.0, 0usize);
@@ -671,9 +674,16 @@ impl Panel {
 				n += 1;
 			}
 			let cy = y + ROW * 0.5;
-			p.line_segment([Pos2::new(r.min.x, y), Pos2::new(r.max.x, y)], Stroke::new(1.0, fade(t.line, 0.7)));
-			p.line_segment([Pos2::new(r.min.x, cy), Pos2::new(r.min.x + 10.0, cy)], Stroke::new(2.0, (se.color)(&t)));
-			kit::text(p, Pos2::new(r.min.x + 15.0, cy), Align2::LEFT_CENTER, se.name, theme::label(), t.soft);
+			let ground = Rect::from_min_max(Pos2::new(r.min.x, y), Pos2::new(r.max.x, (y + ROW).min(r.max.y)));
+			if row % 2 == 1 {
+				p.rect_filled(ground, 0.0, t.stripe);
+			}
+			if row > 0 {
+				p.line_segment([ground.left_top(), ground.right_top()], Stroke::new(1.0, t.line));
+			}
+			let x = r.min.x + PAD;
+			p.line_segment([Pos2::new(x, cy), Pos2::new(x + 10.0, cy)], Stroke::new(2.0, (se.color)(&t)));
+			kit::text(p, Pos2::new(x + 15.0, cy), Align2::LEFT_CENTER, se.name, theme::label(), t.soft);
 			if let Some(now) = now {
 				let mean = sum / n as f64;
 				let d = ch.decimals;
@@ -685,12 +695,19 @@ impl Panel {
 						Pos2::new(col_x(k), cy),
 						Align2::RIGHT_CENTER,
 						&s,
-						theme::label(),
+						num(),
 						if *c == 0 { t.text } else { t.soft },
 					);
 				}
 			}
 			y += ROW;
+		}
+		// the lines between the columns, through the header and the rows: a strong one after the names, a light one
+		// between the figures
+		for k in 0..shown.len() {
+			let x = edge(k) - cw;
+			let col = if k == 0 { t.group } else { t.line };
+			p.line_segment([Pos2::new(x, head.min.y), Pos2::new(x, y.min(r.max.y))], Stroke::new(1.0, col));
 		}
 	}
 }

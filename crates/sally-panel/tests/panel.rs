@@ -1,6 +1,6 @@
 //! The panel against the fake runtime, without a display: egui contexts run frames (nothing is drawn), the panel's
 //! state checked between them: the tabs, the device page and its Sensors view, the bar (what SteamVR is shown),
-//! the Output tab against a stand-in for the sally driver, the theme and the floor's pop-up. The clicks are where a
+//! the Output tab against a stand-in for the sally driver, renaming and the floor's buttons. The clicks are where a
 //! 1600 x 940 window has the controls.
 
 use std::time::{Duration, Instant};
@@ -39,8 +39,7 @@ impl Rig {
 		let mut st = st;
 		st.host = "127.0.0.1".into();
 		st.port = fake.port;
-		// a runtime of the panel's own, as --host and --port give it one: no strip about this PC's SteamVR over the
-		// layout the clicks are placed in
+		// a runtime of the panel's own, as --host and --port give it one: nothing about this PC's SteamVR in the bar
 		st.file_target = Some((st.host.clone(), st.port));
 		let mut vc = ValveCompare::new();
 		let driver = driver.then(|| FakeDriver::new(&mut vc).expect("fake driver"));
@@ -97,6 +96,40 @@ impl Rig {
 			pressed: false,
 			modifiers: Modifiers::NONE,
 		}]);
+		self.frame(Vec::new());
+	}
+
+	/// A double click: two presses and releases, a frame each
+	fn double_click(&mut self, x: f32, y: f32) {
+		let p = Pos2::new(x, y);
+		self.frame(vec![Event::PointerMoved(p)]);
+		for pressed in [true, false, true, false] {
+			self.frame(vec![Event::PointerButton {
+				pos: p,
+				button: PointerButton::Primary,
+				pressed,
+				modifiers: Modifiers::NONE,
+			}]);
+		}
+		self.frame(Vec::new());
+	}
+
+	/// A drag: the press, the way there over a few frames, and the release
+	fn drag(&mut self, from: (f32, f32), to: (f32, f32)) {
+		let a = Pos2::new(from.0, from.1);
+		let b = Pos2::new(to.0, to.1);
+		let button = |pos, pressed| Event::PointerButton {
+			pos,
+			button: PointerButton::Primary,
+			pressed,
+			modifiers: Modifiers::NONE,
+		};
+		self.frame(vec![Event::PointerMoved(a)]);
+		self.frame(vec![button(a, true)]);
+		for k in 1..=6 {
+			self.frame(vec![Event::PointerMoved(a + (b - a) * (k as f32 / 6.0))]);
+		}
+		self.frame(vec![button(b, false)]);
 		self.frame(Vec::new());
 	}
 
@@ -186,17 +219,17 @@ fn the_sensors_tab_shows_a_covered_sensor_and_light_from_behind() {
 	assert_eq!(v.count(SensorState::Missing), 0);
 	// the page's view back to the curves: a click on "Curves", left of "Sensors" at the right end of the page's head
 	assert!(r.panel.page_sensors_tab());
-	r.click(1467.0, 94.0);
+	r.click(1478.0, 114.0);
 	assert!(!r.panel.page_sensors_tab());
-	// and the list beside the page picks its device: the second row is the right hand's
-	r.click(200.0, 198.0);
+	// and the row of devices over the page picks its device: the second button is the right hand's
+	r.click(437.0, 67.0);
 	assert_eq!(r.panel.page(), Some("KN1"));
 	assert_eq!(r.panel.selection(), &Sel::Device("KN1".into()));
 }
 
-/// Where the Selected box puts the device's name in a 1600 x 940 window: the right column (414 points wide) from
-/// x = 1176, the name 58 points in and 12 down
-const NAME: (f32, f32) = (1250.0, 88.0);
+/// Rename in a 1600 x 940 window: the last of the selected device's buttons, at the right end of the title line of
+/// the devices' table (six rows tall, across the bottom)
+const RENAME: (f32, f32) = (1547.0, 669.0);
 
 #[test]
 fn renaming_in_the_window() {
@@ -208,18 +241,19 @@ fn renaming_in_the_window() {
 	r.panel.select_device = "KN4".into();
 	r.frame(Vec::new());
 	assert_eq!(r.panel.device_name("KN4"), Some(tracker_name(&r, "KN4")));
-	r.click(NAME.0, NAME.1);
+	// Rename turns the selected row's name into a field with all of it selected: what is typed takes its place
+	r.click(RENAME.0, RENAME.1);
 	r.frame(vec![Event::Text("Left foot spare".into())]);
 	r.key(Key::Enter);
 	assert_eq!(r.panel.device_name("KN4").as_deref(), Some("Left foot spare"));
 	assert_eq!(r.panel.st.names["LHR-B0D67561"], "Left foot spare");
 	// Escape keeps the name it had
-	r.click(NAME.0, NAME.1);
+	r.click(RENAME.0, RENAME.1);
 	r.frame(vec![Event::Text("something else".into())]);
 	r.key(Key::Escape);
 	assert_eq!(r.panel.device_name("KN4").as_deref(), Some("Left foot spare"));
 	// an empty name is the default name again
-	r.click(NAME.0, NAME.1);
+	r.click(RENAME.0, RENAME.1);
 	r.key(Key::Backspace);
 	r.key(Key::Enter);
 	assert_eq!(r.panel.device_name("KN4"), Some(tracker_name(&r, "KN4")));
@@ -251,15 +285,14 @@ fn an_old_files_tab_opens_where_its_things_are_now() {
 }
 
 #[test]
-fn the_floor_is_set_from_the_lowest_device() {
+fn the_rooms_box_sets_the_floor_and_ticks_what_the_room_shows() {
 	let mut r = Rig::new(Vec::new(), Settings::default());
 	r.run_until(2.0);
 	assert!(r.panel.st.floor_z.is_nan());
-	// the room's Floor chip (its top left), then Set it here in what opens under it: the feet are at 0.06 to 0.10 m,
-	// the floor 3 cm under the lowest
+	// Set here, the first of the floor's two buttons in the room's title line: the feet are at 0.06 to 0.10 m, the
+	// floor 3 cm under the lowest
 	let before = r.panel.rt.events.len();
-	r.click(470.0, 125.0);
-	r.click(504.0, 253.0);
+	r.click(182.0, 70.0);
 	let set = r.panel.rt.events.iter().skip(before).find(|e| e.text.starts_with("floor set at"));
 	assert!(
 		set.is_some_and(|e| e.level == EvLevel::Info),
@@ -268,8 +301,53 @@ fn the_floor_is_set_from_the_lowest_device() {
 	);
 	assert!((0.02..0.08).contains(&r.panel.st.floor_z), "{}", r.panel.st.floor_z);
 	// Auto, beside it, finds it by itself again
-	r.click(644.0, 253.0);
+	r.click(250.0, 70.0);
 	assert!(r.panel.st.floor_z.is_nan());
+	// Coverage, a tick box that adds its own to the row it is in: on, and off again
+	assert!(!r.panel.st.show_heat);
+	r.click(690.0, 107.0);
+	assert!(r.panel.st.show_heat);
+	r.click(690.0, 107.0);
+	assert!(!r.panel.st.show_heat);
+}
+
+#[test]
+fn the_boxes_over_the_room_fold_and_their_edges_are_dragged() {
+	let mut r = Rig::new(Vec::new(), Settings::default());
+	r.run_until(2.0);
+	// the room stays where it is, and as large, whatever is done to the boxes over it
+	let place = r.panel.room_place();
+	assert!(place.width() > 900.0 && place.height() > 400.0, "{place:?}");
+	// the grip at the column's left: 200 points to the left, and the column is that much wider; a double click on
+	// it gives the column its own width again
+	assert_eq!(r.panel.st.side_w, 0.0);
+	r.drag((1113.0, 347.0), (913.0, 347.0));
+	let w = r.panel.st.side_w;
+	assert!((665.0..685.0).contains(&w), "{w}");
+	assert_eq!(r.panel.room_place(), place);
+	r.double_click(913.0, 200.0);
+	assert_eq!(r.panel.st.side_w, 0.0);
+	// the events' bottom and the devices' top, by theirs
+	r.drag((1350.0, 647.0), (1350.0, 450.0));
+	r.drag((500.0, 647.0), (500.0, 760.0));
+	assert!(r.panel.st.events_h > 0.0 && r.panel.st.devices_h > 0.0, "{:?}", r.panel.st.text());
+	assert_eq!(r.panel.room_place(), place);
+	// the caret before a box's title folds it to its title line, and opens it again
+	r.click(1136.0, 340.0);
+	r.click(27.0, 70.0);
+	assert_eq!(r.panel.st.fold, [true, false, true, false]);
+	assert_eq!(r.panel.room_place(), place);
+	r.click(1136.0, 340.0);
+	r.click(27.0, 70.0);
+	assert_eq!(r.panel.st.fold, [false; 4]);
+	// the room is behind the boxes: a drag in it turns the view, one that begins on a box does not
+	let before = r.panel.room_turn();
+	r.drag((500.0, 400.0), (560.0, 400.0));
+	let turned = r.panel.room_turn();
+	assert!(turned != before, "{turned:?}");
+	r.drag((500.0, 800.0), (560.0, 800.0));
+	r.drag((1300.0, 250.0), (1360.0, 250.0));
+	assert_eq!(r.panel.room_turn(), turned);
 }
 
 #[test]
@@ -278,7 +356,7 @@ fn the_bar_says_what_steamvr_is_shown() {
 	r.run_until(2.5);
 	// the driver's word is in: SteamVR is shown sally's tracking, and a click on Valve asks it for Valve's
 	assert!(r.panel.vc.hook_mode && r.panel.vc.hook_seen == "sally");
-	r.click(1553.0, 27.0);
+	r.click(1559.0, 22.0);
 	r.run_until(4.0);
 	let d = r.driver.as_ref().unwrap();
 	assert!(d.commands.iter().any(|c| c == "seen valve"), "{:?}", d.commands);
@@ -295,21 +373,21 @@ fn the_output_tab_sets_the_drivers_values() {
 	// the driver's list is in: the controllers' smoothing at its default
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(0.0));
 	// the stepper at the right end of the controllers' Still smoothing: 5 ms more, sent to the driver
-	r.click(1031.0, 192.0);
+	r.click(1036.0, 179.0);
 	r.run_until(3.6);
 	let d = r.driver.as_ref().unwrap();
 	assert!(d.commands.iter().any(|c| c == "output controllers smoothing_ms 5"), "{:?}", d.commands);
 	assert_eq!(d.output[&("controllers".to_string(), "smoothing_ms".to_string())], 5.0);
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
 	// the row under it is the other smoothing, the movement's: its own setting, and the still one's stays
-	r.click(1031.0, 250.0);
+	r.click(1036.0, 237.0);
 	r.run_until(4.0);
 	assert_eq!(value(&r, "controllers", "movement_smoothing"), Some(5.0));
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
-	// a device's own values: its chip (the left hand's, after All controllers), the same stepper, and the driver has
-	// the value under its serial; the class's stays
-	r.click(706.0, 123.0);
-	r.click(1031.0, 192.0);
+	// a device's own values: its button (the left hand's, after All controllers), the same stepper (which a device's
+	// row has left of its Unset), and the driver has the value under its serial; the class's stays
+	r.click(701.0, 112.0);
+	r.click(1036.0, 179.0);
 	r.run_until(4.8);
 	assert_eq!(value(&r, "LHR-9365E531", "smoothing_ms"), Some(10.0));
 	assert_eq!(value(&r, "controllers", "smoothing_ms"), Some(5.0));
@@ -328,8 +406,8 @@ fn the_panels_output_settings_are_the_drivers() {
 	}
 }
 
-/// The controllers' punch settings, under their five on the Output tab: the dash's switch is the rail's too (on with
-/// it, off with it), the rail's off takes the dash with it, and the rail's own switch is the hands' rail alone
+/// The controllers' punch settings, under their five on the Output tab: the dash's tick box is the rail's too (on
+/// with it, off with it), the rail's off takes the dash with it, and the rail's own box is the hands' rail alone
 #[test]
 fn the_output_tab_switches_the_punch_rail_and_the_dash() {
 	let mut r = Rig::with_driver();
@@ -340,40 +418,40 @@ fn the_output_tab_switches_the_punch_rail_and_the_dash() {
 	let both = |r: &Rig| (value(r, "controllers", "rail"), value(r, "controllers", "dash"));
 	assert_eq!(both(&r), (Some(0.0), Some(0.0)));
 	// dash punch's switch: on, and the rail with it; for the hands alone
-	r.click(1025.0, 664.0);
+	r.click(1036.0, 652.0);
 	r.run_until(3.6);
 	assert_eq!(both(&r), (Some(1.0), Some(1.0)));
 	assert_eq!((value(&r, "trackers", "rail"), value(&r, "headset", "dash")), (Some(0.0), Some(0.0)));
 	// the stepper at the right end of "Taken from": a tenth of a metre a second more
-	r.click(1031.0, 562.0);
+	r.click(1036.0, 549.0);
 	r.run_until(4.2);
 	assert_eq!(value(&r, "controllers", "rail_speed"), Some(1.6));
 	// dash punch's switch again: off, and the rail with it
-	r.click(1025.0, 664.0);
+	r.click(1036.0, 652.0);
 	r.run_until(4.8);
 	assert_eq!(both(&r), (Some(0.0), Some(0.0)));
 	// the rail's own switch: the rail alone
-	r.click(1025.0, 498.0);
+	r.click(1036.0, 486.0);
 	r.run_until(5.4);
 	assert_eq!(both(&r), (Some(1.0), Some(0.0)));
 	// the dash on it, then the rail off: the dash goes with it
-	r.click(1025.0, 664.0);
+	r.click(1036.0, 652.0);
 	r.run_until(6.0);
 	assert_eq!(both(&r), (Some(1.0), Some(1.0)));
-	r.click(1025.0, 498.0);
+	r.click(1036.0, 486.0);
 	r.run_until(6.6);
 	assert_eq!(both(&r), (Some(0.0), Some(0.0)));
 }
 
-/// The strip under the bar says what sally is doing while SteamVR is not shown its tracking: here, with no SteamVR,
-/// that it is not running. It takes its place over the tab's content, and goes for a panel given its own runtime
+/// The bar's line says what sally is doing while SteamVR is not shown its tracking: here, with no SteamVR, that it
+/// is not running. It is not there for a panel given its own runtime
 #[test]
-fn the_state_strip_says_steamvr_is_not_running() {
+fn the_state_line_says_steamvr_is_not_running() {
 	let mut r = Rig::new(Vec::new(), Settings::default());
 	r.run_until(1.0);
 	let not_running = sally_panel::ui::state::state(&sally_panel::ui::state::Facts::default());
 	assert!(not_running.is_some_and(|(_, text)| text.starts_with("SteamVR is not running")));
-	// each tab drawn with the strip over it (Settings with the driver's choices not yet heard), then without
+	// each tab drawn with the line in the bar (Settings with the driver's choices not yet heard), then without
 	let own_runtime = r.panel.st.file_target.take();
 	for tab in [0, 3] {
 		r.panel.st.tab = tab;
@@ -392,4 +470,37 @@ fn the_state_strip_says_steamvr_is_not_running() {
 fn tracker_name(r: &Rig, codename: &str) -> String {
 	let serial = &r.panel.rt.devices[codename].serial;
 	format!("Tracker {}", &serial[serial.len() - 4..])
+}
+
+#[test]
+fn a_wallpaper_is_behind_the_panel_once_it_is_read_and_one_that_cannot_be_read_is_said() {
+	let dir = std::env::temp_dir().join(format!("sally-panel-wallpaper-{}", std::process::id()));
+	let _ = std::fs::remove_dir_all(&dir);
+	std::fs::create_dir_all(dir.join("wallpapers")).unwrap();
+	image::RgbaImage::from_pixel(64, 36, image::Rgba([40, 60, 200, 255])).save(dir.join("wallpapers/sky.png")).unwrap();
+	std::fs::write(dir.join("wallpapers/torn.png"), b"this is not a picture").unwrap();
+	let st = Settings { path: dir.join("sally-panel.cfg"), wallpaper: "sky.png".into(), ..Settings::default() };
+	let mut r = Rig::new(Vec::new(), st);
+	// read off the frame's thread: the panel is flat until it is there
+	r.frame(Vec::new());
+	let t = r.now();
+	while !r.panel.wallpaper_shown() && r.now() < t + 5.0 {
+		r.frame(Vec::new());
+		std::thread::sleep(Duration::from_millis(5));
+	}
+	assert!(r.panel.wallpaper_shown());
+	// one that is no picture: the panel is flat again, and the events say why
+	r.panel.st.wallpaper = "torn.png".into();
+	let t = r.now();
+	while r.panel.wallpaper_shown() && r.now() < t + 5.0 {
+		r.frame(Vec::new());
+		std::thread::sleep(Duration::from_millis(5));
+	}
+	assert!(!r.panel.wallpaper_shown());
+	assert!(r.panel.rt.events.iter().any(|e| e.who == "panel" && e.text.starts_with("wallpaper torn.png")));
+	// and none: flat, with nothing more said
+	r.panel.st.wallpaper.clear();
+	r.frame(Vec::new());
+	assert!(!r.panel.wallpaper_shown());
+	std::fs::remove_dir_all(&dir).unwrap();
 }

@@ -5,17 +5,16 @@
 //! the two smoothings, recovery blend, prediction and velocity boost, each a slider with a stepper at either end and
 //! a tick at its default. The two smoothings are different things, and each says beside its name when it acts and
 //! what it costs: the still smoothing only while a device is held still, with no delay; the movement smoothing
-//! while it moves too, with a delay. The chips under a box's title pick whose values it shows: the class's, or one
+//! while it moves too, with a delay. The buttons under a box's title pick whose values it shows: the class's, or one
 //! of its devices' own over them, with where that device is shown against where it is (its offset, in its own axes).
-//! Under the controllers' five are the punch rail and the dash punch that goes by it, each a switch with its two
-//! numbers.
+//! Under the controllers' five are the punch rail and the dash punch that goes by it, each a tick box with its two
+//! numbers. A row is ruled off from the next, and its value is a figure at its right end.
 //!
 //! The panel asks the driver for the values every 2 s while the tab is open and sends a value when it is let go; the
 //! driver keeps them in its sally_output.txt and applies them from its next report.
 
 use egui::{Align2, Color32, Id, Pos2, Rect, Vec2};
 
-use super::icons;
 use super::kit::{self, Look, Range, Surface, CTL_H, GAP, HEADER_H, PAD};
 use super::theme::*;
 use super::Panel;
@@ -125,14 +124,13 @@ const ROWS: [Row; 5] = [
 	},
 ];
 
-type Offset = (&'static str, &'static str, &'static str, [&'static str; 3], f64, &'static str);
+type Offset = (&'static str, &'static str, [&'static str; 3], f64, &'static str);
 
-/// A device's offset, where it is shown against where it is, in its own axes: the label and icon, what it does, the
-/// three settings, how far the slider goes either way (the driver takes 500 mm), the unit
+/// A device's offset, where it is shown against where it is, in its own axes: the label, what it does, the three
+/// settings, how far the slider goes either way (the driver takes 500 mm), the unit
 const OFFSETS: [Offset; 2] = [
 	(
 		"Shown moved",
-		icons::ARROWS_OUT_CARDINAL,
 		"Where the device is shown against where it is: moved along its own x, y and z.",
 		["offset_x_mm", "offset_y_mm", "offset_z_mm"],
 		200.0,
@@ -140,7 +138,6 @@ const OFFSETS: [Offset; 2] = [
 	),
 	(
 		"Shown turned",
-		icons::ARROWS_CLOCKWISE,
 		"Where the device is shown against where it is: turned about its own x, then y, then z.",
 		["offset_rx_deg", "offset_ry_deg", "offset_rz_deg"],
 		180.0,
@@ -237,7 +234,7 @@ const PUNCHES: [Punch; 2] = [
 
 /// Whether a setting is one of a device's own on this tab (the five of every class, a device's offsets)
 fn of_this_tab(name: &str) -> bool {
-	ROWS.iter().any(|row| row.name == name) || OFFSETS.iter().any(|o| o.3.contains(&name))
+	ROWS.iter().any(|row| row.name == name) || OFFSETS.iter().any(|o| o.2.contains(&name))
 }
 
 /// The class a device's output settings come from, by its type (an index into CLASSES)
@@ -298,7 +295,7 @@ impl Panel {
 		}
 	}
 
-	/// One setting's row in a class's box: its icon and label, the value at the right, the slider under them
+	/// One setting's row in a class's box: its label, the value at the right, the slider under them, a line under it
 	#[allow(clippy::too_many_arguments)]
 	fn out_row(
 		&mut self, ui: &mut egui::Ui, r: Rect, ci: usize, scope: &str, class: Option<&str>, row: &'static Row,
@@ -325,27 +322,21 @@ impl Panel {
 		// the value; for a device, whose it is (its own can be taken away again)
 		let mut right = r.max.x;
 		if let Some(cls) = class {
-			if own {
-				let br = Rect::from_min_size(Pos2::new(right - 26.0, cy - 13.0), Vec2::splat(26.0));
-				let resp = kit::icon_button(
-					ui,
-					Id::unique(("out-own", scope, row.name)),
-					br,
-					icons::ARROW_COUNTER_CLOCKWISE,
-					false,
-					known,
-				)
-				.on_hover_text(format!("Its own value: back to the {cls}'"));
-				if resp.clicked() {
-					self.vc.output_clear(scope, row.name);
-					self.output_drag = None;
-				}
-				right = br.min.x - 6.0;
+			// (Unset is there, off, while the value is the class's: the value keeps its place when it becomes its own)
+			let bw = kit::button_w(&p, "Unset", false);
+			let br = Rect::from_min_size(Pos2::new(right - bw, cy - 12.0), Vec2::new(bw, 24.0));
+			let resp =
+				kit::button(ui, Id::unique(("out-own", scope, row.name)), br, "Unset", None, Look::Plain, known && own)
+					.on_hover_text(format!("Its own value: back to the {cls}'"));
+			if resp.clicked() {
+				self.vc.output_clear(scope, row.name);
+				self.output_drag = None;
 			}
+			right = br.min.x - 6.0;
 		}
 		if on {
 			let vs = shown(v, row.step);
-			let font = semibold(18.0);
+			let font = figure();
 			let uw = kit::text_w(&p, row.unit, medium(12.5)) + 4.0;
 			let vw = kit::text_w(&p, &vs, font.clone());
 			let col = if class.is_some() && !own { t.muted } else { t.text };
@@ -374,6 +365,10 @@ impl Panel {
 		let range = Range { min: row.min, max: row.max, step: row.step, default: Some(row.defaults[ci]), inherits };
 		let slid = kit::slider(ui, Id::unique(("out", scope, row.name)), sr, &mut v, &range, on);
 		self.out_moved(scope, row.name, v, slid);
+		p.line_segment(
+			[Pos2::new(r.min.x, r.max.y + 1.0), Pos2::new(r.max.x, r.max.y + 1.0)],
+			egui::Stroke::new(1.0, t.line),
+		);
 		if ui.rect_contains_pointer(r) {
 			self.output_hint[self.view.index()] = hint;
 		}
@@ -400,7 +395,7 @@ impl Panel {
 		let vs = format!("{v:.0}");
 		let col = if own && v != 0.0 { t.text } else { t.muted };
 		let ur = kit::text(&p, Pos2::new(r.max.x, cy + 1.0), Align2::RIGHT_CENTER, unit, caption(), t.muted);
-		kit::text(&p, Pos2::new(ur.min.x - 3.0, cy), Align2::RIGHT_CENTER, &vs, semibold(15.0), col);
+		kit::text(&p, Pos2::new(ur.min.x - 4.0, cy), Align2::RIGHT_CENTER, &vs, num(), col);
 		let sr = Rect::from_min_max(Pos2::new(r.min.x + 20.0, r.min.y), Pos2::new(r.max.x - 62.0, r.max.y));
 		let range = Range { min: -limit, max: limit, step: 1.0, default: Some(0.0), inherits: None };
 		let slid = kit::slider(ui, Id::unique(("out-off", scope, name)), sr, &mut v, &range, known);
@@ -430,25 +425,24 @@ impl Panel {
 		self.surface(&p, fr, Surface::Card);
 		let old = self.vc.output_old_driver(self.now);
 		let hint = self.output_hint[self.view.index()];
-		let (glyph, text, col) = if !self.vc.output_error.is_empty() {
-			(icons::WARNING, format!("The driver: {}", self.vc.output_error), t.warn)
+		// (yellow where the driver has something to say; what a row does is said in ink)
+		let (text, col) = if !self.vc.output_error.is_empty() {
+			(format!("The driver: {}", self.vc.output_error), t.warn)
 		} else if !known && old {
-			(icons::WARNING, "The sally driver is one from before 0.8.8: it has no output layer.".to_string(), t.warn)
+			("The sally driver is one from before 0.8.8: it has no output layer.".to_string(), t.warn)
 		} else if !known {
-			(icons::WARNING, "The sally driver is not answering: these are set while SteamVR runs.".to_string(), t.warn)
+			("The sally driver is not answering: these are set while SteamVR runs.".to_string(), t.warn)
 		} else if !hint.is_empty() {
-			(icons::INFO, hint.to_string(), t.soft)
+			(hint.to_string(), t.soft)
 		} else {
 			(
-				icons::INFO,
 				"What SteamVR is shown, after the tracking: the room and the recordings keep the tracker's own. Nothing \
 				 here is on until it is set; the tick under a rail is its default, the tracker's own output."
 					.to_string(),
 				t.muted,
 			)
 		};
-		kit::icon_at(&p, Pos2::new(fr.min.x + PAD + 6.0, fr.center().y), glyph, 16.0, col);
-		let clip = Rect::from_min_max(Pos2::new(fr.min.x + PAD + 22.0, fr.min.y), Pos2::new(fr.max.x - PAD, fr.max.y));
+		let clip = Rect::from_min_max(Pos2::new(fr.min.x + PAD, fr.min.y), Pos2::new(fr.max.x - PAD, fr.max.y));
 		kit::text_in(&p, clip, &text, label(), col);
 	}
 
@@ -457,10 +451,10 @@ impl Panel {
 		let t = tk();
 		let (class, title) = CLASSES[ci];
 		let p = ui.painter().clone();
-		self.surface(&p, r, Surface::Card);
+		self.card(ui, r, title);
 		let x0 = r.min.x + PAD;
 		let xr = r.max.x - PAD;
-		let hy = r.min.y + HEADER_H * 0.5 + 2.0;
+		let hy = r.min.y + HEADER_H * 0.5;
 		// whose values: the class's, or one of its devices' own
 		let devices: Vec<(String, String, bool)> = self
 			.active_devices()
@@ -474,20 +468,19 @@ impl Panel {
 		if self.output_scope[ci].as_ref().is_some_and(|s| !devices.iter().any(|d| d.0 == *s)) {
 			self.output_scope[ci] = None;
 		}
-		kit::text(&p, Pos2::new(x0, hy), Align2::LEFT_CENTER, title, semibold(17.0), t.text);
 		let n = devices.len();
 		let count = if n == 0 { "none tracking".to_string() } else { format!("{n} tracking") };
 		kit::text(&p, Pos2::new(xr, hy), Align2::RIGHT_CENTER, &count, label(), t.muted);
-		let mut y = r.min.y + HEADER_H + 4.0;
+		let mut y = r.min.y + HEADER_H + 10.0;
 		if n > 0 {
 			let all = format!("All {}", if ci == 0 { "headsets" } else { class });
 			let mut chips: Vec<(&str, bool, Option<Color32>)> =
 				vec![(all.as_str(), self.output_scope[ci].is_none(), None)];
 			for (serial, name, own) in &devices {
-				// a dot on a device with values of its own
-				chips.push((name.as_str(), self.output_scope[ci].as_deref() == Some(serial), own.then_some(t.note)));
+				// a mark on a device with values of its own: something set
+				chips.push((name.as_str(), self.output_scope[ci].as_deref() == Some(serial), own.then_some(t.accent)));
 			}
-			let (clicked, end) = kit::chips(ui, Id::unique(("out-scope", ci)), Pos2::new(x0, y), xr, 30.0, &chips);
+			let (clicked, end) = kit::chips(ui, Id::unique(("out-scope", ci)), Pos2::new(x0, y), xr, 28.0, &chips);
 			match clicked {
 				Some(0) => self.output_scope[ci] = None,
 				Some(i) => self.output_scope[ci] = Some(devices[i - 1].0.clone()),
@@ -512,10 +505,9 @@ impl Panel {
 			// the device's offset, its own alone
 			p.line_segment([Pos2::new(x0, y), Pos2::new(xr, y)], egui::Stroke::new(1.0, t.line));
 			y += 8.0;
-			for (what, glyph, says, names, limit, unit) in &OFFSETS {
+			for (what, says, names, limit, unit) in &OFFSETS {
 				let top = y;
-				kit::icon_at(&p, Pos2::new(x0 + 9.0, y + 13.0), glyph, 17.0, t.muted);
-				kit::text(&p, Pos2::new(x0 + 26.0, y + 13.0), Align2::LEFT_CENTER, what, body(), t.text);
+				kit::text(&p, Pos2::new(x0 + 2.0, y + 13.0), Align2::LEFT_CENTER, what, body(), t.text);
 				y += 28.0;
 				for (i, name) in names.iter().enumerate() {
 					let rr = Rect::from_min_max(Pos2::new(x0, y), Pos2::new(xr, y + 30.0));
@@ -538,18 +530,10 @@ impl Panel {
 				.collect();
 			if known && !own.is_empty() && y + 30.0 <= r.max.y - PAD + 2.0 {
 				let says = "Follow the class again";
-				let bw = kit::button_w(&p, says, true);
+				let bw = kit::button_w(&p, says, false);
 				let br = Rect::from_min_size(Pos2::new(xr - bw, y + 2.0), Vec2::new(bw, 28.0));
-				let resp = kit::button(
-					ui,
-					Id::unique(("out-follow", ci)),
-					br,
-					says,
-					Some(icons::ARROW_COUNTER_CLOCKWISE),
-					Look::Ghost,
-					true,
-				)
-				.on_hover_text(format!("Takes this device's own values away: it follows the {class}' again"));
+				let resp = kit::button(ui, Id::unique(("out-follow", ci)), br, says, None, Look::Plain, true)
+					.on_hover_text(format!("Takes this device's own values away: it follows the {class}' again"));
 				if resp.clicked() {
 					for name in own {
 						self.vc.output_clear(serial, &name);
@@ -567,18 +551,10 @@ impl Panel {
 			.map(|row| (row.name, row.defaults[ci]))
 			.collect();
 		if known && !off.is_empty() {
-			let bw = kit::button_w(&p, "Defaults", true);
-			let br = Rect::from_min_size(Pos2::new(xr - bw, y), Vec2::new(bw, 28.0));
-			let resp = kit::button(
-				ui,
-				Id::unique(("out-defaults", ci)),
-				br,
-				"Defaults",
-				Some(icons::ARROW_COUNTER_CLOCKWISE),
-				Look::Ghost,
-				true,
-			)
-			.on_hover_text(format!("The {class}' five settings back to the tracker's own output"));
+			let bw = kit::button_w(&p, "Defaults", false);
+			let br = Rect::from_min_size(Pos2::new(xr - bw, y + 4.0), Vec2::new(bw, 26.0));
+			let resp = kit::button(ui, Id::unique(("out-defaults", ci)), br, "Defaults", None, Look::Plain, true)
+				.on_hover_text(format!("The {class}' five settings back to the tracker's own output"));
 			if resp.clicked() {
 				for (name, v) in off {
 					self.vc.output_set(class, name, v);
@@ -591,9 +567,9 @@ impl Panel {
 		}
 	}
 
-	/// The controllers' punch settings under their five: each a switch with its two numbers. The dash goes by the
-	/// rail, so its switch puts the rail on and off with it, and the rail's off is the dash's too; the rail's own
-	/// switch is the rail alone. A driver from before one of them has no switch for it
+	/// The controllers' punch settings under their five: each a tick box with its two numbers. The dash goes by the
+	/// rail, so its box puts the rail on and off with it, and the rail's off is the dash's too; the rail's own
+	/// box is the rail alone. A driver from before one of them has no box for it
 	fn punch_block(&mut self, ui: &mut egui::Ui, r: Rect, known: bool) {
 		const CLASS: &str = "controllers";
 		let t = tk();
@@ -604,14 +580,15 @@ impl Panel {
 			if y + 40.0 + 2.0 * ROW_H > r.max.y + 2.0 {
 				break;
 			}
-			p.line_segment([Pos2::new(r.min.x, y), Pos2::new(r.max.x, y)], egui::Stroke::new(1.0, t.line));
+			p.line_segment([Pos2::new(r.min.x, y), Pos2::new(r.max.x, y)], egui::Stroke::new(1.0, t.card_edge));
 			let has = known && value(self, punch.key).is_some();
 			let on = has && value(self, punch.key).is_some_and(|v| v > 0.0);
 			let head = Rect::from_min_max(Pos2::new(r.min.x, y), Pos2::new(r.max.x, y + 40.0));
 			let cy = y + 22.0;
 			let col = if has { t.text } else { t.faint };
-			kit::text(&p, Pos2::new(r.min.x + 2.0, cy), Align2::LEFT_CENTER, punch.title, semibold(16.0), col);
-			if kit::switch(ui, Id::unique(("punch-switch", punch.key)), Pos2::new(r.max.x - 42.0, y + 10.0), on, has) {
+			kit::text(&p, Pos2::new(r.min.x + 2.0, cy), Align2::LEFT_CENTER, punch.title, name(), col);
+			let at = Pos2::new(r.max.x - kit::TICK - 3.0, cy - kit::TICK * 0.5);
+			if kit::tick(ui, Id::unique(("punch-switch", punch.key)), at, on, has) {
 				self.vc.output_set(CLASS, punch.key, if on { 0.0 } else { 1.0 });
 				// the dash goes by the rail: its switch is the rail's too, and the rail's off is the dash's
 				let other = |panel: &Panel, name: &str| value(panel, name).is_some_and(|v| v > 0.0);

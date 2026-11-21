@@ -1,12 +1,8 @@
-//! What sally is doing, in a sentence, for whoever only wants it to work: a strip under the bar while sally's tracking
-//! is not what SteamVR is shown, saying why and what, if anything, to do about it. While all is as it should be there
-//! is no strip.
+//! What sally is doing while its tracking is not what SteamVR is shown: a line in the bar that says why and, where
+//! there is something to do about it, what. Stated as it is, without advice beyond the one step that is the user's.
+//! While all is as it should be the bar has no line. It has its place in the bar whether it is there or not, so
+//! nothing under the bar moves when it comes and goes.
 
-use egui::{Pos2, Rect, Vec2};
-
-use super::icons;
-use super::kit::{self, Surface};
-use super::theme::*;
 use super::topbar::clock;
 use super::Panel;
 use crate::icon::Dot;
@@ -51,12 +47,12 @@ pub struct Facts {
 	pub calibration_failed: Option<String>,
 }
 
-/// The state in a sentence; None while SteamVR is shown sally's tracking and nothing is in its way
+/// The state in a line; None while SteamVR is shown sally's tracking and nothing is in its way
 pub fn state(f: &Facts) -> Option<(Tone, String)> {
-	let own = "SteamVR's own tracking is in use";
+	let valve = "SteamVR is shown Valve's tracking";
 	let said = |tone: Tone, text: String| Some((tone, text));
 	if !f.steamvr {
-		return said(Tone::Note, "SteamVR is not running. Start SteamVR: sally starts with it.".into());
+		return said(Tone::Note, "SteamVR is not running.".into());
 	}
 	if !f.driver {
 		// SteamVR loads its drivers in its first seconds
@@ -65,69 +61,49 @@ pub fn state(f: &Facts) -> Option<(Tone, String)> {
 		}
 		return said(
 			Tone::Stop,
-			"SteamVR is running without sally. In SteamVR open Settings, Startup / Shutdown, Manage add-ons, switch \
-			 sally on, then restart SteamVR."
+			"SteamVR is running without the sally driver. Switch sally on in SteamVR's Settings, Startup / Shutdown, \
+			 Manage add-ons, then restart SteamVR."
 				.into(),
 		);
 	}
 	if f.hooks == Some(0) {
-		return said(
-			Tone::Stop,
-			format!(
-				"This version of SteamVR does not let sally hand over its tracking, so {own}. Look for a newer sally."
-			),
-		);
+		return said(Tone::Stop, format!("This SteamVR version does not take sally's poses: {valve}."));
 	}
 	if !f.seen_sally {
-		return said(Tone::Note, "SteamVR is shown Valve's tracking: the switch at the top right is on Valve.".into());
+		return said(Tone::Note, format!("The switch is on Valve: {valve}."));
 	}
 	if !f.runtime {
-		return said(Tone::Wait, format!("sally is starting. {own} meanwhile."));
+		return said(Tone::Wait, format!("The runtime is not answering yet: {valve}."));
 	}
 	if let Some(done) = f.calibrating {
-		return said(Tone::Wait, format!("Calibrating this room: {:.0} % done. {own} until it is.", done * 100.0));
+		return said(Tone::Wait, format!("Calibrating this room, {:.0} %: {valve} until it is done.", done * 100.0));
 	}
 	if let (Some(s), Some(why)) = (f.new_room, &f.calibration_failed) {
-		// the wait would otherwise start over without a word: said, with why (a picture of the panel then tells) and
-		// what to send if it goes on
+		// the wait would otherwise start over without a word: said, with why (a picture of the panel then tells)
 		let why = if why.is_empty() { String::new() } else { format!(" ({why})") };
-		return said(
-			Tone::Stop,
-			format!(
-				"sally could not calibrate this room{why} and tries again in {}. {own} meanwhile. If this goes on, \
-				 send the newest files from sally's logs folder.",
-				clock(s)
-			),
-		);
+		return said(Tone::Stop, format!("Room calibration failed{why}; next try in {}. {valve}.", clock(s)));
 	}
 	if let Some(s) = f.new_room {
 		return said(
 			Tone::Wait,
 			format!(
-				"Learning this room: its calibration starts in {}. Keep the trackers on and move them around the room. \
-				 {own} meanwhile.",
+				"New room: its calibration starts in {}, from devices that are on and moved around the room. {valve}.",
 				clock(s)
 			),
 		);
 	}
 	if f.stations == 0 && f.runtime_for > 30.0 {
 		return if f.lh1 {
-			said(Tone::Stop, format!("These are 1.0 base stations. sally works with 2.0 base stations only, so {own}."))
+			said(Tone::Stop, format!("1.0 base stations: sally reads 2.0 only. {valve}."))
 		} else {
-			said(Tone::Wait, "sally sees no base stations yet. Check that they are on (2.0 base stations).".into())
+			said(Tone::Wait, "No base station seen yet (2.0 only).".into())
 		};
 	}
 	if f.sally_devices == 0 {
-		return said(
-			Tone::Wait,
-			"Waiting for a tracker or controller: switch them on, in view of the base stations.".into(),
-		);
+		return said(Tone::Wait, "No tracker or controller has a pose yet.".into());
 	}
 	if !f.fit {
-		return said(
-			Tone::Wait,
-			format!("Lining up with SteamVR: move around a little. {own} until it has, about 15 seconds."),
-		);
+		return said(Tone::Wait, format!("Lining up with Valve's frame, from devices that move: about 15 s. {valve}."));
 	}
 	None
 }
@@ -173,27 +149,20 @@ impl Panel {
 		}
 	}
 
-	/// The state's strip at `at`, `w` wide, where there is something to say; the height it took (0: none). Not for a
+	/// The state for the bar's line: what it says and the fault's level it is said at (something under way 2,
+	/// something that needs the user 3, something to know none). None where there is nothing to say, and for a
 	/// panel pointed at a runtime of its own (`--host`, `--port`): that one is not this PC's SteamVR's
-	pub(super) fn state_strip(&mut self, ui: &mut egui::Ui, at: Pos2, w: f32) -> f32 {
+	pub(super) fn state_line(&mut self) -> Option<(i32, String)> {
 		if self.st.file_target.is_some() {
-			return 0.0;
+			return None;
 		}
-		let Some((tone, text)) = state(&self.facts(self.now)) else { return 0.0 };
-		let t = tk();
-		let p = ui.painter().clone();
-		let (glyph, col) = match tone {
-			Tone::Note => (icons::INFO, t.muted),
-			Tone::Wait => (icons::INFO, t.warn),
-			Tone::Stop => (icons::WARNING, t.bad),
+		let (tone, text) = state(&self.facts(self.now))?;
+		let level = match tone {
+			Tone::Note => 0,
+			Tone::Wait => 2,
+			Tone::Stop => 3,
 		};
-		let galley = p.layout(text, body(), t.text, (w - 54.0).max(80.0));
-		let h = (galley.size().y + 20.0).max(40.0);
-		let r = Rect::from_min_size(at, Vec2::new(w, h));
-		self.surface(&p, r, Surface::Card);
-		kit::icon_at(&p, Pos2::new(r.min.x + 21.0, r.center().y), glyph, 17.0, col);
-		p.galley(Pos2::new(r.min.x + 40.0, r.center().y - galley.size().y * 0.5), galley, t.text);
-		h
+		Some((level, text))
 	}
 }
 
@@ -213,42 +182,43 @@ mod tests {
 		f.steamvr_for = 3.0;
 		assert_eq!(says(&f), Some((Tone::Wait, "SteamVR is starting".into())));
 		f.steamvr_for = 20.0;
-		assert_eq!(says(&f), Some((Tone::Stop, "SteamVR is running without sally".into())));
+		assert_eq!(says(&f), Some((Tone::Stop, "SteamVR is running without the sally driver".into())));
 		f.driver = true;
 		f.hooks = Some(3);
 		f.seen_sally = true;
-		assert_eq!(says(&f), Some((Tone::Wait, "sally is starting".into())));
+		assert_eq!(says(&f), Some((Tone::Wait, "The runtime is not answering yet".into())));
 		f.runtime = true;
 		f.runtime_for = 5.0;
-		assert_eq!(says(&f), Some((Tone::Wait, "Waiting for a tracker or controller".into())));
+		assert_eq!(says(&f), Some((Tone::Wait, "No tracker or controller has a pose yet".into())));
 		f.runtime_for = 40.0;
-		assert_eq!(says(&f), Some((Tone::Wait, "sally sees no base stations yet".into())));
+		assert_eq!(says(&f), Some((Tone::Wait, "No base station seen yet (2".into())));
 		f.lh1 = true;
-		assert_eq!(says(&f), Some((Tone::Stop, "These are 1".into())));
+		assert_eq!(says(&f), Some((Tone::Stop, "1".into())));
 		f.lh1 = false;
 		f.stations = 4;
 		f.new_room = Some(75.0);
-		assert_eq!(state(&f).unwrap().1.split('.').next(), Some("Learning this room: its calibration starts in 1:15"));
+		assert!(state(&f).unwrap().1.starts_with("New room: its calibration starts in 1:15, "));
 		f.calibration_failed = Some(String::new());
-		assert_eq!(says(&f), Some((Tone::Stop, "sally could not calibrate this room and tries again in 1".into())));
+		assert_eq!(state(&f).unwrap().0, Tone::Stop);
+		assert!(state(&f).unwrap().1.starts_with("Room calibration failed; next try in 1:15. "));
 		// with why, as the calibration said it
 		f.calibration_failed = Some("only 9 still moments were seen by two placed stations: too few".into());
 		assert!(state(&f).unwrap().1.starts_with(
-			"sally could not calibrate this room (only 9 still moments were seen by two placed stations: too few) and \
-			 tries again in 1:15. "
+			"Room calibration failed (only 9 still moments were seen by two placed stations: too few); next try in \
+			 1:15. "
 		));
 		f.calibration_failed = None;
 		f.new_room = None;
 		f.calibrating = Some(0.42);
-		assert_eq!(state(&f).unwrap().1.split('.').next(), Some("Calibrating this room: 42 % done"));
+		assert!(state(&f).unwrap().1.starts_with("Calibrating this room, 42 %: "));
 		f.calibrating = None;
 		f.sally_devices = 5;
-		assert_eq!(says(&f), Some((Tone::Wait, "Lining up with SteamVR".into())));
+		assert_eq!(says(&f), Some((Tone::Wait, "Lining up with Valve's frame, from devices that move".into())));
 		f.fit = true;
 		assert_eq!(state(&f), None);
 		// the switch on Valve, and a SteamVR sally cannot place its poses in, are said over the rest
 		f.seen_sally = false;
-		assert_eq!(says(&f), Some((Tone::Note, "SteamVR is shown Valve's tracking".into())));
+		assert_eq!(says(&f), Some((Tone::Note, "The switch is on Valve".into())));
 		f.hooks = Some(0);
 		assert_eq!(says(&f).unwrap().0, Tone::Stop);
 	}

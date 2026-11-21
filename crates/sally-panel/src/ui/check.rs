@@ -61,11 +61,11 @@ impl Panel {
 		let p = ui.painter().clone();
 		let mut y = inner.min.y + 4.0;
 		for line in [
-			"Records what your trackers, controllers and headset send for a minute or two, says for each where its \
-			 trouble comes from (the light, the radio or the device), and makes one file to send when you ask for help.",
-			"Press Start, do what goes wrong, press Stop.",
-			"The file does not say whose it is: every serial in it is a stand-in, and it names neither this PC nor your \
-			 Windows user.",
+			"Records what the trackers, controllers and headset send, says for each where its trouble comes from (the \
+			 light, the radio or the device), and writes one file to send.",
+			"Start, do what goes wrong, Stop.",
+			"The file names no one: every serial in it is a stand-in, and it holds neither this PC's name nor the \
+			 Windows user's.",
 		] {
 			y += wrapped(&p, Pos2::new(inner.min.x + 2.0, y), inner.width() - 4.0, line, body(), t.text) + 12.0;
 		}
@@ -77,7 +77,7 @@ impl Panel {
 				let b = br(kit::button_w(&p, "Stop", false).max(96.0));
 				let secs = self.now - rec.since;
 				let says = format!("Recording {}  (stops by itself at {})", clock(secs), clock(check::MAX_S));
-				kit::text(&p, after(b), Align2::LEFT_CENTER, &says, body(), t.warn);
+				kit::text(&p, after(b), Align2::LEFT_CENTER, &says, body(), t.text);
 				if kit::button(ui, Id::unique("check-stop"), b, "Stop", None, Look::Danger, true).clicked() {
 					self.check_stop();
 				}
@@ -134,7 +134,8 @@ impl Panel {
 				);
 			}
 			Check::Done(Err(e)) => {
-				wrapped(&p, Pos2::new(inner.min.x + 2.0, inner.min.y + 4.0), inner.width() - 4.0, e, body(), t.bad);
+				let at = Pos2::new(inner.min.x + 2.0, inner.min.y + 4.0);
+				wrapped(&p, at, inner.width() - 4.0, e, body(), t.bad);
 			}
 			Check::Recording(_) => {
 				let says = "Recording. Stop when what goes wrong has happened.";
@@ -158,7 +159,10 @@ impl Panel {
 					t.muted,
 				);
 			}
-			Check::Idle => {}
+			Check::Idle => {
+				let at = Pos2::new(inner.min.x + 2.0, inner.min.y + 4.0);
+				kit::text(&p, at, Align2::LEFT_TOP, "Nothing yet", body(), t.muted);
+			}
 		}
 	}
 }

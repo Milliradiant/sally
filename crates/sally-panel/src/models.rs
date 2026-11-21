@@ -448,8 +448,12 @@ mod tests {
 			.unwrap();
 		std::fs::write(t.join("vr_tracker_vive_3_0.obj"), "v 0 0 0\nv 1 0 0\nv 0 1 0\nv 0 0 1\nf 1 2 3\nf 1 2 4\n")
 			.unwrap();
+		// a base station's is SteamVR's own, under no driver
+		let b = root.join("resources").join("rendermodels").join("lh_basestation_valve_gen2");
+		std::fs::create_dir_all(&b).unwrap();
+		std::fs::write(b.join("lh_basestation_valve_gen2.obj"), "v 0 0 0\nv 1 0 0\nv 0 1 0\nf 1 2 3\n").unwrap();
 		let roots = model_roots(root.to_str().unwrap());
-		assert_eq!(roots.len(), 2);
+		assert_eq!(roots.len(), 3);
 		// "{knuckles}" names no folder: the model is in indexcontroller's
 		let p = find_models(&roots, "{knuckles}valve_controller_knu_1_0_left");
 		assert!(
@@ -461,6 +465,7 @@ mod tests {
 		ms.set_steamvr(root.to_str().unwrap());
 		assert_eq!(ms.get("{htc}vr_tracker_vive_3_0").map(|m| m.tris.len()), Some(2));
 		assert_eq!(ms.get("{knuckles}valve_controller_knu_1_0_left").map(|m| m.tris.len()), Some(2));
+		assert_eq!(ms.get("lh_basestation_valve_gen2").map(|m| m.tris.len()), Some(1));
 		assert!(ms.get("{htc}nothing").is_none());
 		std::fs::remove_dir_all(&root).ok();
 	}

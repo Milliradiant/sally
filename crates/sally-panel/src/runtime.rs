@@ -169,6 +169,8 @@ pub struct Device {
 	pub res_mrad: f64,
 	/// the panel's clock at the last state change
 	pub state_since: f64,
+	/// this gap in its light has had its event (it has held HOLD_S)
+	pub gap_said: bool,
 	pub head2imu: Pose,
 	pub charge: i32,
 	pub charging: bool,
@@ -246,6 +248,7 @@ impl Device {
 			lh_mask: 0,
 			res_mrad: -1.0,
 			state_since: now,
+			gap_said: false,
 			head2imu: Pose::default(),
 			charge: -1,
 			charging: false,
@@ -519,6 +522,9 @@ const MAX_DEVICES: usize = 64;
 const MAX_VOXELS: usize = 1 << 16;
 /// The causes a diagnosis window collects (its C lines, until the next D line; the runtime has five kinds of cause)
 const MAX_CAUSES: usize = 16;
+/// How long a thing must have held before it is flagged or is an event that matters: a verdict of the diagnosis, a
+/// device without light (a briefer gap is a hand over a tracker, and nothing to tell)
+pub const HOLD_S: f64 = 2.0;
 
 /// strtoul(s, nullptr, base) on a token: leading digits of that base (an optional 0x for 16), 0 for none
 fn strtoul(s: &str, base: u32) -> u64 {
@@ -1041,27 +1047,39 @@ impl Runtime {
 		}
 		let rt = atof(f[4]);
 		let st = f[5];
+		// (how long it had been without light at its line before this one: a gap's length when the light is back)
+		let gap = d.light_age;
 		d.light_age = atof(f[6]);
 		d.pos_sd = atof(f[7]);
 		d.rot_sd = atof(f[8]);
 		d.lh_mask = strtoul(f[9], 16) as u32;
 		d.res_mrad = f.get(10).map(|v| atof(v)).unwrap_or(-1.0);
+		// a gap in its light is one event once it has held, and one when the light is back; a briefer one is a line
+		// among all the events, and nothing that matters
 		let mut ev = None;
+		let lightless = st == "dark" || st == "coasting" || st == "reacquiring";
+		if lightless && !d.gap_said && d.light_age >= HOLD_S {
+			d.gap_said = true;
+			let how = if st == "coasting" { ", coasting on the IMU" } else { "" };
+			ev = Some((EvLevel::Warn, true, format!("no light for {HOLD_S:.0} s{how}")));
+		}
 		if st != d.state {
-			let was = now - d.state_since;
+			let was = if gap > 0.0 { gap } else { now - d.state_since };
 			if d.state == "tracking" && (st == "dark" || st == "coasting") {
 				d.drops.push_back(now);
 				while d.drops.front().is_some_and(|&t| now - t > 600.0) {
 					d.drops.pop_front();
 				}
 			}
-			if st == "coasting" {
-				ev = Some((EvLevel::Bad, format!("coasting on the IMU (no light for {:.2} s)", d.light_age)));
-			} else if st == "tracking" && (d.state == "coasting" || (d.state == "dark" && was > 0.25)) {
-				let how = if d.state == "coasting" { "coasting" } else { "without light" };
-				ev = Some((EvLevel::Good, format!("tracking again after {was:.2} s {how}")));
-			} else if st == "tracking" && d.state == "none" {
-				ev = Some((EvLevel::Good, "tracking".into()));
+			if st == "tracking" && d.state == "none" {
+				ev = Some((EvLevel::Good, true, "tracking".into()));
+			} else if st == "tracking" {
+				if d.gap_said {
+					ev = Some((EvLevel::Good, true, format!("tracking again after {was:.1} s without light")));
+				} else if was > 0.25 {
+					ev = Some((EvLevel::Info, false, format!("{was:.2} s without light")));
+				}
+				d.gap_said = false;
 			}
 			d.state = st.into();
 			d.state_since = now;
@@ -1086,8 +1104,8 @@ impl Runtime {
 				}
 			}
 		}
-		if let Some((l, t)) = ev {
-			self.log(l, &serial, &t, rt, true);
+		if let Some((l, matters, t)) = ev {
+			self.log(l, &serial, &t, rt, matters);
 		}
 	}
 
@@ -1213,7 +1231,7 @@ impl Runtime {
 		s.seen_logged = true;
 		let who = if s.id != 0 { s.name() } else { format!("station {}", s.idx) };
 		let (l, t) =
-			if seen { (EvLevel::Good, "light seen") } else { (EvLevel::Bad, "light lost (no device sees it)") };
+			if seen { (EvLevel::Good, "light seen") } else { (EvLevel::Warn, "light lost (no device sees it)") };
 		self.log(l, &who, t, atof(f[3]), true);
 	}
 
@@ -1251,8 +1269,9 @@ impl Runtime {
 		}
 		g.headline = head.into();
 		g.severity = sev;
-		// events: a verdict is logged once it has held 2 s, only the ones worth a line (hurting, or radio, station or
-		// device at any severity); "fine again" after 5 s fine, and only if something was logged for it
+		// events: a verdict is logged once it has held HOLD_S, only the ones worth a line (hurting, or radio, station
+		// or device at any severity; not the light's, which the device's own state says, on_s); "fine again" after
+		// 5 s fine, and only if something was logged for it
 		if head != g.cand_head || sev != g.cand_sev {
 			g.cand_head = head.into();
 			g.cand_sev = sev;
@@ -1268,8 +1287,9 @@ impl Runtime {
 					g.logged_head = head.into();
 					g.logged_sev = 0;
 				}
-			} else if held >= 2.0 {
-				g.log_pending = sev >= 2 || head == "radio" || head == "station" || head == "device";
+			} else if held >= HOLD_S {
+				g.log_pending =
+					head != "light" && (sev >= 2 || head == "radio" || head == "station" || head == "device");
 				g.logged_head = head.into();
 				g.logged_sev = sev;
 			}
@@ -1299,7 +1319,8 @@ impl Runtime {
 			if text != g.last_text || now - g.last_log > 120.0 {
 				g.last_text = text.clone();
 				g.last_log = now;
-				let level = if g.severity >= 2 { EvLevel::Bad } else { EvLevel::Warn };
+				// what hurts the tracking has the warning's mark; a mild one is said without one
+				let level = if g.severity >= 2 { EvLevel::Warn } else { EvLevel::Info };
 				let serial = d.serial.clone();
 				self.log(level, &serial, &text, atof(f[2]), true);
 			}

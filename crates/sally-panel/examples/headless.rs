@@ -5,7 +5,7 @@
 //!            [--overlay-shot ov.png@10] [--thumb-shot thumb.png@5] [--select KN0] [--select-station 1]
 //!            [--page KN0@3] [--tab 3@2] [--click x,y@t] [--overlay-click x,y@t] [--type text@t] [--key enter@t]
 //!            [--hover x,y@t] [--drag x,y:x,y@t]
-//!            [--cfg panel.cfg [--save]] [--fake-vr [--keyboard text]]
+//!            [--cfg panel.cfg [--save]] [--fake-vr [--keyboard text]] [--wallpaper name[:blur[:darkness]]]
 //!            [--fake-driver [--output scope.name=value]...]
 //!            [--project dir] [--steamvr dir] [--replay key@t] [--replay-seek secs[:device[:metres]]@t]
 //!            [--replay-view from:to@t] [--replay-focus track|-:station|-@t] [--replay-cam yaw:pitch@t]
@@ -81,6 +81,7 @@ mod linux {
 		let (mut cfg, mut save) = (None::<PathBuf>, false);
 		let (mut select, mut select_station) = (String::new(), String::new());
 		let (mut fake_vr, mut keyboard) = (false, String::from("Spare"));
+		let mut wallpaper = None::<String>;
 		let (mut project, mut steamvr_dir) = (None::<String>, None::<String>);
 		let (mut fake_driver, mut outputs) = (false, Vec::<String>::new());
 		while let Some(a) = args.next() {
@@ -145,6 +146,7 @@ mod linux {
 				"--save" => save = true,
 				"--fake-vr" => fake_vr = true,
 				"--keyboard" => keyboard = next(),
+				"--wallpaper" => wallpaper = Some(next()),
 				"--project" => project = Some(next()),
 				"--steamvr" => steamvr_dir = Some(next()),
 				"--replay" => {
@@ -200,6 +202,17 @@ mod linux {
 		if let Some(d) = steamvr_dir {
 			st.steamvr = d;
 		}
+		// a picture of the `wallpapers` folder beside the settings behind the panel: name[:blur[:darkness]]
+		if let Some(w) = &wallpaper {
+			let mut parts = w.split(':');
+			st.wallpaper = parts.next().unwrap_or("").to_string();
+			if let Some(v) = parts.next().and_then(|v| v.parse().ok()) {
+				st.glass_blur = v;
+			}
+			if let Some(v) = parts.next().and_then(|v| v.parse().ok()) {
+				st.glass_dark = v;
+			}
+		}
 		if st.path.as_os_str().is_empty() {
 			st.path = std::env::current_dir().unwrap_or_default().join("sally-panel.cfg");
 		}
@@ -246,6 +259,8 @@ mod linux {
 		let t0 = Instant::now();
 		let (mut win_ev, mut ov_ev): (Vec<Event>, Vec<Event>) = (Vec::new(), Vec::new());
 		let (mut win_release, mut ov_release) = (None::<Pos2>, None::<Pos2>);
+		// the way a drag still has to go, a step a frame
+		let mut win_path: std::collections::VecDeque<Pos2> = std::collections::VecDeque::new();
 		let first_ov = ov_shots
 			.iter()
 			.map(|s| s.1)
@@ -276,7 +291,12 @@ mod linux {
 				d.poll(real, &panel.rt);
 			}
 			panel.poll(real);
-			if let Some(p) = win_release.take() {
+			if let Some(p) = win_path.pop_front() {
+				win_ev.push(Event::PointerMoved(p));
+				if win_path.is_empty() {
+					win_release = Some(p);
+				}
+			} else if let Some(p) = win_release.take() {
 				win_ev.push(Event::PointerButton {
 					pos: p,
 					button: PointerButton::Primary,
@@ -314,7 +334,8 @@ mod linux {
 					}
 					Input::Hover(x, y) => win_ev.push(Event::PointerMoved(Pos2::new(x, y))),
 					Input::Drag(x0, y0, x1, y1) => {
-						// a press, the way there in steps, and the release a frame later
+						// a press, the way there a step a frame, and the release a frame after the last: as a hand drags,
+						// so that the press is on what is under it and not on what the way ends on
 						win_ev.push(Event::PointerMoved(Pos2::new(x0, y0)));
 						win_ev.push(Event::PointerButton {
 							pos: Pos2::new(x0, y0),
@@ -324,9 +345,8 @@ mod linux {
 						});
 						for k in 1..=8 {
 							let f = k as f32 / 8.0;
-							win_ev.push(Event::PointerMoved(Pos2::new(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f)));
+							win_path.push_back(Pos2::new(x0 + (x1 - x0) * f, y0 + (y1 - y0) * f));
 						}
-						win_release = Some(Pos2::new(x1, y1));
 					}
 					Input::Text(t) => win_ev.push(Event::Text(t)),
 					Input::Key(k) => {

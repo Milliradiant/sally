@@ -45,11 +45,13 @@ fn state_changes_are_events_and_drops() {
 	assert_eq!(rt.events.back().unwrap().text, "tracking");
 	let d = &rt.devices["KN0"];
 	assert_eq!((d.lh_mask, d.pos_sd, d.res_mrad), (3, 0.0012, -1.0));
-	feed(&mut rt, 2.0, &["S KN0 LHR-0334A73B 1000 13.5 coasting 0.3 0.01 -1 0"]);
-	assert_eq!(rt.events.back().unwrap().text, "coasting on the IMU (no light for 0.30 s)");
-	assert_eq!(rt.events.back().unwrap().level, EvLevel::Bad);
+	// a brief gap in its light (a hand over it): nothing while it lasts, and a line that does not matter after
+	let n = rt.events.len();
+	feed(&mut rt, 2.0, &["S KN0 LHR-0334A73B 1000 13.5 coasting 0.7 0.01 -1 0"]);
+	assert_eq!(rt.events.len(), n);
 	feed(&mut rt, 2.5, &["S KN0 LHR-0334A73B 1000 14.0 tracking 0.004 0.0012 -1 f"]);
-	assert_eq!(rt.events.back().unwrap().text, "tracking again after 0.50 s coasting");
+	let e = rt.events.back().unwrap();
+	assert_eq!((e.text.as_str(), e.level, e.matters), ("0.70 s without light", EvLevel::Info, false));
 	// the residual, the eleventh field
 	feed(&mut rt, 2.6, &["S KN0 LHR-0334A73B 1000 14.1 tracking 0.004 0.0012 -1 f 1.375"]);
 	assert_eq!(rt.devices["KN0"].res_mrad, 1.375);
@@ -63,6 +65,20 @@ fn state_changes_are_events_and_drops() {
 	feed(&mut rt, 3.1, &["S KN0 LHR-0334A73B 1000 14.6 tracking 0.004 0.0012 -1 3"]);
 	assert_eq!(rt.events.len(), n);
 	assert_eq!(rt.devices["KN0"].drops.len(), 2);
+	// a gap that holds is said once, as a warning and no more, and once more when the light is back
+	feed(&mut rt, 4.0, &["S KN0 LHR-0334A73B 1000 15.5 coasting 0.9 0.01 -1 0"]);
+	feed(&mut rt, 5.2, &["S KN0 LHR-0334A73B 1000 16.7 coasting 2.1 0.03 -1 0"]);
+	let e = rt.events.back().unwrap();
+	assert_eq!((e.text.as_str(), e.level, e.matters), ("no light for 2 s, coasting on the IMU", EvLevel::Warn, true));
+	let n = rt.events.len();
+	feed(&mut rt, 6.5, &["S KN0 LHR-0334A73B 1000 18.0 coasting 3.4 0.05 -1 0"]);
+	assert_eq!(rt.events.len(), n);
+	feed(&mut rt, 6.6, &["S KN0 LHR-0334A73B 1000 18.1 tracking 0.004 0.0012 -1 3"]);
+	let e = rt.events.back().unwrap();
+	assert_eq!(
+		(e.text.as_str(), e.level, e.matters),
+		("tracking again after 3.4 s without light", EvLevel::Good, true)
+	);
 }
 
 #[test]
@@ -212,7 +228,8 @@ fn verdicts_are_logged_once_they_hold() {
 	}
 	let logged: Vec<&Event> = rt.events.iter().filter(|e| e.text == "6% of reports lost").collect();
 	assert_eq!(logged.len(), 1);
-	assert_eq!(logged[0].level, EvLevel::Warn);
+	// (a mild one is said without the warning's mark)
+	assert_eq!(logged[0].level, EvLevel::Info);
 	// the causes of a window are those of the C lines before its D line
 	assert_eq!(rt.devices["KN0"].diag.causes, vec![("radio".to_string(), "6% of reports lost".to_string())]);
 	// fine for 5 s: "fine again"
@@ -222,11 +239,19 @@ fn verdicts_are_logged_once_they_hold() {
 	}
 	assert_eq!(rt.events.back().unwrap().text, "fine again");
 	assert!(rt.devices["KN0"].diag.causes.is_empty());
-	// a mild light verdict is never an event
-	let n = rt.events.len();
-	for _ in 0..10 {
-		diag(&mut rt, t, "light", 1, &[("light", 1, "only one base station sees it")]);
+	// one that hurts the tracking has the warning's mark, and none is more than a warning
+	for _ in 0..6 {
+		diag(&mut rt, t, "radio", 2, &[("radio", 2, "45% of reports lost")]);
 		t += 0.5;
+	}
+	assert_eq!(rt.events.back().map(|e| (e.text.as_str(), e.level)), Some(("45% of reports lost", EvLevel::Warn)));
+	// a light verdict is never an event: the device's own state says a gap in its light
+	let n = rt.events.len();
+	for (sev, text) in [(1, "only one base station sees it"), (2, "no light for 2.5 s")] {
+		for _ in 0..10 {
+			diag(&mut rt, t, "light", sev, &[("light", sev, text)]);
+			t += 0.5;
+		}
 	}
 	assert_eq!(rt.events.len(), n);
 }

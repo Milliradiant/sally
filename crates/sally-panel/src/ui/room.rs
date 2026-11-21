@@ -8,10 +8,9 @@ use sally_math::math3d::{cross, dot, len, norm, qconj, qmul, qrot, xform, Pose, 
 
 use crate::models::{shade_by, Model};
 
-use super::icons;
-use super::kit::{self, Pop, Surface, CTL_H, HEADER_H};
+use super::kit::{self, Look, HEADER_H, PAD};
 use super::theme::*;
-use super::{Panel, Sel};
+use super::{FloorFrom, Panel, Sel};
 
 /// The orbit camera (around `target`, Z up)
 pub struct Camera {
@@ -248,8 +247,15 @@ impl Cam3 {
 		}
 	}
 
-	/// A station's box (its corners from its pose)
-	pub(super) fn station(&self, p: &egui::Painter, pose: &Pose, col: Color32) {
+	/// A base station in `col`: SteamVR's model of one where there is one to draw, else a box (its corners from its
+	/// pose). The model goes on the station's pose as it is: a station's frame is the model's, its top along Y and
+	/// its front along -Z
+	pub(super) fn station(&self, p: &egui::Painter, model: Option<&Model>, pose: &Pose, col: Color32) {
+		if let Some(m) = model {
+			let [r, g, b, a] = col.to_srgba_unmultiplied();
+			self.model(p, m, pose, Color32::from_rgb(r, g, b), a);
+			return;
+		}
 		let h = 0.06;
 		let c: Vec<V3> = (0..8)
 			.map(|i| {
@@ -315,6 +321,10 @@ pub(super) fn camera_input(cam: &mut Camera, ui: &egui::Ui, resp: &egui::Respons
 	}
 	panned
 }
+
+/// A base station's model in the room, SteamVR's own of a base station 2.0 (the only ones sally tracks from): in
+/// SteamVR's resources, under no driver
+pub(super) const STATION_MODEL: &str = "lh_basestation_valve_gen2";
 
 /// A device's model in the room: its render model by the config of its serial, else by its type
 pub(super) fn model_name_for(subtype: &str) -> &'static str {
@@ -388,74 +398,78 @@ pub(super) fn grid_squares(stations: impl Iterator<Item = V3>, step: f64) -> (i6
 }
 
 /// A label in a room (the live one's and the Replay tab's): the mark it is for, how far from the mark it starts, and
-/// what it says. `rank`: who places first (0 the selected device, 1 a station, 2 a device, 3 the rest)
+/// what it says. `depth`: a device's, how far it is from the camera (0 for the selected one); None for what is not
+/// a device's (a station's channel), which is drawn first and as it is
 pub(super) struct Tag {
 	pub at: Pos2,
 	pub gap: f32,
 	pub text: String,
 	pub font: egui::FontId,
 	pub color: Color32,
-	pub rank: u8,
+	pub depth: Option<f64>,
 }
 
-/// Draws a room's labels within `bounds`, each beside its mark where there is room (the selected device's first),
-/// else near it with a thin line to it (`place_tags`)
-pub(super) fn draw_tags(p: &egui::Painter, mut tags: Vec<Tag>, bounds: Rect) {
-	tags.sort_by(|a, b| a.rank.cmp(&b.rank).then_with(|| a.text.cmp(&b.text)));
-	let sizes: Vec<(Pos2, f32, Vec2)> =
-		tags.iter().map(|g| (g.at, g.gap, p.layout_no_wrap(g.text.clone(), g.font.clone(), g.color).size())).collect();
-	for (g, (lr, away)) in tags.iter().zip(place_tags(&sizes, bounds)) {
-		if away {
-			let to = Pos2::new(g.at.x.clamp(lr.min.x, lr.max.x), g.at.y.clamp(lr.min.y, lr.max.y));
-			let from = g.at + (to - g.at).normalized() * (g.gap * 0.55);
-			p.line_segment([from, to], Stroke::new(1.0, alpha(g.color, 90)));
-		}
-		kit::text(p, lr.left_center(), Align2::LEFT_CENTER, &g.text, g.font.clone(), g.color);
+/// How strong a device's label is under a nearer one's
+const TAG_UNDER: f32 = 0.72;
+
+/// Draws a room's labels, each at its mark's right whatever else is there: a label never moves to make room, so one
+/// may lie on another. The devices' are drawn from the farthest to the nearest, the nearest on top and at full
+/// strength, the others a little fainter under it (`tag_order`)
+pub(super) fn draw_tags(p: &egui::Painter, tags: Vec<Tag>) {
+	let depths: Vec<Option<f64>> = tags.iter().map(|g| g.depth).collect();
+	for (i, strength) in tag_order(&depths) {
+		let g = &tags[i];
+		let at = Pos2::new(g.at.x + g.gap, g.at.y);
+		kit::text(p, at, Align2::LEFT_CENTER, &g.text, g.font.clone(), fade(g.color, strength));
 	}
 }
 
-/// Where each label goes, in the order given (the first has the first pick), from its mark, the gap to it and its
-/// size: at the mark's right where that is free, else at its left, else the nearest free place above or below those.
-/// Free: inside `bounds`, on no label placed before it, and on no other label's mark. The label's rect, and whether it
-/// is away from its mark (a line joins them then). One with no free place goes at its mark's right all the same
-fn place_tags(tags: &[(Pos2, f32, Vec2)], bounds: Rect) -> Vec<(Rect, bool)> {
-	let mut placed: Vec<Rect> = Vec::new();
-	let mut out = Vec::new();
-	for (i, (at, gap, size)) in tags.iter().enumerate() {
-		let right = Rect::from_min_size(Pos2::new(at.x + gap, at.y - size.y * 0.5), *size);
-		let left = Rect::from_min_size(Pos2::new(at.x - gap - size.x, at.y - size.y * 0.5), *size);
-		let mut cands = vec![(right, false), (left, false)];
-		for ring in [1.0f32, 2.0, 3.0, 4.0] {
-			let dy = ring * (size.y + 2.0);
-			for (r, dx) in [(right, 2.0), (left, -2.0)] {
-				cands.push((r.translate(Vec2::new(dx, -dy)), true));
-				cands.push((r.translate(Vec2::new(dx, dy)), true));
-			}
-		}
-		let free = |r: &Rect| {
-			bounds.contains_rect(*r)
-				&& !placed.iter().any(|q| q.expand(2.0).intersects(*r))
-				&& !tags.iter().enumerate().any(|(j, (o, g, _))| j != i && r.expand(g * 0.5).contains(*o))
-		};
-		let pick = cands.iter().find(|(r, _)| free(r)).copied().unwrap_or(cands[0]);
-		placed.push(pick.0);
-		out.push(pick);
-	}
+/// The order labels are drawn in, by their depths, and each one's strength: those without a depth first, as they
+/// came and at full strength; then the devices' from the farthest to the nearest, the nearest alone at full strength
+fn tag_order(depths: &[Option<f64>]) -> Vec<(usize, f32)> {
+	let mut out: Vec<(usize, f32)> =
+		depths.iter().enumerate().filter(|(_, d)| d.is_none()).map(|(i, _)| (i, 1.0)).collect();
+	let mut devices: Vec<(usize, f64)> = depths.iter().enumerate().filter_map(|(i, d)| d.map(|d| (i, d))).collect();
+	devices.sort_by(|a, b| b.1.total_cmp(&a.1).then_with(|| b.0.cmp(&a.0)));
+	let nearest = devices.len().saturating_sub(1);
+	out.extend(devices.iter().enumerate().map(|(k, (i, _))| (*i, if k == nearest { 1.0 } else { TAG_UNDER })));
 	out
 }
 
-/// SteamVR's chaperone's walls in the room
-const WALL: Color32 = Color32::from_rgb(124, 196, 206);
+/// A line of the room's box's tick boxes
+const ROOM_BAR_H: f32 = 28.0;
 
-/// A row of a pop-up: a label, its value, and a slider under them; whether the value moved
-fn pop_slider(ui: &mut egui::Ui, id: Id, text: &str, value: &str, v: &mut f64, range: &kit::Range) -> bool {
-	let t = tk();
-	let (rr, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), 52.0), Sense::hover());
-	let p = ui.painter();
-	kit::text(p, Pos2::new(rr.min.x, rr.min.y + 11.0), Align2::LEFT_CENTER, text, body(), t.text);
-	kit::text(p, Pos2::new(rr.max.x, rr.min.y + 11.0), Align2::RIGHT_CENTER, value, body(), t.soft);
-	let sr = Rect::from_min_max(Pos2::new(rr.min.x, rr.min.y + 22.0), rr.max);
-	kit::slider(ui, id, sr, v, range, true).changed
+/// What the room can show, each a tick box over it: its setting's key, its label, and what it is in full
+const LAYERS: [(&str, &str, &str); 9] = [
+	(
+		"models",
+		"Models",
+		"The devices and the base stations as SteamVR's models (else a device's outline, a station's box)",
+	),
+	("sensors", "Sensors", "Each device's sensors, the lit ones in its kind's colour"),
+	("rays", "Rays", "A line from a station to each device it lights"),
+	("cones", "Cones", "Each station's field of view, out to the cones' reach"),
+	("trails", "Trails", "Where each device has been, in its status' colour: green with light, yellow without"),
+	("labels", "Labels", "The devices' names and the stations' channels"),
+	("valve", "Valve", "Valve's pose of each device, lined up with sally's frame"),
+	("walls", "Walls", "SteamVR's chaperone, where SteamVR has given one"),
+	("heat", "Coverage", "The floor squares the devices have been over, by the light they had there"),
+];
+
+/// Where a row of things `widths` wide goes between `left` and `right`, `gap` apart: each one's left end and line, a
+/// thing that does not fit going on in the next line; and the number of lines
+fn flow(widths: &[f32], left: f32, right: f32, gap: f32) -> (Vec<(f32, usize)>, usize) {
+	let (mut x, mut line) = (left, 0);
+	let mut out = Vec::with_capacity(widths.len());
+	for w in widths {
+		if x > left && x + w > right {
+			x = left;
+			line += 1;
+		}
+		out.push((x, line));
+		x += w + gap;
+	}
+	(out, line + 1)
 }
 
 impl Panel {
@@ -500,164 +514,206 @@ impl Panel {
 		self.vc.buzz(&serial, self.now);
 	}
 
-	/// The room in its box. In the header: Follow (the view goes with the selected device), the whole room in view
-	/// again, and what the room shows (the layers, the trails' and the cones' lengths)
-	pub(super) fn room_card(&mut self, ui: &mut egui::Ui, r: Rect) {
-		self.card(ui, r, "Room");
-		let hr = Self::header(r);
-		let bh = 28.0;
-		let y = hr.center().y - bh * 0.5;
-		let layers_r = Rect::from_min_size(Pos2::new(hr.max.x - 4.0 - bh, y), Vec2::splat(bh));
-		let open = self.pop == Some((Pop::Layers, self.view));
-		if kit::icon_button(ui, Id::unique("room-layers"), layers_r, icons::STACK, open, true)
-			.on_hover_text("What the room shows")
-			.clicked()
-		{
-			self.toggle_pop(Pop::Layers);
+	/// A layer's switch in the settings, by its key
+	fn layer(&mut self, key: &str) -> &mut bool {
+		let st = &mut self.st;
+		match key {
+			"models" => &mut st.show_models,
+			"sensors" => &mut st.show_sensors,
+			"rays" => &mut st.show_rays,
+			"cones" => &mut st.show_frustums,
+			"trails" => &mut st.show_trails,
+			"labels" => &mut st.show_labels,
+			"valve" => &mut st.show_valve,
+			"walls" => &mut st.show_walls,
+			_ => &mut st.show_heat,
 		}
-		let reset_r = layers_r.translate(Vec2::new(-(bh + 4.0), 0.0));
-		if kit::icon_button(ui, Id::unique("room-reset"), reset_r, icons::CORNERS_OUT, false, true)
-			.on_hover_text("The whole room in view")
-			.clicked()
-		{
+	}
+
+	/// What the room's box shows of the layers, each one's width in its row: the tick boxes, the two lengths, and
+	/// last the coverage's own where it is on. Nothing in the row moves for what comes and goes: the walls' tick box
+	/// is there before SteamVR has given any (and cannot be ticked then), and the coverage's own is at the end
+	fn room_bar(&self, p: &egui::Painter) -> (Vec<(&'static str, &'static str, &'static str)>, Vec<f32>) {
+		let shown: Vec<(&str, &str, &str)> =
+			LAYERS.iter().copied().filter(|(key, ..)| *key != "valve" || self.st.compare).collect();
+		let mut widths: Vec<f32> = shown.iter().map(|(_, text, _)| kit::tick_label_w(p, text) + 4.0).collect();
+		for text in ["Trails", "Cones"] {
+			widths.push(kit::stepper_w(p, ROOM_BAR_H, text) + 8.0);
+		}
+		if self.st.show_heat {
+			let squares = format!("{} squares", self.rt.voxels.len());
+			widths.push(kit::text_w(p, &squares, label()) + 8.0 + kit::button_w(p, "Clear", false) + 6.0);
+		}
+		(shown, widths)
+	}
+
+	/// How tall the room's box is at this width: its title line and the lines its tick boxes take, with the
+	/// coverage's own where it is on (`all`) or without it
+	pub(super) fn room_box_height(&self, p: &egui::Painter, width: f32, all: bool) -> f32 {
+		let (shown, widths) = self.room_bar(p);
+		let n = if all { widths.len() } else { shown.len() + 2 };
+		let (_, lines) = flow(&widths[..n], PAD, width - PAD, 10.0);
+		HEADER_H + 5.0 + lines as f32 * (ROOM_BAR_H + 2.0) + 5.0
+	}
+
+	/// How the room's view is turned (yaw and pitch, rad): what a drag in the room changes
+	pub fn room_turn(&self) -> (f64, f64) {
+		(self.cam.yaw, self.cam.pitch)
+	}
+
+	/// Where on the tab the room was last seen through: its middle is the view's, its height the view's scale
+	pub fn room_place(&self) -> Rect {
+		self.room_place
+	}
+
+	/// The room's own box, over the room's top left: in its title line the floor, Follow and Whole room; under it
+	/// what the room shows, a tick box each, and the two lengths
+	pub(super) fn room_box(&mut self, ui: &mut egui::Ui, r: Rect) {
+		let t = tk();
+		let folded = self.dock(ui, r, "Room", kit::DOCK_ROOM);
+		let hr = Self::dock_header(r);
+		let cy = hr.center().y;
+		let bh = 26.0;
+
+		// from the right: the whole room, Follow
+		let items = [("Whole room", Look::Plain, true, "The stations and the devices all in view")];
+		let (clicked, left) = kit::buttons_right(ui, Id::unique("room-reset"), hr.max.x - 3.0, cy, bh, &items);
+		if clicked.is_some() {
 			self.frame_camera();
 		}
-		let pad = 22.0;
-		let fw = kit::text_w(ui.painter(), "Follow", label()) + pad;
-		let (_, c) = kit::chip(
+		let fw = kit::tick_label_w(ui.painter(), "Follow");
+		let (fr, c) = kit::tick_label(
 			ui,
 			Id::unique("room-follow"),
-			Pos2::new(reset_r.min.x - 6.0 - fw, y),
+			Pos2::new(left - 14.0 - fw, cy - bh * 0.5),
 			bh,
 			"Follow",
 			self.st.follow,
-			None,
-			pad,
+			true,
 		);
+		ui.interact(fr, Id::unique("room-follow-tip"), Sense::hover())
+			.on_hover_text("The view goes with the selected device (a double click on one in the room does the same)");
 		if c {
 			self.st.follow = !self.st.follow;
 			self.st.dirty = true;
 		}
-		let canvas = Rect::from_min_max(
-			Pos2::new(r.min.x + 8.0, r.min.y + HEADER_H),
-			Pos2::new(r.max.x - 8.0, (r.max.y - 8.0).max(r.min.y + HEADER_H + 20.0)),
-		);
-		self.room_contents(ui, canvas);
-		self.popup(ui, Pop::Layers, layers_r, 300.0, true, |s, ui| s.layers_pop(ui));
-	}
 
-	/// What the room shows
-	fn layers_pop(&mut self, ui: &mut egui::Ui) {
-		ui.spacing_mut().item_spacing.y = 2.0;
-		let mut rows: Vec<(&str, &str)> = vec![
-			("models", "Models"),
-			("sensors", "Sensors"),
-			("rays", "Light rays"),
-			("cones", "Station cones"),
-			("trails", "Trails"),
-			("labels", "Labels"),
+		// the floor: the two buttons that set it, then where it is and where that is from (the text that changes last,
+		// so that it moves nothing)
+		let conn = self.rt.connected(self.now);
+		let (fz, from) = self.floor();
+		let p = ui.painter().clone();
+		let tw = kit::text_w(&p, "Room", title());
+		let mut x = hr.min.x + tw + 22.0;
+		x = kit::text(&p, Pos2::new(x, cy), Align2::LEFT_CENTER, "Floor", label(), t.muted).max.x + 10.0;
+		let floor_items = [
+			("Set here", conn, "3 cm under the lowest device that is tracking now: put a tracker on the floor"),
+			(
+				"Auto",
+				from != FloorFrom::SteamVr,
+				"SteamVR's floor where its walls are known, else 3 cm under the lowest device from now on",
+			),
 		];
-		if self.st.compare {
-			rows.push(("valve", "Valve's poses"));
+		for (k, (text, enabled, hint)) in floor_items.iter().enumerate() {
+			let w = kit::button_w(&p, text, false);
+			let br = Rect::from_min_size(Pos2::new(x, cy - bh * 0.5), Vec2::new(w, bh));
+			if br.max.x > fr.min.x - 12.0 {
+				break;
+			}
+			let resp = kit::button(ui, Id::unique(("room-floor", k)), br, text, None, Look::Plain, *enabled);
+			if resp.on_hover_text(*hint).clicked() {
+				if k == 0 {
+					self.set_floor();
+				} else {
+					self.st.floor_z = f64::NAN;
+					self.auto_floor = f64::NAN;
+					self.st.dirty = true;
+				}
+			}
+			x = br.max.x + 6.0;
 		}
-		if !self.vc.walls.is_empty() {
-			rows.push(("walls", "SteamVR's walls"));
+		let says = match from {
+			FloorFrom::Set => "set by hand",
+			FloorFrom::SteamVr => "SteamVR's",
+			FloorFrom::Devices => "lowest device",
+		};
+		let clip = p.with_clip_rect(Rect::from_min_max(Pos2::new(x, hr.min.y), Pos2::new(fr.min.x - 10.0, hr.max.y)));
+		x = kit::text(&clip, Pos2::new(x + 6.0, cy), Align2::LEFT_CENTER, &format!("{fz:+.2} m"), num(), t.text).max.x;
+		kit::text(&clip, Pos2::new(x + 8.0, cy), Align2::LEFT_CENTER, says, label(), t.muted);
+
+		if folded {
+			return;
 		}
-		rows.push(("heat", "Coverage on the floor"));
-		for (key, text) in rows {
-			let st = &mut self.st;
-			let v = match key {
-				"models" => &mut st.show_models,
-				"sensors" => &mut st.show_sensors,
-				"rays" => &mut st.show_rays,
-				"cones" => &mut st.show_frustums,
-				"trails" => &mut st.show_trails,
-				"labels" => &mut st.show_labels,
-				"valve" => &mut st.show_valve,
-				"walls" => &mut st.show_walls,
-				_ => &mut st.show_heat,
-			};
-			if super::tracking::switch_row(ui, Id::unique(("layer", key)), text, *v) {
-				*v = !*v;
-				st.dirty = true;
+
+		// the layers: a tick box each, then the two lengths and the coverage's own; on as many lines as the box's
+		// width takes
+		let (shown, widths) = self.room_bar(&p);
+		// (the row is laid out for what was on when the frame began: a tick on Coverage in this frame shows the
+		// coverage's own from the next, where the row has a place for it)
+		let heat = self.st.show_heat;
+		let walls = !self.vc.walls.is_empty();
+		let th = ROOM_BAR_H;
+		let squares = format!("{} squares", self.rt.voxels.len());
+		let steppers = [("Trails", 1.0, 30.0, 1.0, 6.0), ("Cones", 1.0, 6.0, 0.5, 3.0)];
+		let left = r.min.x + PAD;
+		let (places, _) = flow(&widths, left, r.max.x - PAD, 10.0);
+		let top = r.min.y + HEADER_H + 5.0;
+		let at = |k: usize| Pos2::new(places[k].0, top + places[k].1 as f32 * (th + 2.0));
+		for (k, (key, text, hint)) in shown.iter().enumerate() {
+			let on = *self.layer(key);
+			let enabled = *key != "walls" || walls;
+			let (tr, c) = kit::tick_label(ui, Id::unique(("layer", *key)), at(k), th, text, on, enabled);
+			ui.interact(tr, Id::unique(("layer-tip", *key)), Sense::hover()).on_hover_text(*hint);
+			if c {
+				*self.layer(key) = !on;
+				self.st.dirty = true;
 			}
 		}
-		if self.st.show_heat {
-			let (rr, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), CTL_H), Sense::hover());
-			let s = format!("{} floor squares this session", self.rt.voxels.len());
-			kit::text(ui.painter(), Pos2::new(rr.min.x, rr.center().y), Align2::LEFT_CENTER, &s, label(), tk().muted);
-			let bw = kit::button_w(ui.painter(), "Clear", false);
-			let br = Rect::from_min_size(Pos2::new(rr.max.x - bw, rr.min.y + 2.0), Vec2::new(bw, 28.0));
-			if kit::button(ui, Id::unique("heat-clear"), br, "Clear", None, kit::Look::Plain, true).clicked() {
+		for (i, (text, min, max, step, default)) in steppers.into_iter().enumerate() {
+			let range = kit::Range { min, max, step, default: Some(default), inherits: None };
+			let mut v = if i == 0 { self.st.trail_seconds } else { self.st.frustum_len };
+			let says = if i == 0 { format!("{v:.0} s") } else { format!("{v:.1} m") };
+			let (sr, moved) =
+				kit::stepper(ui, Id::unique(("room-len", i)), at(shown.len() + i), th, text, &says, &mut v, &range);
+			let hint = if i == 0 { "How long the trails last" } else { "How far the stations' cones reach" };
+			ui.interact(
+				Rect::from_min_size(sr.min, Vec2::new(kit::text_w(&p, text, label()), th)),
+				Id::unique(("room-len-tip", i)),
+				Sense::hover(),
+			)
+			.on_hover_text(hint);
+			if moved {
+				if i == 0 {
+					self.st.trail_seconds = v;
+					self.rt.trail_seconds = v;
+					self.vc.trail_seconds = v;
+				} else {
+					self.st.frustum_len = v;
+				}
+				self.st.dirty = true;
+			}
+		}
+		if heat {
+			// the coverage's own: how much there is of it, and Clear
+			let a = at(shown.len() + 2);
+			let tr = kit::text(&p, Pos2::new(a.x, a.y + th * 0.5), Align2::LEFT_CENTER, &squares, label(), t.muted);
+			let bw = kit::button_w(&p, "Clear", false);
+			let br = Rect::from_min_size(Pos2::new(tr.max.x + 8.0, a.y + 1.0), Vec2::new(bw, bh));
+			if kit::button(ui, Id::unique("heat-clear"), br, "Clear", None, Look::Plain, true)
+				.on_hover_text("Forgets the floor squares covered this session")
+				.clicked()
+			{
 				self.rt.clear_heat();
 			}
 		}
-		ui.add_space(6.0);
-		let mut v = self.st.trail_seconds;
-		let range = kit::Range { min: 1.0, max: 30.0, step: 1.0, default: Some(6.0), inherits: None };
-		if pop_slider(ui, Id::unique("trail-len"), "Trails last", &format!("{v:.0} s"), &mut v, &range) {
-			self.st.trail_seconds = v;
-			self.rt.trail_seconds = v;
-			self.vc.trail_seconds = v;
-			self.st.dirty = true;
-		}
-		let mut v = self.st.frustum_len;
-		let range = kit::Range { min: 1.0, max: 6.0, step: 0.5, default: Some(3.0), inherits: None };
-		if pop_slider(ui, Id::unique("cone-len"), "Cones reach", &format!("{v:.1} m"), &mut v, &range) {
-			self.st.frustum_len = v;
-			self.st.dirty = true;
-		}
 	}
 
-	/// The floor's pop-up: set it from the lowest device now, or let the panel find it again
-	fn floor_pop(&mut self, ui: &mut egui::Ui) {
+	/// The room, drawn over all of `canvas` (the tab: the boxes lie over it) and seen through `view`: the camera looks
+	/// at its middle, and its height is the view's scale. `free` is what the boxes leave free now: the coverage's
+	/// key is written in its corner
+	pub(super) fn room_view(&mut self, ui: &mut egui::Ui, canvas: Rect, view: Rect, free: Rect) {
 		let t = tk();
-		super::topbar::pop_title(ui, "Floor");
-		let from = self.floor().1;
-		let s = match from {
-			// (each two lines long: the buttons under them stay where they are)
-			super::FloorFrom::Set => {
-				"Set by hand. Auto finds it again: SteamVR's floor, else the lowest a device has been."
-			}
-			super::FloorFrom::SteamVr => {
-				"SteamVR's floor: the height its walls stand on. Set it here puts yours in its place."
-			}
-			super::FloorFrom::Devices => "Found by itself: 3 cm under the lowest a tracking device has been.",
-		};
-		ui.label(egui::RichText::new(s).font(label()).color(t.muted));
-		ui.add_space(6.0);
-		let (rr, _) = ui.allocate_exact_size(Vec2::new(ui.available_width(), CTL_H), Sense::hover());
-		let w = (rr.width() - 8.0) / 2.0;
-		let a = Rect::from_min_size(rr.min, Vec2::new(w, CTL_H));
-		let b = Rect::from_min_size(Pos2::new(rr.min.x + w + 8.0, rr.min.y), Vec2::new(w, CTL_H));
-		let conn = self.rt.connected(self.now);
-		if kit::button(ui, Id::unique("floor-set"), a, "Set it here", None, kit::Look::Plain, conn)
-			.on_hover_text("3 cm under the lowest device that is tracking now: put a tracker on the floor")
-			.clicked()
-		{
-			self.set_floor();
-		}
-		// (SteamVR's floor is found already; the devices' is found again from where they are now)
-		if kit::button(
-			ui,
-			Id::unique("floor-auto"),
-			b,
-			"Auto",
-			None,
-			kit::Look::Plain,
-			from != super::FloorFrom::SteamVr,
-		)
-		.on_hover_text("SteamVR's floor where its walls are known, else 3 cm under the lowest device from now on")
-		.clicked()
-		{
-			self.st.floor_z = f64::NAN;
-			self.auto_floor = f64::NAN;
-			self.st.dirty = true;
-		}
-	}
-
-	fn room_contents(&mut self, ui: &mut egui::Ui, canvas: Rect) {
-		let t = tk();
+		self.room_place = view;
 		let resp = ui.interact(canvas, Id::unique("room"), Sense::click_and_drag());
 		let now = self.now;
 		if !self.cam.framed {
@@ -686,13 +742,18 @@ impl Panel {
 			}
 		}
 		// the camera's input: points, so the overlay (1.25 pixels a point) orbits as the window does
-		if camera_input(&mut self.cam, ui, &resp, canvas) && self.st.follow {
+		if camera_input(&mut self.cam, ui, &resp, view) && self.st.follow {
 			self.st.follow = false;
 			self.st.dirty = true;
 		}
-		let cam = Cam3::new(&self.cam, canvas);
+		let cam = Cam3::new(&self.cam, view);
 		let p = ui.painter_at(canvas);
-		self.surface(&p, canvas, Surface::Well);
+		// (over a picture the room is what is seen through the panes: the picture as it is, darkened)
+		if self.wall.shown() {
+			self.wall.window(&p, canvas);
+		} else {
+			p.rect_filled(canvas, 0.0, t.well);
+		}
 		let fz = self.floor_z();
 		let mut picks: Vec<(Pos2, Pick)> = Vec::new();
 		let mut tags: Vec<Tag> = Vec::new();
@@ -706,14 +767,13 @@ impl Panel {
 					continue;
 				}
 				let (avg, dark) = (v.stations_sum as f64 / v.n as f64, v.dark as f64 / v.n as f64);
-				let c = if dark > 0.5 {
-					t.bad
+				// the light a square had, as a status: red none, yellow one station, green two or more
+				let c = if dark > 0.5 || avg < 0.8 {
+					alpha(t.bad, 120)
 				} else if avg >= 1.6 {
-					t.good
-				} else if avg >= 0.8 {
-					t.warn
+					alpha(t.good, 110)
 				} else {
-					t.bad
+					alpha(t.warn, 90)
 				};
 				let (x, y) = (ix as f64 * vs, iy as f64 * vs);
 				let q = [
@@ -722,7 +782,7 @@ impl Panel {
 					V3::new(x + vs - g, y + vs - g, fz),
 					V3::new(x + g, y + vs - g, fz),
 				];
-				cam.poly(&p, &q, alpha(c, 110));
+				cam.poly(&p, &q, c);
 			}
 		}
 
@@ -733,10 +793,9 @@ impl Panel {
 			cam.grid(&p, grid_squares(stations, step), step, fz, t.grid, t.grid_minor);
 		}
 
-		// SteamVR's chaperone: its walls, faint, their floor edges (between a wall's two lowest corners) brighter
+		// SteamVR's chaperone: its walls as their edges, the floor edges (between a wall's two lowest corners) brighter
 		if self.st.show_walls {
 			for q in &self.vc.walls {
-				cam.poly(&p, q, alpha(WALL, 10));
 				let on_floor = crate::valve::floor_corners(q);
 				for i in 0..4 {
 					let floor = on_floor.contains(&i) && on_floor.contains(&((i + 1) % 4));
@@ -744,14 +803,16 @@ impl Panel {
 						&p,
 						q[i],
 						q[(i + 1) % 4],
-						alpha(WALL, if floor { 150 } else { 60 }),
+						if floor { t.muted } else { alpha(t.muted, 90) },
 						if floor { 1.6 } else { 1.0 },
 					);
 				}
 			}
 		}
 
-		// the stations: a box each, and their coverage out to the cones' length
+		// the stations: SteamVR's model of one each (grey: a station has no kind's hue), fainter while none of the
+		// devices has its light, or a box in lines; and their coverage out to the cones' length
+		let station_model = if self.st.show_models { self.models.get(STATION_MODEL) } else { None };
 		for (idx, sn) in &self.rt.stations {
 			if !sn.have_pose {
 				continue;
@@ -759,13 +820,18 @@ impl Panel {
 			let selected = self.sel == Sel::Station(*idx);
 			let pose = &sn.pose;
 			let bc = if selected {
-				t.on
+				t.accent
 			} else if sn.seen {
 				t.soft
 			} else {
 				t.faint
 			};
-			cam.station(&p, pose, bc);
+			let body = match &station_model {
+				Some(_) if selected => t.on_ink,
+				Some(_) => alpha(Color32::from_rgb(208, 211, 220), if sn.seen { 255 } else { 110 }),
+				None => bc,
+			};
+			cam.station(&p, station_model.as_deref(), pose, body);
 			if self.st.show_frustums {
 				let gen2 = sn.mode >= 0;
 				let (h, v) = crate::sensor_view::fov_half_deg(gen2);
@@ -777,29 +843,8 @@ impl Panel {
 						xform(pose, d * self.st.frustum_len)
 					})
 					.collect();
-				let face = alpha(
-					t.soft,
-					if selected {
-						18
-					} else if sn.seen {
-						7
-					} else {
-						3
-					},
-				);
-				for i in 0..4 {
-					cam.poly(&p, &[pose.p, far[i], far[(i + 1) % 4]], face);
-				}
-				let fc = alpha(
-					t.soft,
-					if selected {
-						190
-					} else if sn.seen {
-						64
-					} else {
-						32
-					},
-				);
+				// its field of view as its edges alone
+				let fc = if selected { alpha(t.accent, 200) } else { alpha(t.soft, if sn.seen { 56 } else { 28 }) };
 				for i in 0..4 {
 					cam.line(&p, pose.p, far[i], fc, 1.0);
 					cam.line(&p, far[i], far[(i + 1) % 4], fc, 1.0);
@@ -808,11 +853,18 @@ impl Panel {
 			if let Some(sp) = cam.pt(pose.p) {
 				picks.push((sp, Pick::Station(*idx)));
 				if selected {
-					p.circle_stroke(sp, 14.0, Stroke::new(1.6, t.on));
+					p.circle_stroke(sp, 14.0, Stroke::new(1.6, t.accent));
 				}
 				if self.st.show_labels {
 					let c = if sn.seen { t.soft } else { t.faint };
-					tags.push(Tag { at: sp, gap: 12.0, text: sn.channel_label(), font: label(), color: c, rank: 1 });
+					tags.push(Tag {
+						at: sp,
+						gap: 12.0,
+						text: sn.channel_label(),
+						font: label(),
+						color: c,
+						depth: None,
+					});
 				}
 			}
 		}
@@ -828,29 +880,16 @@ impl Panel {
 						continue;
 					}
 					if let Some(s) = self.rt.stations.get(lh).filter(|s| s.have_pose) {
-						cam.line(&p, s.pose.p, d.pos, alpha(if l.sensors_lit < 3 { t.note } else { t.good }, 38), 1.0);
+						cam.line(&p, s.pose.p, d.pos, alpha(t.soft, if l.sensors_lit < 3 { 26 } else { 56 }), 1.0);
 					}
 				}
 			}
 		}
 
-		// the trails
+		// the trails: Valve's under the devices' own, each of which is in its status' colour then (green with light,
+		// yellow without, brighter while it coasted)
 		let ts = self.st.trail_seconds;
 		if self.st.show_trails {
-			for d in self.rt.devices.values().filter(|d| d.active) {
-				let tr = &d.trail;
-				for i in 1..tr.len() {
-					let a = (220.0 * (1.0 - (now - tr[i].t) / ts)) as i32;
-					let c = match tr[i].kind {
-						0 => t.on,
-						2 => t.bad,
-						_ => t.warn,
-					};
-					if len(tr[i].p - tr[i - 1].p) < 0.5 {
-						cam.line(&p, tr[i - 1].p, tr[i].p, alpha(c, a), 1.6);
-					}
-				}
-			}
 			if self.st.compare && self.st.show_valve {
 				for v in self.vc.devs.values() {
 					let tr = &v.trail;
@@ -859,6 +898,20 @@ impl Panel {
 						if len(tr[i].p - tr[i - 1].p) < 0.5 {
 							cam.line(&p, tr[i - 1].p, tr[i].p, alpha(t.valve, a), 1.3);
 						}
+					}
+				}
+			}
+			for d in self.rt.devices.values().filter(|d| d.active) {
+				let tr = &d.trail;
+				for i in 1..tr.len() {
+					let a = (235.0 * (1.0 - (now - tr[i].t) / ts)) as i32;
+					let c = match tr[i].kind {
+						0 => t.good,
+						2 => t.warn,
+						_ => mix(t.good, t.warn, 0.6),
+					};
+					if len(tr[i].p - tr[i - 1].p) < 0.5 {
+						cam.line(&p, tr[i - 1].p, tr[i].p, alpha(c, a), 1.8);
 					}
 				}
 			}
@@ -886,26 +939,28 @@ impl Panel {
 					)
 				})
 				.collect();
+			// (in a headset's hue, as every device is in its kind's)
 			for (a, b) in EDGES {
-				cam.line(&p, c[a], c[b], alpha(t.violet, 200), 1.4);
+				cam.line(&p, c[a], c[b], alpha(t.headset, 200), 1.4);
 			}
 			if self.st.show_labels {
 				if let Some(q) = cam.pt(hp.p) {
-					let c = alpha(t.violet, 230);
+					let c = alpha(t.headset, 230);
 					tags.push(Tag {
 						at: q,
 						gap: 12.0,
 						text: "Headset (SteamVR's)".into(),
 						font: label(),
 						color: c,
-						rank: 3,
+						depth: None,
 					});
 				}
 			}
 		}
 
-		// the devices: their model (SteamVR's, else the outline of their sensors), sensors, axes and label; the
-		// models far ones first
+		// the devices: their model (SteamVR's, else the outline of their sensors) in their kind's hue, their
+		// sensors, axes and label; the models far ones first. The one a click in the room picked has its label
+		// alone, until a click on nothing
 		let dirs = self.config_dirs();
 		self.models.set_steamvr(&self.st.steamvr);
 		let mut order: Vec<&crate::runtime::Device> = self.rt.devices.values().filter(|d| d.active).collect();
@@ -914,11 +969,15 @@ impl Panel {
 			let db = dot(b.pos - cam.eye, cam.f);
 			db.total_cmp(&da)
 		});
+		let only = match (&self.sel, &self.room_only) {
+			(Sel::Device(c), Some(o)) if c == o => Some(o.clone()),
+			_ => None,
+		};
 		for d in order {
 			let stale = now - d.last_pose_wall > 1.0;
 			let pose = Pose { p: d.pos, q: d.rot };
 			let a = if stale { 80 } else { 255 };
-			let sc = self.state_color(d);
+			let kind = t.kind(&d.subtype);
 			// the sensors in the head frame (the runtime gives them in the IMU's), each in its place: index i is sensor i
 			let sensors: Vec<Option<(Pos2, f64)>> = (0..d.sensor_pos.len())
 				.map(|i| d.sensor_in_head(i).and_then(|(s, _)| cam.proj(xform(&pose, s))))
@@ -943,71 +1002,65 @@ impl Panel {
 					.filter(|v| v.rot_offset_n >= 60)
 					.map(|v| v.rot_offset)
 					.unwrap_or_else(|| crate::models::head_turn(&name));
-				let tint = mix(Color32::from_rgb(208, 211, 220), sc, 0.25);
+				let tint = mix(Color32::from_rgb(208, 211, 220), kind, 0.45);
 				cam.model(&p, &m, &model_pose(d.pos, d.rot, off), tint, if stale { 90 } else { 255 });
 			} else if self.st.show_models && sensors.iter().flatten().count() >= 3 {
 				let outline = hull(sensors.iter().flatten().map(|s| s.0).collect());
 				if outline.len() >= 3 {
-					p.add(Shape::convex_polygon(outline.clone(), alpha(sc, if stale { 20 } else { 46 }), Stroke::NONE));
-					p.add(Shape::closed_line(outline, Stroke::new(1.2, alpha(sc, if stale { 60 } else { 150 }))));
+					p.add(Shape::closed_line(outline, Stroke::new(1.2, alpha(kind, if stale { 60 } else { 170 }))));
 				}
 			}
+			// its axes in ink, x the strongest and z the faintest: red and green are a status' here
 			let al = 0.07;
-			cam.line(&p, d.pos, xform(&pose, V3::new(al, 0.0, 0.0)), alpha(AXIS_X, a), 2.0);
-			cam.line(&p, d.pos, xform(&pose, V3::new(0.0, al, 0.0)), alpha(AXIS_Y, a), 2.0);
-			cam.line(&p, d.pos, xform(&pose, V3::new(0.0, 0.0, al)), alpha(AXIS_Z, a), 2.0);
+			for (axis, strength) in
+				[(V3::new(al, 0.0, 0.0), 1.0), (V3::new(0.0, al, 0.0), 0.62), (V3::new(0.0, 0.0, al), 0.36)]
+			{
+				cam.line(&p, d.pos, xform(&pose, axis), alpha(fade(t.text, strength), a), 2.0);
+			}
 			if self.st.show_sensors {
 				let fresh = now - d.hits_wall < 2.5;
 				for (i, (q, depth)) in sensors.iter().enumerate().filter_map(|(i, s)| s.map(|s| (i, s))) {
 					let lit = fresh && d.sensor_hits.get(i).is_some_and(|&h| h > 0);
 					let rad = (0.006 * cam.focal / depth).clamp(1.2, 4.0) as f32;
-					p.circle_filled(q, rad, if lit { alpha(t.good, a) } else { alpha(t.faint, a) });
+					p.circle_filled(q, rad, if lit { alpha(kind, a) } else { alpha(t.faint, a) });
 				}
 			}
 			if let Some(q) = cam.pt(d.pos) {
 				picks.push((q, Pick::Device(d.codename.clone())));
 				let selected = self.sel == Sel::Device(d.codename.clone());
 				if selected {
-					p.circle_stroke(q, 15.0, Stroke::new(1.8, t.on));
+					p.circle_stroke(q, 15.0, Stroke::new(1.8, t.accent));
 				}
-				if self.st.show_labels {
-					let c = if selected { t.text } else { mix(t.soft, sc, 0.35) };
+				if self.st.show_labels && only.as_ref().is_none_or(|o| *o == d.codename) {
+					// (its name in ink, in yellow once it has been without light for the hold)
+					let c = if self.state_level(d) == 2 { t.warn } else { t.text };
 					tags.push(Tag {
 						at: q,
 						gap: if selected { 21.0 } else { 13.0 },
 						text: self.short_name(d),
 						font: if selected { semibold(13.0) } else { label() },
 						color: alpha(c, a),
-						rank: if selected { 0 } else { 2 },
+						depth: Some(if selected { 0.0 } else { dot(d.pos - cam.eye, cam.f) }),
 					});
 				}
 			}
 		}
 
-		// the labels, each beside its mark where there is room (the selected device's first), else near it with a line
-		// to it
-		draw_tags(&p, tags, canvas.shrink(4.0));
+		// the labels, each at its mark's right: the nearest device's on top and strongest
+		draw_tags(&p, tags);
 
-		// over it: the floor (a click opens what sets it), the coverage's key
-		let ft = match self.floor().1 {
-			super::FloorFrom::Set => format!("Floor {fz:.2} m, set"),
-			super::FloorFrom::SteamVr => format!("Floor {fz:.2} m, SteamVR's"),
-			super::FloorFrom::Devices => format!("Floor {fz:.2} m"),
-		};
-		let fw = kit::text_w(&p, &ft, label()) + 20.0;
-		let floor_r = Rect::from_min_size(canvas.min + Vec2::new(8.0, 8.0), Vec2::new(fw, 26.0));
-		let fresp = kit::button(ui, Id::unique("room-floor"), floor_r, "", None, kit::Look::Ghost, true);
-		kit::text(&p, floor_r.center(), Align2::CENTER_CENTER, &ft, label(), t.muted);
-		if fresp.clicked() {
-			self.toggle_pop(Pop::Floor);
-		}
+		// over it: the coverage's key
 		if self.st.show_heat {
-			let mut x = canvas.max.x - 12.0;
-			let y = canvas.max.y - 16.0;
-			for (c, s) in [(t.bad, "no light"), (t.warn, "one station"), (t.good, "two or more")] {
+			let mut x = free.max.x - 12.0;
+			let y = free.max.y - 16.0;
+			for (c, s) in [
+				(alpha(t.bad, 120), "no light"),
+				(alpha(t.warn, 90), "one station"),
+				(alpha(t.good, 110), "two or more"),
+			] {
 				let tr = kit::text(&p, Pos2::new(x, y), Align2::RIGHT_CENTER, s, label(), t.muted);
 				x = tr.min.x - 14.0;
-				p.rect_filled(Rect::from_center_size(Pos2::new(x + 4.0, y), Vec2::splat(9.0)), 2.0, alpha(c, 200));
+				p.rect_filled(Rect::from_center_size(Pos2::new(x + 4.0, y), Vec2::splat(9.0)), 0.0, c);
 				x -= 14.0;
 			}
 		}
@@ -1029,13 +1082,17 @@ impl Panel {
 					Some((_, Pick::Station(i))) => Sel::Station(*i),
 					None => Sel::None,
 				};
+				// (a device picked here has its label alone)
+				self.room_only = match &self.sel {
+					Sel::Device(c) => Some(c.clone()),
+					_ => None,
+				};
 			}
 		}
 		if resp.double_clicked() && matches!(self.sel, Sel::Device(_)) {
 			self.st.follow = true;
 			self.st.dirty = true;
 		}
-		self.popup(ui, Pop::Floor, floor_r, 300.0, false, |s, ui| s.floor_pop(ui));
 	}
 }
 
@@ -1044,34 +1101,14 @@ mod tests {
 	use super::*;
 
 	#[test]
-	fn labels_keep_off_each_other_and_off_the_marks() {
-		let bounds = Rect::from_min_size(Pos2::ZERO, Vec2::new(400.0, 300.0));
-		let size = Vec2::new(80.0, 16.0);
-		// three marks in a huddle, a fourth alone, a fifth against the right edge
-		let tags = [
-			(Pos2::new(200.0, 150.0), 13.0, size),
-			(Pos2::new(206.0, 154.0), 13.0, size),
-			(Pos2::new(196.0, 158.0), 13.0, size),
-			(Pos2::new(60.0, 40.0), 13.0, size),
-			(Pos2::new(380.0, 100.0), 13.0, size),
-		];
-		let got = place_tags(&tags, bounds);
-		assert_eq!(got.len(), 5);
-		for (i, (a, _)) in got.iter().enumerate() {
-			assert!(bounds.contains_rect(*a), "{i}: {a:?}");
-			for (j, (b, _)) in got.iter().enumerate().skip(i + 1) {
-				assert!(!a.intersects(*b), "{i} on {j}: {a:?} {b:?}");
-			}
-			for (j, (o, _, _)) in tags.iter().enumerate() {
-				assert!(i == j || !a.contains(*o), "{i} on the mark of {j}");
-			}
-		}
-		// the first is at its mark's right, the one alone too; the one at the edge at its left
-		assert_eq!(got[0], (Rect::from_min_size(Pos2::new(213.0, 142.0), size), false));
-		assert!(!got[3].1 && got[3].0.min.x > 60.0);
-		assert!(!got[4].1 && got[4].0.max.x < 380.0);
-		// the huddle's others are away from their marks
-		assert!(got[1].1 || got[2].1);
+	fn labels_are_drawn_from_the_farthest_and_the_nearest_is_the_strongest() {
+		// a station's label, then devices at 3, 1 and 2 m, and the selected one (0)
+		let order = tag_order(&[Some(3.0), None, Some(1.0), Some(2.0), Some(0.0)]);
+		assert_eq!(order.iter().map(|(i, _)| *i).collect::<Vec<_>>(), [1, 0, 3, 2, 4]);
+		assert_eq!(order.iter().map(|(_, s)| *s).collect::<Vec<_>>(), [1.0, TAG_UNDER, TAG_UNDER, TAG_UNDER, 1.0]);
+		// one device alone is at full strength, and none is no trouble
+		assert_eq!(tag_order(&[Some(2.0)]), [(0, 1.0)]);
+		assert!(tag_order(&[]).is_empty());
 	}
 
 	#[test]

@@ -1,10 +1,11 @@
 //! The panel's UI, independent of what it draws into: the desktop window and the SteamVR overlay both call
 //! `Panel::frame`, each with its own egui context, sharing every bit of state (tab, selection, camera, the device
-//! page). The tabs (docs/sally_panel.md): Tracking (and from it the device page), Replay, Output and
-//! Settings, under a bar that holds what is wanted from anywhere: what SteamVR is shown, the runtime and the
-//! alignment.
+//! page). The tabs (docs/sally_panel.md): Tracking (and from it the device page), Replay, Check, Output and
+//! Settings, under a bar with the tabs and what SteamVR is shown, and over a status line with the runtime and the
+//! alignment. A number is shown in one place on a page, every control is on the page it belongs to (nothing opens
+//! out of a button), and colour is kept for a fault and for what the user set (`theme`).
 //!
-//! Layout is in points: the body text is 15 points, and a point is a pixel at the window's scale 1 (the overlay draws
+//! Layout is in points: the body text is 14 points, and a point is a pixel at the window's scale 1 (the overlay draws
 //! the 1600 x 940 point layout at 1.25 pixels a point). The look is `theme`'s, the controls `kit`'s.
 
 mod check;
@@ -20,6 +21,7 @@ pub mod state;
 pub mod theme;
 mod topbar;
 mod tracking;
+pub mod wallpaper;
 
 use egui::{Color32, Id, Pos2, Rect, Vec2};
 
@@ -44,7 +46,7 @@ impl View {
 	}
 }
 
-/// What the Selected box shows
+/// The selected row: the device the devices' buttons act on, or the station whose place the stations' box shows
 #[derive(Clone, Debug, PartialEq)]
 pub enum Sel {
 	/// the first active device
@@ -61,9 +63,6 @@ const STATION: &str = "\u{1}station";
 /// A device's state as the panel shows it: the runtime's own state and diagnosis, without interpretation
 #[derive(Clone, Debug)]
 pub struct Health {
-	/// 0 fine, 1 note (one station, back-facing hits), 2 attention, 3 problem, 4 not active
-	pub level: i32,
-	pub color: Color32,
 	/// "tracking", "dark 0.4 s", "coasting 1.2 s", "reacquiring"
 	pub state: String,
 	/// the runtime's (cause, text), worst first
@@ -71,23 +70,12 @@ pub struct Health {
 }
 
 impl Health {
-	/// hurting (severity 2) is a problem; a mild light or reflection verdict is a note (one station, back-facing
-	/// hits); anything else mild needs attention
-	pub fn cause_level(cause: &str, severity: i32) -> i32 {
-		if severity <= 0 {
-			0
-		} else if severity >= 2 {
-			3
-		} else if cause == "light" || cause == "reflect" {
-			1
-		} else {
-			2
-		}
+	/// A cause's level by the runtime's severity of it: one that hurts the tracking (2) wants a look, and has the
+	/// warning's mark; a mild one is a note, said in words with no mark. None of them is red: that is kept for what
+	/// stops sally
+	pub fn cause_level(severity: i32) -> i32 {
+		severity.clamp(0, 2)
 	}
-}
-
-pub fn level_color(level: i32) -> Color32 {
-	tk().level(level)
 }
 
 /// The roles a device can be given: key, label, short label
@@ -163,8 +151,8 @@ fn serial_tail(s: &str) -> &str {
 	s.char_indices().nth_back(3).map_or(s, |(i, _)| &s[i..])
 }
 
-/// A device's name being typed (the Selected box, the Settings tab's list): in the view that started it, until Enter,
-/// Escape or a click away
+/// A device's name being typed (the devices' table, the Settings tab's list): in the view that started it, until
+/// Enter, Escape or a click away
 struct Rename {
 	serial: String,
 	view: View,
@@ -193,6 +181,15 @@ pub struct Panel {
 	/// each view's frames
 	frame_no: [u64; 2],
 	sel: Sel,
+	/// the device a click in the room picked: while it is the selected one, the room shows its label alone
+	room_only: Option<String>,
+	/// where on the tab the room was last seen through
+	room_place: Rect,
+	/// the picture behind the panel and the glass it makes of the boxes; its folder's pictures (looked up again
+	/// every 2 s while the Settings tab shows them)
+	wall: wallpaper::Wallpaper,
+	wall_files: Vec<String>,
+	wall_files_t: f64,
 	cam: room::Camera,
 	auto_floor: f64,
 	/// since when SteamVR has been running (state.rs)
@@ -216,11 +213,10 @@ pub struct Panel {
 	output_scope: [Option<String>; 3],
 	/// what the Output tab's foot line says of the setting under the pointer, in each view
 	output_hint: [&'static str; 2],
-	/// the pop-up that is open, and in which view; the frame it was opened in
-	pop: Option<(kit::Pop, View)>,
-	pop_frame: u64,
-	/// the device (serial) whose place on the body is being picked in the Settings tab's list
+	/// the device (serial) whose place on the body the Settings tab's roles are for; None: the first in its list
 	role_pick: Option<String>,
+	/// the most rows the Tracking tab's tables have had (devices, stations): they keep that room
+	rows_most: [usize; 2],
 
 	rename: Option<Rename>,
 	kb_error_until: f64,
@@ -263,6 +259,11 @@ impl Panel {
 			view: View::Window,
 			frame_no: [0, 0],
 			sel: Sel::None,
+			room_only: None,
+			room_place: Rect::NOTHING,
+			wall: wallpaper::Wallpaper::default(),
+			wall_files: Vec::new(),
+			wall_files_t: -10.0,
 			cam: room::Camera::default(),
 			auto_floor: f64::NAN,
 			steamvr_since: None,
@@ -276,9 +277,8 @@ impl Panel {
 			output_drag: None,
 			output_scope: [None, None, None],
 			output_hint: ["", ""],
-			pop: None,
-			pop_frame: 0,
 			role_pick: None,
+			rows_most: [0, 0],
 			rename: None,
 			kb_error_until: 0.0,
 			symbols: crate::symbols::Symbols::default(),
@@ -315,7 +315,7 @@ impl Panel {
 		self.page_state.sensors_tab
 	}
 
-	/// What the Selected box shows
+	/// The selected row
 	pub fn selection(&self) -> &Sel {
 		&self.sel
 	}
@@ -438,9 +438,8 @@ impl Panel {
 	fn health_of(&self, d: &Device) -> Health {
 		let now = self.now;
 		if !d.active {
-			return Health { level: 4, color: tk().faint, state: "not active".into(), causes: Vec::new() };
+			return Health { state: "not active".into(), causes: Vec::new() };
 		}
-		let level = self.level_of(d);
 		let state = if d.state == "dark" || d.state == "coasting" {
 			format!("{} {:.1} s", d.state, if d.light_age >= 0.0 { d.light_age } else { now - d.state_since })
 		} else if d.state == "none" {
@@ -449,26 +448,7 @@ impl Panel {
 			d.state.clone()
 		};
 		let causes = if now - d.diag.wall < 2.0 { d.diag.causes.clone() } else { Vec::new() };
-		Health { level, color: level_color(level), state, causes }
-	}
-
-	/// The level of health_of alone, without the texts it makes (the counts of flagged devices take it every frame)
-	fn level_of(&self, d: &Device) -> i32 {
-		if !d.active {
-			return 4;
-		}
-		let mut level = match d.state.as_str() {
-			"coasting" => 3,
-			"dark" => 2,
-			_ => 0,
-		};
-		if self.now - d.diag.wall < 2.0 {
-			for (c, _) in &d.diag.causes {
-				let sev = if *c == d.diag.headline { d.diag.severity } else { 1 };
-				level = level.max(Health::cause_level(c, sev));
-			}
-		}
-		level
+		Health { state, causes }
 	}
 
 	/// The active devices, by role, then codename
@@ -530,32 +510,31 @@ impl Panel {
 		kit::symbol(p, r, self.symbol_of(STATION), icons::LIGHTHOUSE, col);
 	}
 
-	fn flagged_count(&self) -> usize {
-		self.rt.devices.values().filter(|d| (2..=3).contains(&self.level_of(d))).count()
-	}
-
 	fn valve_of(&self, d: &Device) -> Option<&ValveDevice> {
 		self.vc.devs.get(&d.serial)
 	}
 
-	/// The dot's colour for a device: green with two stations or more, blue with one, amber dark, red coasting
-	fn state_color(&self, d: &Device) -> Color32 {
-		let t = tk();
-		if !d.present || !d.have_pose || self.now - d.last_pose_wall > 1.0 {
-			return t.faint;
-		}
+	/// A device's state as a level: 0 tracking; 1 (a note, said in ink) while it has been without light, or not yet
+	/// solved, for less than the hold: a hand over a tracker; 2 (a look, in yellow, with its mark) once that has
+	/// held; 4 before it has started. Never 3: a device without light is not something broken
+	fn state_level(&self, d: &Device) -> i32 {
 		match d.state.as_str() {
-			"tracking" => {
-				if d.lh_mask.count_ones() >= 2 {
-					t.good
+			"tracking" => 0,
+			"dark" | "coasting" | "reacquiring" => {
+				let gap = if d.light_age >= 0.0 { d.light_age } else { self.now - d.state_since };
+				if gap >= crate::runtime::HOLD_S {
+					2
 				} else {
-					t.note
+					1
 				}
 			}
-			"dark" | "reacquiring" => t.warn,
-			"coasting" => t.bad,
-			_ => t.faint,
+			_ => 4,
 		}
+	}
+
+	/// A device's state where it is written: green tracking, ink through a brief gap, yellow once it has held
+	fn state_ink(&self, d: &Device) -> Color32 {
+		tk().status(self.state_level(d))
 	}
 
 	fn set_floor(&mut self) {
@@ -601,8 +580,20 @@ impl Panel {
 			}
 		}
 
-		// the look: the tokens for this frame
-		let t = theme::Tk::default();
+		// a picture dropped on the window is the wallpaper from then on
+		if view == View::Window {
+			let dropped: Vec<std::path::PathBuf> =
+				ui.input(|i| i.raw.dropped_files.iter().map(|f| f.path().to_path_buf()).collect());
+			self.wallpaper_dropped(&dropped);
+		}
+		// the picture behind the panel, where one is chosen: read off this thread, shown once it is there
+		let folder = wallpaper::folder(&self.st.path);
+		if let Some(e) = self.wall.update(&folder, &self.st.wallpaper, self.st.glass_blur) {
+			self.rt.log(EvLevel::Warn, "panel", &e, -1.0, true);
+		}
+
+		// the look: the tokens for this frame, the glass' where a picture is behind the panel
+		let t = if self.wall.shown() { theme::Tk::glass() } else { theme::Tk::default() };
 		set_tk(t);
 		if self.style_set[view.index()] != Some(t) {
 			theme::apply(&ctx, &t);
@@ -611,6 +602,7 @@ impl Panel {
 		self.refresh_symbols(&ctx);
 		let painter = ui.painter().clone();
 		painter.rect_filled(screen, 0.0, t.bg);
+		self.wall.draw(&painter, screen, view.index(), self.st.glass_dark);
 
 		// the selection follows the active devices: one that stopped posing is neither shown nor selected
 		match &self.sel {
@@ -625,15 +617,15 @@ impl Panel {
 			self.page = None;
 		}
 
+		// the bar: the tabs, what sally is doing while its tracking is not what SteamVR is shown, and the switch
 		let m = kit::GAP;
-		let mut top_h = topbar::BAR_H;
+		let top_h = topbar::BAR_H;
 		self.top_bar(ui, Rect::from_min_size(screen.min, Vec2::new(screen.width(), top_h)));
-		// what sally is doing, while its tracking is not what SteamVR is shown
-		let strip = self.state_strip(ui, screen.min + Vec2::new(m, top_h + m), screen.width() - 2.0 * m);
-		if strip > 0.0 {
-			top_h += m + strip;
-		}
-		let body = Rect::from_min_max(screen.min + Vec2::new(m, top_h + m), screen.max - Vec2::splat(m));
+		// the runtime and the alignment, under every tab
+		let status = Rect::from_min_max(Pos2::new(screen.min.x, screen.max.y - topbar::STATUS_H), screen.max);
+		self.status_bar(ui, status);
+		let body =
+			Rect::from_min_max(screen.min + Vec2::new(m, top_h + m), Pos2::new(screen.max.x - m, status.min.y - m));
 		match self.st.tab {
 			1 => self.replay_tab(ui, body),
 			2 => self.output_tab(ui, body),
@@ -648,6 +640,25 @@ impl Panel {
 			}
 		}
 		self.confirmations(ui);
+	}
+
+	/// Whether a picture is behind the panel (the boxes glass over it)
+	pub fn wallpaper_shown(&self) -> bool {
+		self.wall.shown()
+	}
+
+	/// Pictures dropped on the window: the last of them goes into the wallpapers' folder and is the one shown
+	fn wallpaper_dropped(&mut self, files: &[std::path::PathBuf]) {
+		let Some(from) = files.iter().rev().find(|f| f.to_str().is_some_and(wallpaper::is_picture)) else { return };
+		match wallpaper::bring(&wallpaper::folder(&self.st.path), from) {
+			Ok(name) => {
+				self.wall.forget(&name);
+				self.st.wallpaper = name;
+				self.st.dirty = true;
+				self.wall_files_t = -10.0;
+			}
+			Err(e) => self.rt.log(EvLevel::Warn, "panel", &format!("wallpaper: {e}"), -1.0, true),
+		}
 	}
 
 	fn host_overrides(&mut self) {

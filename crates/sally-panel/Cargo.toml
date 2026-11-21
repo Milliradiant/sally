@@ -42,8 +42,8 @@ winit = { version = "0.30", default-features = false, features = ["x11", "rwh_06
 glutin = { version = "0.32", default-features = false, features = ["egl", "glx", "wgl", "x11"] }
 glutin-winit = { version = "0.5", default-features = false, features = ["egl", "glx", "wgl", "x11"] }
 raw-window-handle = "0.6"
-# SteamVR's icons of the devices (and the screenshots' PNG)
-image = { version = "0.25", default-features = false, features = ["png"] }
+# SteamVR's icons of the devices, the screenshots' PNG, and a wallpaper of the user's own
+image = { version = "0.25", default-features = false, features = ["png", "jpeg", "bmp"] }
 
 [dev-dependencies]
 # the driver's own output settings: the panel's copy of their defaults and ranges is held to them (tests/panel.rs)
